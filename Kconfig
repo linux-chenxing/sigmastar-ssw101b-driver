@@ -1,0 +1,335 @@
+menuconfig SSTAR_WIRELESS
+    tristate "sstar Wireless Lan"
+    default m
+
+if SSTAR_WIRELESS
+config SSTAR_APOLLO
+    tristate "SSTAR_APOLLO WLAN support"
+    select CRYPTO
+	select CRYPTO_ARC4
+	select CRYPTO_AES
+	select CRC32
+	select AVERAGE
+	select MAC80211_SSTAR_HAS_RC
+	select MAC80211_SSTAR_RC_MINSTREL
+	select MAC80211_SSTAR_RC_MINSTREL_HT
+	select MAC80211_SSTAR_RC_DEFAULT_MINSTREL
+    depends on !SSTAR_MENUCONFIG
+    help
+
+    This is an experimental driver for the SSTAR_APOLLO chip-set.
+    Enabling this option enables the generic driver without
+    any platform support.
+ 
+    Please select the appropriate platform below.
+  
+if SSTAR_MENUCONFIG || SSTAR_APOLLO
+choice
+    prompt "select which Sstar Wi-Fi product  will be used:SSW101x,SSW101,default:SSW101"
+    default SSW101
+    depends on SSTAR_MENUCONFIG || SSTAR_APOLLO
+    help
+     Here,you must make sure which Sstar Wi-Fi product you will want to use,SSW101x,SSW101
+config SSW101x
+    bool "SSW101x chip"
+    depends on SSTAR_MENUCONFIG || SSTAR_APOLLO
+    help
+     we will use SSW101x chip
+config SSW101
+    bool "SSW101 chip"
+    depends on SSTAR_MENUCONFIG || SSTAR_APOLLO
+    help
+     we will use SSW101 chip
+config SSW101B
+    bool "SSW101B chip"
+    depends on SSTAR_MENUCONFIG || SSTAR_APOLLO
+    help
+     we will use SSW101B chip
+config SSTAR6041
+    bool "SSTAR6041 chip"
+    depends on SSTAR_MENUCONFIG || SSTAR_HERA
+    help
+      we will use SSTAR6041 chip
+endchoice
+
+choice
+    prompt "select which bus will be used"
+    default SSTAR_USB_BUS
+    depends on SSTAR_MENUCONFIG || SSTAR_APOLLO
+    help
+     Here,you must make sure what interface you will want to use,usb
+     sdio or spi
+config SSTAR_USB_BUS
+    bool "usb bus"
+    depends on SSTAR_MENUCONFIG || SSTAR_APOLLO
+    help
+      we will use usb bus
+config SSTAR_SDIO_BUS
+    bool "sdio bus"
+    depends on SSTAR_MENUCONFIG || SSTAR_APOLLO
+    help
+     sdio bus
+config SSTAR_SPI_BUS
+    bool "spi bus"
+    depends on SSTAR_MENUCONFIG || SSTAR_APOLLO
+    help
+     we will use spi bus
+endchoice
+
+choice
+    prompt "Select which firmware will be used:.bin or firmware.h"
+    depends on SSTAR_MENUCONFIG || SSTAR_APOLLO
+    default SSTAR_USE_FIRMWARE_BIN
+    help
+     include firmware.h or request xxx.bin from system
+config SSTAR_USE_FIRMWARE_BIN
+    bool "Request .bin from system"
+    depends on SSTAR_MENUCONFIG || SSTAR_APOLLO
+    help
+     Request .bin from system
+config SSTAR_USE_FIRMWARE_H
+    bool "Include firmware.h"
+    depends on SSTAR_MENUCONFIG || SSTAR_APOLLO
+    help
+     include firmware.h
+endchoice
+
+choice
+    prompt "select which sido dpll freq used:24M or 40M.default:40M"
+    default SSTAR_SDIO_40M
+    depends on (SSTAR_MENUCONFIG || SSTAR_APOLLO) && SSTAR_SDIO_BUS && (SSW101 || SSW101x)
+    help
+     Here,you must make sure the sdio interface use 40M or 24M dpll
+config SSTAR_SDIO_40M
+    bool "SDIO 40M"
+    depends on (SSTAR_MENUCONFIG || SSTAR_APOLLO) && SSTAR_SDIO_BUS
+    help
+     we will use SDIO 40M
+config SSTAR_SDIO_24M
+    bool "SDIO 24M"
+    depends on (SSTAR_MENUCONFIG || SSTAR_APOLLO) && SSTAR_SDIO_BUS
+    help
+     we will use SDIO 24M
+endchoice
+
+
+menu "Driver Extern Function Select"
+    depends on SSTAR_MENUCONFIG || SSTAR_APOLLO
+config SSTAR_SUPPORT_BRIDGE
+    bool "Enable wifi interface bridge function"
+    default n
+config SSTAR_FUNC_NOTXCONFIRM
+    bool "Enable Tx no confirm function to enhance performance"
+    default y
+config SSTAR_FUNC_EARLYSUSPEND
+    bool "Enable early suspend function for some platform power save"
+    default n
+config SSTAR_FUNC_MONITOR
+    bool "Enable rx monitor function to receive all package"
+    default y
+config SSTAR_FUNC_SKB_DEBUG
+    bool "Enable skb debug function to debug skb alloc and free"
+    default n
+config SSTAR_FUNC_MEM_DEBUG
+    bool "Enable memory debug function to debug memory alloc and free"
+    default n
+config SSTAR_FUNC_CHANNEL_5G_PRETEND_2G
+    bool "Enable 2.4g useing 5g channel function ,only support special frequnce"
+    default n
+config SSTAR_FUNC_USB_AGGRTX
+    bool "Enabel usb aggr tx funciton to enchance tx performance"
+    depends on SSTAR_USB_BUS
+    default n
+    select  SSTAR_FUNC_USB_DMABUFF
+config SSTAR_FUNC_USB_DMABUFF
+    bool "Enable usb use dam buff for xmit"
+    depends on SSTAR_USB_BUS
+    default n
+config SSTAR_FUNC_USB_CMD_ENHANCE
+    bool "Enable usb cmd send directly function"
+    depends on SSTAR_USB_BUS
+    default n
+    select SSTAR_FUNC_USB_AGGRTX
+config SSTAR_FUNC_USB_DATA_ENHANCE
+    bool "Enable usb data send directly function"
+    depends on SSTAR_USB_BUS
+    default n
+    select SSTAR_FUNC_USB_AGGRTX
+config SSTAR_FUNC_PS_WAKEUP_RELOAD_FW
+    bool "Enable usb wakeup reload fw function"
+    depends on SSTAR_USB_BUS
+    default n
+config SSTAR_FUNC_HW_CHSUM
+    bool "Enable hw do tcp/ip checksum function"
+    depends on SSW101B
+    default n
+config SSTAR_FUNC_DRV_LOADER_FAST
+	bool "Enable loader driver time function"
+	depends on SSTAR_USB_BUS
+	default n
+config SSTAR_FUNC_PRIVE_IE
+	bool "Enable dev ioctl func and iwpriv some prive func"
+	default n
+endmenu
+
+menu "Driver debug features"
+    depends on SSTAR_MENUCONFIG || SSTAR_APOLLO
+
+config SSTAR_APOLLO_DEBUGFS
+    bool "Expose driver internals to DebugFS (DEVELOPMENT)"
+config SSTAR_APOLLO_DEBUG_ON_BOOT
+    bool "Enable selected driver debug messages during boot time (DEVELOPMENT)"
+
+config SSTAR_APOLLO_BH_DEBUG
+    bool "Enable low-level device communication logs (DEVELOPMENT)"
+
+config SSTAR_APOLLO_WSM_DEBUG
+    bool "Enable WSM API debug messages (DEVELOPMENT)"
+
+config SSTAR_APOLLO_WSM_DUMPS
+    bool "Verbose WSM API logging (DEVELOPMENT)"
+
+config SSTAR_APOLLO_WSM_DUMPS_SHORT
+    bool "Dump only first x bytes (default 20) (DEVELOPMENT)"
+
+config SSTAR_APOLLO_TXRX_DEBUG
+    bool "Enable TX/RX debug messages (DEVELOPMENT)"
+
+config SSTAR_APOLLO_TX_POLICY_DEBUG
+    bool "Enable TX policy debug (DEVELOPMENT)"
+
+config SSTAR_APOLLO_STA_DEBUG
+    bool "Enable STA/AP debug (DEVELOPMENT)"
+
+config SSTAR_APOLLO_DUMP_ON_ERROR
+    bool "Dump kernel in case of critical error (DEVELOPMENT)"
+endmenu
+
+config SSTAR_SDIO_MMCx
+    string "which mmc will be used"
+    depends on (SSTAR_MENUCONFIG || SSTAR_APOLLO) && SSTAR_SDIO_BUS
+    default "mmc0"
+    help
+     set which mmc will be used
+config SSTAR_APOLLO_USE_GPIO_IRQ
+    bool "Use GPIO interrupt"
+    depends on (SSTAR_MENUCONFIG || SSTAR_APOLLO) && SSTAR_SDIO_BUS
+    default n
+    help
+     Say Y here if you want to include GPIO IRQ support instead of SDIO IRQ.
+     if unsure, say N.
+config SSTAR_APOLLO_WAPI_SUPPORT
+    bool "WAPI support"
+    depends on SSTAR_MENUCONFIG || SSTAR_APOLLO
+    default n
+    help
+     Say Y if your compat-wireless support WAPI.
+     If unsure, say N.
+
+config SSTAR_APOLLO_SUPPORT_SGI
+    bool "Use short GI support"
+    depends on SSTAR_MENUCONFIG || SSTAR_APOLLO
+    default y
+    help
+    Say Y here if you want to include short gi support
+	 If unsure, say N.
+config MAC80211_SSTAR_HAS_RC
+	bool
+	
+config MAC80211_SSTAR_RC_MINSTREL
+	bool "Minstrel" if EXPERT
+	select MAC80211_SSTAR_HAS_RC
+	default y
+	---help---
+	  This option enables the 'minstrel' TX rate control algorithm
+
+config MAC80211_SSTAR_RC_MINSTREL_HT
+	bool "Minstrel 802.11n support" if EXPERT
+	depends on MAC80211_SSTAR_RC_MINSTREL
+	default y
+	---help---
+	  This option enables the 'minstrel_ht' TX rate control algorithm
+	 
+config MAC80211_SSTAR_RC_DEFAULT_MINSTREL
+	bool "Minstrel"	if EXPERT
+	depends on MAC80211_SSTAR_RC_MINSTREL
+	default y
+	---help---
+	  Select Minstrel as the default rate control algorithm.
+
+config SSTAR_WIFIIF1_NAME
+    string "Setting wifi interface 1 name"
+    depends on SSTAR_MENUCONFIG || SSTAR_APOLLO
+    default "wlan%d"
+    help
+      Set name for wireless interface 1,the length of name is must smaller than 15
+
+config SSTAR_WIFIIF2_NAME
+    string "Setting wifi interface 2 name"
+    depends on SSTAR_MENUCONFIG || SSTAR_APOLLO
+    default "p2p%d"
+    help
+     set name for wireless interface 2,the length of name is must smaller than 15
+
+config SSTAR_MODULE_NAME
+    string "set module name"
+    depends on SSTAR_MENUCONFIG || SSTAR_APOLLO
+    default "ssw101x_wifi_usb" if SSW101x && SSTAR_USB_BUS
+    default "ssw101_wifi_usb" if SSW101 && SSTAR_USB_BUS
+    default "ssw101b_wifi_usb" if SSW101B && SSTAR_USB_BUS
+    default "ssw101x_wifi_spi" if SSW101x && SSTAR_SPI_BUS
+    default "ssw101_wifi_spi" if SSW101 && SSTAR_SPI_BUS
+    default "ssw101b_wifi_spi" if SSW101B && SSTAR_SPI_BUS
+    default "ssw101x_wifi_sdio_24M" if SSW101x && SSTAR_SDIO_24M
+    default "ssw101_wifi_sdio_24M" if SSW101 && SSTAR_SDIO_24M
+    default "ssw101x_wifi_sdio_40M" if SSW101x && SSTAR_SDIO_40M
+    default "ssw101_wifi_sdio_40M" if SSW101 && SSTAR_SDIO_40M
+    default "ssw101b_wifi_sdio" if SSW101B && SSTAR_SDIO_BUS
+    default "Sstar6041_wifi_sdio" if SSTAR6041
+    help 
+     set name for wifi module
+config SSTAR_FW_NAME
+    string "set fw path name"
+    depends on SSTAR_MENUCONFIG || SSTAR_APOLLO
+    depends on SSTAR_USE_FIRMWARE_BIN
+    default "/system/etc/firmware/ssw101x_fw_usb.bin" if SSW101x && SSTAR_USB_BUS
+    default "/system/etc/firmware/ssw101_fw_usb.bin" if SSW101 && SSTAR_USB_BUS
+    default "/system/etc/firmware/ssw101b_fw_usb.bin" if SSW101B && SSTAR_USB_BUS
+    default "/system/etc/firmware/ssw101x_fw_spi.bin" if SSW101x && SSTAR_SPI_BUS
+    default "/system/etc/firmware/ssw101_fw_spi.bin" if SSW101 && SSTAR_SPI_BUS
+    default "/system/etc/firmware/ssw101b_fw_usb.bin" if SSW101B && SSTAR_SPI_BUS
+    default "/system/etc/firmware/ssw101x_fw_sdio_24M.bin" if SSW101x && SSTAR_SDIO_24M
+    default "/system/etc/firmware/ssw101_fw_sdio_24M.bin" if SSW101 && SSTAR_SDIO_24M
+    default "/system/etc/firmware/ssw101x_fw_sdio_40M.bin" if SSW101x && SSTAR_SDIO_40M
+    default "/system/etc/firmware/ssw101_fw_sdio_40M.bin" if SSW101 && SSTAR_SDIO_40M
+    default "/system/etc/firmware/ssw101b_fw_sdio.bin" if SSW101B && SSTAR_SDIO_BUS
+    help
+     set name for wifi module
+
+config MAC80211_SSTAR_RC_DEFAULT
+	string
+	default "minstrel_ht" if MAC80211_SSTAR_RC_DEFAULT_MINSTREL && MAC80211_SSTAR_RC_MINSTREL_HT
+	default "minstrel" if MAC80211_SSTAR_RC_DEFAULT_MINSTREL
+	default "pid" if MAC80211_SSTAR_RC_DEFAULT_PID
+	default ""
+#comment "Some wireless drivers require a rate control algorithm"
+#	depends on MAC80211_SSTAR_HAS_RC
+	
+
+config MAC80211_SSTAR_NOINLINE
+	bool "Do not inline TX/RX handlers"
+	depends on MAC80211_SSTAR_DEBUG_MENU
+	---help---
+	  This option affects code generation in mac80211, when
+	  selected some functions are marked "noinline" to allow
+	  easier debugging of problems in the transmit and receive
+	  paths.
+
+	  This option increases code size a bit and inserts a lot
+	  of function calls in the code, but is otherwise safe to
+	  enable.
+
+	  If unsure, say N unless you expect to be finding problems
+	  in mac80211.
+endif
+endif
