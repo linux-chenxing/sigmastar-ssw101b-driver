@@ -14,7 +14,7 @@
 #include <linux/list.h>
 #include <linux/crypto.h>
 #include <linux/rcupdate.h>
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 
 #define NUM_DEFAULT_KEYS 4
 #define NUM_DEFAULT_MGMT_KEYS 2
@@ -111,7 +111,7 @@ struct ieee80211_key {
 	/* number of times this key has been used */
 	int tx_rx_count;
 
-#ifdef CONFIG_MAC80211_SSTAR_DEBUGFS
+#ifdef CONFIG_MAC80211_ATBM_DEBUGFS
 	struct {
 		struct dentry *stalink;
 		struct dentry *dir;
@@ -119,7 +119,7 @@ struct ieee80211_key {
 	} debugfs;
 #endif
 
-#ifdef CONFIG_MAC80211_SSTAR_ROAMING_CHANGES
+#ifdef CONFIG_MAC80211_ATBM_ROAMING_CHANGES
 	/* rcu: used for non blocking key freeing */
 	struct rcu_head rcu;
 #endif

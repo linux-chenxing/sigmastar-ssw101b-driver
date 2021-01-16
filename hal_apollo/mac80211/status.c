@@ -10,14 +10,14 @@
  */
 
 #include <linux/export.h>
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include "ieee80211_i.h"
 #include "rate.h"
 #include "mesh.h"
 #include "led.h"
 #include "wme.h"
 
-#if 0
+
 void ieee80211_tx_status_irqsafe(struct ieee80211_hw *hw,
 				 struct sk_buff *skb)
 {
@@ -26,19 +26,18 @@ void ieee80211_tx_status_irqsafe(struct ieee80211_hw *hw,
 	int tmp;
 
 	skb->pkt_type = IEEE80211_TX_STATUS_MSG;
-	Sstar_skb_queue_tail(info->flags & IEEE80211_TX_CTL_REQ_TX_STATUS ?
+	atbm_skb_queue_tail(info->flags & IEEE80211_TX_CTL_REQ_TX_STATUS ?
 		       &local->skb_queue : &local->skb_queue_unreliable, skb);
-	tmp = Sstar_skb_queue_len(&local->skb_queue) +
-		Sstar_skb_queue_len(&local->skb_queue_unreliable);
+	tmp = atbm_skb_queue_len(&local->skb_queue) +
+		atbm_skb_queue_len(&local->skb_queue_unreliable);
 	while (tmp > IEEE80211_IRQSAFE_QUEUE_LIMIT &&
-	       (skb = Sstar_skb_dequeue(&local->skb_queue_unreliable))) {
-		Sstar_dev_kfree_skb_irq(skb);
+	       (skb = atbm_skb_dequeue(&local->skb_queue_unreliable))) {
+		atbm_dev_kfree_skb_irq(skb);
 		tmp--;
 		I802_DEBUG_INC(local->tx_status_drop);
 	}
 	tasklet_schedule(&local->tasklet);
 }
-#endif
 //EXPORT_SYMBOL(ieee80211_tx_status_irqsafe);
 
 static void ieee80211_handle_filtered_frame(struct ieee80211_local *local,
@@ -135,8 +134,8 @@ static void ieee80211_handle_filtered_frame(struct ieee80211_local *local,
 	 *	unknown.
 	 */
 	if (test_sta_flag(sta, WLAN_STA_PS_STA) &&
-	    Sstar_skb_queue_len(&sta->tx_filtered[ac]) < STA_MAX_TX_BUFFER) {
-		Sstar_skb_queue_tail(&sta->tx_filtered[ac], skb);
+	    atbm_skb_queue_len(&sta->tx_filtered[ac]) < STA_MAX_TX_BUFFER) {
+		atbm_skb_queue_tail(&sta->tx_filtered[ac], skb);
 		sta_info_recalc_tim(sta);
 
 		if (!timer_pending(&local->sta_cleanup))
@@ -154,14 +153,14 @@ static void ieee80211_handle_filtered_frame(struct ieee80211_local *local,
 		return;
 	}
 
-#ifdef CONFIG_MAC80211_SSTAR_VERBOSE_DEBUG
+#ifdef CONFIG_MAC80211_ATBM_VERBOSE_DEBUG
 	if (net_ratelimit())
 		wiphy_debug(local->hw.wiphy,
 			    "dropped TX filtered frame, queue_len=%d PS=%d @%lu\n",
-			    Sstar_skb_queue_len(&sta->tx_filtered[ac]),
+			    atbm_skb_queue_len(&sta->tx_filtered[ac]),
 			    !!test_sta_flag(sta, WLAN_STA_PS_STA), jiffies);
 #endif
-	Sstar_dev_kfree_skb(skb);
+	atbm_dev_kfree_skb(skb);
 }
 
 static void ieee80211_check_pending_bar(struct sta_info *sta, u8 *addr, u8 tid)
@@ -178,7 +177,7 @@ static void ieee80211_check_pending_bar(struct sta_info *sta, u8 *addr, u8 tid)
 
 static void ieee80211_frame_acked(struct sta_info *sta, struct sk_buff *skb)
 {
-	struct Sstar_ieee80211_mgmt *mgmt = (void *) skb->data;
+	struct atbm_ieee80211_mgmt *mgmt = (void *) skb->data;
 	struct ieee80211_local *local = sta->local;
 	struct ieee80211_sub_if_data *sdata = sta->sdata;
 
@@ -263,7 +262,7 @@ static void ieee80211_add_tx_radiotap_header(struct ieee80211_supported_band
 	unsigned char *pos;
 	u16 txflags;
 
-	rthdr = (struct ieee80211_radiotap_header *) Sstar_skb_push(skb, rtap_len);
+	rthdr = (struct ieee80211_radiotap_header *) atbm_skb_push(skb, rtap_len);
 
 	memset(rthdr, 0, rtap_len);
 	rthdr->it_len = cpu_to_le16(rtap_len);
@@ -443,30 +442,7 @@ void ieee80211_tx_status(struct ieee80211_hw *hw, struct sk_buff *skb)
 				sta->tx_retry_failed++;
 			sta->tx_retry_count += retry_count;
 		}
-		if(sta->sdata->vif.type == NL80211_IFTYPE_STATION){
-			if(info->flags & IEEE80211_TX_HANDSHAKE){
-				struct sk_buff *buffed_skb = NULL;
-				clear_sta_flag(sta,WLAN_STA_HANDSHAKE4OF4_SENDING);
-				set_sta_flag(sta,WLAN_STA_HANDSHAKE4OF4_SUCCESS);
-				smp_mb();
-				while((buffed_skb = Sstar_skb_dequeue(&sta->handshake_buffed))){
-					struct ieee80211_tx_info *buffed_info = IEEE80211_SKB_CB(buffed_skb);
-					Sstar_printk_mgmt("%s:release buffed skb\n",__func__);
-					buffed_info->flags |= IEEE80211_TX_INTFL_NEED_TXPROCESSING;
-					ieee80211_add_pending_skb(local, buffed_skb);
-				}
-				if(acked)
-					Sstar_printk_mgmt("%s:4/4 Pairwise Succeed\n",sta->sdata->name);
-				else {
-					Sstar_printk_err("%s:4/4 Pairwise Failed\n",sta->sdata->name);
-					/*
-					*Here Maybe needed deauthen
-					*/
-					if(sta->sdata)
-						ieee80211_connection_loss(&sta->sdata->vif);
-				}
-			}
-		}
+
 		rate_control_tx_status(local, sband, sta, skb);
 		if (ieee80211_vif_is_mesh(&sta->sdata->vif))
 			ieee80211s_update_metric(local, sta, skb);
@@ -491,7 +467,7 @@ void ieee80211_tx_status(struct ieee80211_hw *hw, struct sk_buff *skb)
 			}
 		}
 	}
-	#ifdef SSTAR_AP_SME
+	#ifdef ATBM_AP_SME
 	if(info->flags & IEEE80211_TX_AP_HANDLE_STATUS)
 	{
 		if(!ieee80211_ap_sme_tx_mgmt_status(sdata,skb)){
@@ -561,7 +537,7 @@ void ieee80211_tx_status(struct ieee80211_hw *hw, struct sk_buff *skb)
 	}
 
 	/* this was a transmitted frame, but now we want to reuse it */
-	Sstar_skb_orphan(skb);
+	skb_orphan(skb);
 
 	/* Need to make a copy before skb->cb gets cleared */
 	send_to_cooked = !!(info->flags & IEEE80211_TX_CTL_INJECTED) ||
@@ -572,20 +548,20 @@ void ieee80211_tx_status(struct ieee80211_hw *hw, struct sk_buff *skb)
 	 * with this test...
 	 */
 	if (!local->monitors && (!send_to_cooked || !local->cooked_mntrs)) {
-		Sstar_dev_kfree_skb(skb);
+		atbm_dev_kfree_skb(skb);
 		return;
 	}
 
 	/* send frame to monitor interfaces now */
 	rtap_len = ieee80211_tx_radiotap_len(info);
-	if (WARN_ON_ONCE(Sstar_skb_headroom(skb) < rtap_len)) {
-		Sstar_dev_kfree_skb(skb);
+	if (WARN_ON_ONCE(atbm_skb_headroom(skb) < rtap_len)) {
+		atbm_dev_kfree_skb(skb);
 		return;
 	}
 	ieee80211_add_tx_radiotap_header(sband, skb, retry_count, rtap_len);
 
 	/* XXX: is this sufficient for BPF? */
-	Sstar_skb_set_mac_header(skb, 0);
+	atbm_skb_set_mac_header(skb, 0);
 	skb->ip_summed = CHECKSUM_UNNECESSARY;
 	skb->pkt_type = PACKET_OTHERHOST;
 	skb->protocol = htons(ETH_P_802_2);
@@ -602,10 +578,10 @@ void ieee80211_tx_status(struct ieee80211_hw *hw, struct sk_buff *skb)
 				continue;
 
 			if (prev_dev) {
-				skb2 = Sstar_skb_clone(skb, GFP_ATOMIC);
+				skb2 = atbm_skb_clone(skb, GFP_ATOMIC);
 				if (skb2) {
 					skb2->dev = prev_dev;
-					Sstar_netif_rx(skb2);
+					atbm_netif_rx(skb2);
 				}
 			}
 
@@ -614,11 +590,11 @@ void ieee80211_tx_status(struct ieee80211_hw *hw, struct sk_buff *skb)
 	}
 	if (prev_dev) {
 		skb->dev = prev_dev;
-		Sstar_netif_rx(skb);
+		atbm_netif_rx(skb);
 		skb = NULL;
 	}
 	rcu_read_unlock();
-	Sstar_dev_kfree_skb(skb);
+	atbm_dev_kfree_skb(skb);
 }
 //EXPORT_SYMBOL(ieee80211_tx_status);
 

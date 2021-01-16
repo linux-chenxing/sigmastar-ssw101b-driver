@@ -16,7 +16,7 @@
 
 #include <linux/ieee80211.h>
 #include <net/cfg80211.h>
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include "ieee80211_i.h"
 #include "sta_info.h"
 #include "wme.h"
@@ -28,15 +28,15 @@ static void ieee80211_send_refuse_measurement_request(struct ieee80211_sub_if_da
 {
 	struct ieee80211_local *local = sdata->local;
 	struct sk_buff *skb;
-	struct Sstar_ieee80211_mgmt *msr_report;
+	struct atbm_ieee80211_mgmt *msr_report;
 
-	skb = Sstar_dev_alloc_skb(sizeof(*msr_report) + local->hw.extra_tx_headroom +
+	skb = atbm_dev_alloc_skb(sizeof(*msr_report) + local->hw.extra_tx_headroom +
 				sizeof(struct ieee80211_msrment_ie));
 	if (!skb)
 		return;
 
-	Sstar_skb_reserve(skb, local->hw.extra_tx_headroom);
-	msr_report = (struct Sstar_ieee80211_mgmt *)Sstar_skb_put(skb, 24);
+	atbm_skb_reserve(skb, local->hw.extra_tx_headroom);
+	msr_report = (struct atbm_ieee80211_mgmt *)atbm_skb_put(skb, 24);
 	memset(msr_report, 0, 24);
 	memcpy(msr_report->da, da, ETH_ALEN);
 	memcpy(msr_report->sa, sdata->vif.addr, ETH_ALEN);
@@ -44,13 +44,13 @@ static void ieee80211_send_refuse_measurement_request(struct ieee80211_sub_if_da
 	msr_report->frame_control = cpu_to_le16(IEEE80211_FTYPE_MGMT |
 						IEEE80211_STYPE_ACTION);
 
-	Sstar_skb_put(skb, 1 + sizeof(msr_report->u.action.u.measurement));
+	atbm_skb_put(skb, 1 + sizeof(msr_report->u.action.u.measurement));
 	msr_report->u.action.category = WLAN_CATEGORY_SPECTRUM_MGMT;
 	msr_report->u.action.u.measurement.action_code =
 				WLAN_ACTION_SPCT_MSR_RPRT;
 	msr_report->u.action.u.measurement.dialog_token = dialog_token;
 
-	msr_report->u.action.u.measurement.element_id = SSTAR_WLAN_EID_MEASURE_REPORT;
+	msr_report->u.action.u.measurement.element_id = ATBM_WLAN_EID_MEASURE_REPORT;
 	msr_report->u.action.u.measurement.length =
 			sizeof(struct ieee80211_msrment_ie);
 
@@ -65,7 +65,7 @@ static void ieee80211_send_refuse_measurement_request(struct ieee80211_sub_if_da
 }
 
 void ieee80211_process_measurement_req(struct ieee80211_sub_if_data *sdata,
-				       struct Sstar_ieee80211_mgmt *mgmt,
+				       struct atbm_ieee80211_mgmt *mgmt,
 				       size_t len)
 {
 	/*

@@ -39,7 +39,7 @@
 #include <linux/ieee80211.h>
 #include <linux/slab.h>
 #include <linux/export.h>
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include "ieee80211_i.h"
 #include "driver-ops.h"
 
@@ -50,10 +50,10 @@ static void ieee80211_free_tid_rx(struct rcu_head *h)
 	int i;
 
 	for (i = 0; i < tid_rx->buf_size; i++)
-		Sstar_dev_kfree_skb(tid_rx->reorder_buf[i]);
-	Sstar_kfree(tid_rx->reorder_buf);
-	Sstar_kfree(tid_rx->reorder_time);
-	Sstar_kfree(tid_rx);
+		atbm_dev_kfree_skb(tid_rx->reorder_buf[i]);
+	atbm_kfree(tid_rx->reorder_buf);
+	atbm_kfree(tid_rx->reorder_time);
+	atbm_kfree(tid_rx);
 }
 
 void ___ieee80211_stop_rx_ba_session(struct sta_info *sta, u16 tid,
@@ -72,14 +72,14 @@ void ___ieee80211_stop_rx_ba_session(struct sta_info *sta, u16 tid,
 
 	RCU_INIT_POINTER(sta->ampdu_mlme.tid_rx[tid], NULL);
 
-#ifdef CONFIG_MAC80211_SSTAR_HT_DEBUG
-	Sstar_printk_agg("Rx BA session stop requested for %pM tid %u\n",
+#ifdef CONFIG_MAC80211_ATBM_HT_DEBUG
+	printk(KERN_DEBUG "Rx BA session stop requested for %pM tid %u\n",
 	       sta->sta.addr, tid);
-#endif /* CONFIG_MAC80211_SSTAR_HT_DEBUG */
+#endif /* CONFIG_MAC80211_ATBM_HT_DEBUG */
 
 	if (drv_ampdu_action(local, sta->sdata, IEEE80211_AMPDU_RX_STOP,
 			     &sta->sta, tid, NULL, 0))
-		Sstar_printk_agg( "HW problem - can not stop rx "
+		printk(KERN_DEBUG "HW problem - can not stop rx "
 				"aggregation for tid %d\n", tid);
 
 	/* check if this is a self generated aggregation halt */
@@ -139,8 +139,8 @@ static void sta_rx_agg_session_timer_expired(unsigned long data)
 	struct sta_info *sta = container_of(timer_to_id, struct sta_info,
 					 timer_to_tid[0]);
 
-#ifdef CONFIG_MAC80211_SSTAR_HT_DEBUG
-	Sstar_printk_agg("rx session timer expired on tid %d\n", (u16)*ptid);
+#ifdef CONFIG_MAC80211_ATBM_HT_DEBUG
+	printk(KERN_DEBUG "rx session timer expired on tid %d\n", (u16)*ptid);
 #endif
 	set_bit(*ptid, sta->ampdu_mlme.tid_rx_timer_expired);
 	ieee80211_queue_work(&sta->local->hw, &sta->ampdu_mlme.work);
@@ -164,15 +164,15 @@ static void ieee80211_send_addba_resp(struct ieee80211_sub_if_data *sdata, u8 *d
 {
 	struct ieee80211_local *local = sdata->local;
 	struct sk_buff *skb;
-	struct Sstar_ieee80211_mgmt *mgmt;
+	struct atbm_ieee80211_mgmt *mgmt;
 	u16 capab;
 
-	skb = Sstar_dev_alloc_skb(sizeof(*mgmt) + local->hw.extra_tx_headroom);
+	skb = atbm_dev_alloc_skb(sizeof(*mgmt) + local->hw.extra_tx_headroom);
 	if (!skb)
 		return;
 
-	Sstar_skb_reserve(skb, local->hw.extra_tx_headroom);
-	mgmt = (struct Sstar_ieee80211_mgmt *) Sstar_skb_put(skb, 24);
+	atbm_skb_reserve(skb, local->hw.extra_tx_headroom);
+	mgmt = (struct atbm_ieee80211_mgmt *) atbm_skb_put(skb, 24);
 	memset(mgmt, 0, 24);
 	memcpy(mgmt->da, da, ETH_ALEN);
 	memcpy(mgmt->sa, sdata->vif.addr, ETH_ALEN);
@@ -185,7 +185,7 @@ static void ieee80211_send_addba_resp(struct ieee80211_sub_if_data *sdata, u8 *d
 	mgmt->frame_control = cpu_to_le16(IEEE80211_FTYPE_MGMT |
 					  IEEE80211_STYPE_ACTION);
 
-	Sstar_skb_put(skb, 1 + sizeof(mgmt->u.action.u.addba_resp));
+	atbm_skb_put(skb, 1 + sizeof(mgmt->u.action.u.addba_resp));
 	mgmt->u.action.category = WLAN_CATEGORY_BACK;
 	mgmt->u.action.u.addba_resp.action_code = WLAN_ACTION_ADDBA_RESP;
 	mgmt->u.action.u.addba_resp.dialog_token = dialog_token;
@@ -203,7 +203,7 @@ static void ieee80211_send_addba_resp(struct ieee80211_sub_if_data *sdata, u8 *d
 
 void ieee80211_process_addba_request(struct ieee80211_local *local,
 				     struct sta_info *sta,
-				     struct Sstar_ieee80211_mgmt *mgmt,
+				     struct atbm_ieee80211_mgmt *mgmt,
 				     size_t len)
 {
 	struct tid_ampdu_rx *tid_agg_rx;
@@ -225,8 +225,8 @@ void ieee80211_process_addba_request(struct ieee80211_local *local,
 	status = WLAN_STATUS_REQUEST_DECLINED;
 
 	if (test_sta_flag(sta, WLAN_STA_BLOCK_BA)) {
-#ifdef CONFIG_MAC80211_SSTAR_HT_DEBUG
-		Sstar_printk_agg("Suspend in progress. "
+#ifdef CONFIG_MAC80211_ATBM_HT_DEBUG
+		printk(KERN_DEBUG "Suspend in progress. "
 		       "Denying ADDBA request\n");
 #endif
 		goto end_no_lock;
@@ -240,13 +240,13 @@ void ieee80211_process_addba_request(struct ieee80211_local *local,
 	     (!(sta->sta.ht_cap.cap & IEEE80211_HT_CAP_DELAY_BA))) ||
 	    (buf_size > IEEE80211_MAX_AMPDU_BUF)) {
 		status = WLAN_STATUS_INVALID_QOS_PARAM;
-#ifdef CONFIG_MAC80211_SSTAR_HT_DEBUG
+#ifdef CONFIG_MAC80211_ATBM_HT_DEBUG
 		if (net_ratelimit())
-			Sstar_printk_agg( "AddBA Req with bad params from "
+			printk(KERN_DEBUG "AddBA Req with bad params from "
 				"%pM on tid %u. policy %d, buffer size %d\n",
 				mgmt->sa, tid, ba_policy,
 				buf_size);
-#endif /* CONFIG_MAC80211_SSTAR_HT_DEBUG */
+#endif /* CONFIG_MAC80211_ATBM_HT_DEBUG */
 		goto end_no_lock;
 	}
 	/* determine default buffer size */
@@ -261,12 +261,12 @@ void ieee80211_process_addba_request(struct ieee80211_local *local,
 	mutex_lock(&sta->ampdu_mlme.mtx);
 
 	if (sta->ampdu_mlme.tid_rx[tid]) {
-#ifdef CONFIG_MAC80211_SSTAR_HT_DEBUG
+#ifdef CONFIG_MAC80211_ATBM_HT_DEBUG
 		if (net_ratelimit())
-			Sstar_printk_agg( "unexpected AddBA Req from "
+			printk(KERN_DEBUG "unexpected AddBA Req from "
 				"%pM on tid %u\n",
 				mgmt->sa, tid);
-#endif /* CONFIG_MAC80211_SSTAR_HT_DEBUG */
+#endif /* CONFIG_MAC80211_ATBM_HT_DEBUG */
 
 		/* delete existing Rx BA session on the same tid */
 		___ieee80211_stop_rx_ba_session(sta, tid, WLAN_BACK_RECIPIENT,
@@ -275,7 +275,7 @@ void ieee80211_process_addba_request(struct ieee80211_local *local,
 	}
 
 	/* prepare A-MPDU MLME for Rx aggregation */
-	tid_agg_rx = Sstar_kmalloc(sizeof(struct tid_ampdu_rx), GFP_KERNEL);
+	tid_agg_rx = atbm_kmalloc(sizeof(struct tid_ampdu_rx), GFP_KERNEL);
 	if (!tid_agg_rx)
 		goto end;
 
@@ -293,26 +293,26 @@ void ieee80211_process_addba_request(struct ieee80211_local *local,
 
 	/* prepare reordering buffer */
 	tid_agg_rx->reorder_buf =
-		Sstar_kcalloc(buf_size, sizeof(struct sk_buff *), GFP_KERNEL);
+		atbm_kcalloc(buf_size, sizeof(struct sk_buff *), GFP_KERNEL);
 	tid_agg_rx->reorder_time =
-		Sstar_kcalloc(buf_size, sizeof(unsigned long), GFP_KERNEL);
+		atbm_kcalloc(buf_size, sizeof(unsigned long), GFP_KERNEL);
 	if (!tid_agg_rx->reorder_buf || !tid_agg_rx->reorder_time) {
-		Sstar_kfree(tid_agg_rx->reorder_buf);
-		Sstar_kfree(tid_agg_rx->reorder_time);
-		Sstar_kfree(tid_agg_rx);
+		atbm_kfree(tid_agg_rx->reorder_buf);
+		atbm_kfree(tid_agg_rx->reorder_time);
+		atbm_kfree(tid_agg_rx);
 		goto end;
 	}
 
 	ret = drv_ampdu_action(local, sta->sdata, IEEE80211_AMPDU_RX_START,
 			       &sta->sta, tid, &start_seq_num, 0);
-#ifdef CONFIG_MAC80211_SSTAR_HT_DEBUG
-	Sstar_printk_agg( "Rx A-MPDU request on tid %d result %d\n", tid, ret);
-#endif /* CONFIG_MAC80211_SSTAR_HT_DEBUG */
+#ifdef CONFIG_MAC80211_ATBM_HT_DEBUG
+	printk(KERN_DEBUG "Rx A-MPDU request on tid %d result %d\n", tid, ret);
+#endif /* CONFIG_MAC80211_ATBM_HT_DEBUG */
 
 	if (ret) {
-		Sstar_kfree(tid_agg_rx->reorder_buf);
-		Sstar_kfree(tid_agg_rx->reorder_time);
-		Sstar_kfree(tid_agg_rx);
+		atbm_kfree(tid_agg_rx->reorder_buf);
+		atbm_kfree(tid_agg_rx->reorder_time);
+		atbm_kfree(tid_agg_rx);
 		goto end;
 	}
 

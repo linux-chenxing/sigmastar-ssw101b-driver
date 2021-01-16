@@ -1,4 +1,4 @@
-#CONFIG_TX_NO_CONFIRM
+#CONFIG_USE_DMA_ADDR_BUFFER
 #CONFIG_USB_AGGR_URB_TX
 #CONFIG_TX_NO_CONFIRM
 #
@@ -14,215 +14,127 @@
 ##对于调度快+cpu慢的板子使用 模式3 或者 模式6
 ## 默认使用模式 3
 #####################################################################################################################################################################################################################
-#ccflags-y += -DCONFIG_SSTAR_APOLLO_5GHZ_SUPPORT
-#ccflags-y += -DCONFIG_SSTAR_APOLLO_WAPI_SUPPORT
+#ccflags-y += -DCONFIG_ATBM_APOLLO_5GHZ_SUPPORT
+#ccflags-y += -DCONFIG_ATBM_APOLLO_WAPI_SUPPORT
 #ccflags-y  += -I$(shell pwd)/../include/ \
         -include $(shell pwd)/../include/linux/compat-2.6.h \
         -DCOMPAT_STATIC
-##指定配置文件路径，当配置文件存在时使用配置文件中的dcxo值不使用efuse中的dcxo，配置文件中的delta_gain为修正值，如果文件不存在则直接使用efuse中的数据
-SSTAR_CONFIG_FILE="/Sstar_txpwer_dcxo_cfg.txt"
-ifneq ($(IF1NAME),)
-ccflags-y += -DCONFIG_IF1NAME=\"$(IF1NAME)\"
+ATBM_MODULES_NAME ?= $(MODULES_NAME)
+ifeq ($(MULT_NAME),y)
+ifeq ($(USB_BUS),y)
+ATBM_MODULES_NAME = $(MODULES_NAME)_usb
+ATBM_FW_NAME = fw_usb
+else ifeq ($(SDIO_BUS),y)
+ifeq ($(CONFIG_ATBM_SDIO_40M),y)
+ATBM_MODULES_NAME = $(MODULES_NAME)_sdio_40M
+ATBM_FW_NAME = fw_sdio_40M
+else ifeq ($(CONFIG_ATBM_SDIO_24M),y)
+ATBM_MODULES_NAME = $(MODULES_NAME)_sdio_24M
+ATBM_FW_NAME = fw_sdio_24M
 endif
-ifneq ($(IF2NAME),)
-ccflags-y += -DCONFIG_IF2NAME=\"$(IF2NAME)\"
-endif		
-SSTAR_MODULES_NAME ?= $(MODULES_NAME)
-ifneq ($(FW),)
-ccflags-y += -DCONFIG_FW_NAME=\"$(FW)\"
+else ifeq ($(SPI_BUS),y)
+ATBM_MODULES_NAME = $(MODULES_NAME)_spi
+ATBM_FW_NAME = fw_spi
 endif
-ifneq ($(SDIO_HOST),)
-ccflags-y += -DCONFIG_SSTAR_SDIO_MMC_ID=\"$(SDIO_HOST)\"
+ccflags-y += -DCONFIG_FW_NAME=\"$(ATBM_FW_NAME).bin\"
 endif
-ccflags-y += $(SSTAR_WIFI__EXT_CCFLAGS)
-ccflags-y += -DCONFIG_SSTAR_APOLLO_DISABLE_BEACON_HINTS
+ccflags-y += $(ATBM_WIFI__EXT_CCFLAGS)
+ccflags-y += -DCONFIG_ATBM_APOLLO_DISABLE_BEACON_HINTS
 ccflags-y += -DOLD_RATE_POLICY=1
-
+ccflags-y += -DATBM_SUPPORT_PKG_MONITOR
+ifeq ($(CONFIG_NOT_SUPPORT_40M_CHW),y)
+ccflags-y += -DATBM_NOT_SUPPORT_40M_CHW
+endif
 ccflags-y += -DMINSTREL_RSSI_USED
-ccflags-y += -DSSTAR_P2P_ADDR_USE_LOCAL_BIT
-ccflags-y += -DSSTAR_WIFI_QUEUE_LOCK_BUG
-ccflags-y += -DSSTAR_CHANGE_AP_TIMESTAMP_TO_BOOTTIME
-ccflags-y += -DSSTAR_USE_SAVED_FW
-#ccflags-y += -DSSTAR_AP_SME
+ccflags-y += -DATBM_P2P_ADDR_USE_LOCAL_BIT
+ccflags-y += -DATBM_WIFI_QUEUE_LOCK_BUG
+ccflags-y += -DATBM_CHANGE_AP_TIMESTAMP_TO_BOOTTIME
+ifneq ($(platform),PLATFORM_SUN6I)
+ccflags-y += -DATBM_PM_USE_EARLYSUSPEND
+else
+#ccflags-y += -DATBM_SUSPEND_REMOVE_INTERFACE
+#ccflags-y += -DATBM_SUPPORT_WOW
+ccflags-y += -DATBM_USE_SAVED_FW
+endif
+#ccflags-y += -DATBM_AP_SME
 #ccflags-y += -DP2P_MULTIVIF
-ccflags-y += -DSSTAR_P2P_CHANGE
-ccflags-y += -DSSTAR_WIFI_NO_P2P_PS
-ccflags-y += -DSSTAR_SPECIAL_PKG_DOWN_RATE
+ccflags-y += -DATBM_P2P_CHANGE
+ccflags-y += -DATBM_WIFI_NO_P2P_PS
+ccflags-y += -DATBM_SPECIAL_PKG_DOWN_RATE
 #ccflags-y += -DMCAST_FWDING
-ccflags-y += -DSSTAR_APOLLO_SUSPEND_RESUME_FILTER_ENABLE
-ccflags-y += -DCONFIG_SSTAR_IOCTRL
+ccflags-y += -DATBM_APOLLO_SUSPEND_RESUME_FILTER_ENABLE
+ccflags-y += -DCONFIG_ATBM_IOCTRL
 ccflags-y += -DOPER_CLOCK_USE_SEM
 ccflags-y += -DEXIT_MODULE_RESET_USB=0
-ccflags-y += -DSSTAR_VIF_LIST_USE_RCU_LOCK
-#ccflags-y += -DSSTAR_SUPPORT_SMARTCONFIG 
-ccflags-y += -DCONFIG_SSTAR_MONITOR_HDR_PRISM
-#ccflags-y += -DIEEE80211_TASKLET
-ccflags-y += -DCONFIG_RATE_HW_CONTROL
-ccflags-y += -DCONFIG_SSTAR_SUPPORT_SG
-#add AP+STA mode , sta channel change send event to hostapd
-ccflags-y += -DCONFIG_SSTAR_AP_CHANNEL_CHANGE_EVENT
-
+ccflags-y += -DATBM_VIF_LIST_USE_RCU_LOCK
+ccflags-y += -DATBM_SUPPORT_SMARTCONFIG
+#ccflags-y += -DATBM_USE_SAVED_FW
+ccflags-y += -DATBM_ALLOC_MEM_DEBUG=0
+ccflags-y += -DATBM_ALLOC_SKB_DEBUG=0
 ifeq ($(platform),PLATFORM_AMLOGIC_S805)
-ccflags-y += -DCONFIG_SSTAR_APOLLO_USE_GPIO_IRQ
+ccflags-y += -DCONFIG_ATBM_APOLLO_USE_GPIO_IRQ
 endif
 ifeq ($(platform),PLATFORM_AMLOGIC)
-#ccflags-y += -DCONFIG_SSTAR_APOLLO_USE_GPIO_IRQ
+#ccflags-y += -DCONFIG_ATBM_APOLLO_USE_GPIO_IRQ
 endif
-#ccflags-y += -DCONFIG_SSTAR_APOLLO_USE_GPIO_IRQ
-#ccflags-y += -DSSTAR_PKG_REORDER
-ccflags-y += -DSSTAR_SUPPORT_WIDTH_40M
+#ccflags-y += -DCONFIG_ATBM_APOLLO_USE_GPIO_IRQ
+#ccflags-y += -DATBM_PKG_REORDER
+ccflags-y += -DATBM_SUPPORT_WIDTH_40M
 #ccflags-y += -DIPC_AP_USED_11G_NO_RTS
 #p2p mode always in client mode, used in 4.4.2 android ,because monitor interface is not open
 #(ANDRIOD_P2P in wpa_supplicant is open will cause this bug )
 #ccflags-y += -DP2P_ALWAYS_CLIENT
-#ccflags-y += -DSSTAR_11W_TEST
+#ccflags-y += -DATBM_11W_TEST
 
 #wifi alliance test ,
 #some function will cause pass wifi alliance certificate,but not good for some AP
 #ccflags-y += -DWIFI_ALLIANCE_CERTIF
-#ccflags-y += -DSSTAR_11W_TEST
+#ccflags-y += -DATBM_11W_TEST
 #if used sdio download firmware
 ccflags-y += -DWIFI_FW_DOWNLOAD
 # Extra IE for probe response from upper layer is needed in P2P GO
 # For offloading probe response to FW, the extra IE must be included
 # in the probe response template
-ccflags-y += -DSSTAR_PROBE_RESP_EXTRA_IE
-ccflags-y += -DCONFIG_SSTAR_APOLLO_DEBUG
-#ccflags-y += -DCONFIG_SSTAR_STA_LISTEN
-#loader firmwre fast
-ccflags-$(DRVLOADERFAST) += -DCONDIF_SSTAR_CTRL_REQUEST_ASYNC
-###################################################################
-#SSTAR_SUSPEND_REMOVE_INTERFACE
-#before enter suspend state ,remove all interface
-###################################################################
-ccflags-$(PMRELODDFW) += -DSSTAR_SUSPEND_REMOVE_INTERFACE
-###################################################################
-#SSTAR_PM_USE_EARLYSUSPEND
-#early suspend enbale
-###################################################################
-ccflags-$(EARLYSUSPEND) += -DSSTAR_PM_USE_EARLYSUSPEND
-###################################################################
-#SSTAR_ALLOC_MEM_DEBUG
-#debug mem leakage
-###################################################################
-ccflags-$(MEM_DEBUG) += -DSSTAR_ALLOC_MEM_DEBUG
-###################################################################
-#SSTAR_ALLOC_SKB_DEBUG
-#debug skb leakage
-###################################################################
-ccflags-$(SKB_DEBUG) += -DSSTAR_ALLOC_SKB_DEBUG
-####################################################################
-#CONFIG_USE_FW_H
-#use firmware.h as firmware
-####################################################################
-ccflags-$(LOAD_FW_H) += -DCONFIG_USE_FW_H
-####################################################################
-#SSTAR_NOT_SUPPORT_40M_CHW
-#only support 20m channel
-####################################################################
-ccflags-$(CONFIG_NOT_SUPPORT_40M_CHW) += -DSSTAR_NOT_SUPPORT_40M_CHW
-####################################################################
-#SSTAR_SUPPORT_PKG_MONITOR
-#monitor funciton
-####################################################################
-ccflags-$(MONITOR) += -DSSTAR_SUPPORT_PKG_MONITOR
-####################################################################
-#CONFIG_MAC80211_BRIDGE
-#enable bridge
-####################################################################
-ccflags-$(BRIDGE) += -DCONFIG_MAC80211_BRIDGE
-####################################################################
-#CONFIG_TX_NO_CONFIRM      
-#enable tx noconfirm
-####################################################################
-ccflags-$(NOTXCONFIRM) += -DCONFIG_TX_NO_CONFIRM
-####################################################################
-#CONFIG_USB_AGGR_URB_TX
-#enable usb aggr tx 
-####################################################################
-ccflags-$(USBAGGTX) += -DCONFIG_USB_AGGR_URB_TX
-####################################################################
-#CONFIG_USE_DMA_ADDR_BUFFER
-#urb use dma buff
-####################################################################
-ccflags-$(USBDMABUFF) += -DCONFIG_USE_DMA_ADDR_BUFFER
-####################################################################
-#CONFIG_WSM_CMD_XMIT_DIRECTLY
-#cmd transmit directly
-####################################################################
-ccflags-$(USBCMDENHANCE) += -DCONFIG_WSM_CMD_XMIT_DIRECTLY
-####################################################################
-#CONFIG_USB_DATA_XMIT_DIRECTLY
-#usb data xmit directly
-####################################################################
-ccflags-$(USBDATAENHANCE) += -DCONFIG_USB_DATA_XMIT_DIRECTLY
-####################################################################
-#CONFIG_SSTAR_5G_PRETEND_2G
-#wifi use 5G channel to pretend 2g special channel
-####################################################################
-ccflags-$(CH5G) += -DCONFIG_SSTAR_5G_PRETEND_2G
-
-####################################################################
-#CONFIG_SSTAR_PRODUCT_TEST_USE_GOLDEN_LED
-#wifi product  test use Golden LED
-####################################################################
-ccflags-$(PRI_IE) += -DSSTAR_PRIVATE_IE
-ifneq ($(PRI_IE),y)
-ccflags-y += -DCONFIG_SSTAR_STA_LISTEN
-endif
-#ccflags-y += -DCONFIG_SSTAR_PRODUCT_TEST_USE_GOLDEN_LED
-####################################################################
-#SSTAR_PRODUCT_TEST_USE_FEATURE_ID
-#wifi product test use feature ID
-####################################################################
-ccflags-y += -DSSTAR_PRODUCT_TEST_USE_FEATURE_ID
-
+ccflags-y += -DATBM_PROBE_RESP_EXTRA_IE
+ccflags-y += -DCONFIG_ATBM_APOLLO_DEBUG
+#ccflags-y += -DCONFIG_MAC80211_BRIDGE
 #ccflags-y += -DIPV6_FILTERING
-#ccflags-y += -DCONFIG_SSTAR_APOLLO_BH_DEBUG
-#ccflags-y += -DCONFIG_SSTAR_APOLLO_WSM_DEBUG
-#ccflags-y += -DCONFIG_SSTAR_APOLLO_WSM_DUMPS
-#ccflags-y += -DCONFIG_SSTAR_APOLLO_WSM_DUMPS_SHORT
-#ccflags-y += -DCONFIG_SSTAR_APOLLO_TXRX_DEBUG
-#ccflags-y += -DCONFIG_SSTAR_APOLLO_TX_POLICY_DEBUG
-#ccflags-y += -DCONFIG_SSTAR_APOLLO_STA_DEBUG
-#ccflags-y += -DCONFIG_SSTAR_APOLLO_DUMP_ON_ERROR
-#ccflags-y += -DCONFIG_SSTAR_APOLLO_ITP
-ccflags-y += -DCONFIG_SSTAR_APOLLO_TESTMODE
+#ccflags-y += -DCONFIG_ATBM_APOLLO_BH_DEBUG
+#ccflags-y += -DCONFIG_ATBM_APOLLO_WSM_DEBUG
+#ccflags-y += -DCONFIG_ATBM_APOLLO_WSM_DUMPS
+#ccflags-y += -DCONFIG_ATBM_APOLLO_WSM_DUMPS_SHORT
+#ccflags-y += -DCONFIG_ATBM_APOLLO_TXRX_DEBUG
+#ccflags-y += -DCONFIG_ATBM_APOLLO_TX_POLICY_DEBUG
+#ccflags-y += -DCONFIG_ATBM_APOLLO_STA_DEBUG
+#ccflags-y += -DCONFIG_ATBM_APOLLO_DUMP_ON_ERROR
+#ccflags-y += -DCONFIG_ATBM_APOLLO_ITP
+ccflags-y += -DCONFIG_ATBM_APOLLO_TESTMODE
 # use the mac addr in file :"/data/.mac.info"
 ccflags-y += -DCUSTOM_FEATURE_MAC
 #ccflags-y += -DTEST_RF_POWER
 #ccflags-y += -DUSB_CMD_UES_EP0
 #ccflags-y += -DRESET_CHANGE
-ccflags-y += -DCONFIG_SSTARWIFI_WDT
-# use the txpower and dcxo value in file :"$(SSTAR_CONFIG_FILE)",when file exist
-ccflags-y += -DCONFIG_TXPOWER_DCXO_VALUE=\"$(SSTAR_CONFIG_FILE)\"
+ccflags-y += -DCONFIG_ATBMWIFI_WDT
 #PLATFORM_XUNWEI
 #PLATFORM_SUN6I
 #PLATFORM_FRIENDLY
 #PLATFORM_SUN6I_64
-#ccflags-y += -DSSTAR_WIFI_PLATFORM=PLATFORM_HIS
+#ccflags-y += -DATBM_WIFI_PLATFORM=PLATFORM_HIS
 ifeq ($(CONFIG_ARES),y)
 ccflags-y += -DPROJ_TYPE=ARES_A
 endif
 ifeq ($(CONFIG_ARESB),y)
 ccflags-y += -DPROJ_TYPE=ARES_B
-ccflags-$(CHECKSUM) += -DCHKSUM_HW_SUPPORT
-ccflags-y += -DDPLL_CLOCK=DPLL_CLOCK_24M
-endif
-
-ifeq ($(CONFIG_HERA),y)
-ccflags-y += -DPROJ_TYPE=HERA
-ccflags-$(CHECKSUM) += -DCHKSUM_HW_SUPPORT
-ccflags-y += -DDPLL_CLOCK=DPLL_CLOCK_24M
 endif
 
 ifeq ($(CONFIG_ATHENAB),y)
 ccflags-y += -DPROJ_TYPE=ATHENA_B
 ifeq ($(SDIO_BUS),y)
-ccflags-y += -DSSTAR_SDIO_PATCH
+ccflags-y += -DATBM_SDIO_PATCH
 ccflags-y += -DCONFIG_TX_NO_CONFIRM
 endif
 endif
+
 ifeq ($(CONFIG_FPGA),y)
 #ccflags-y += -DDCXO_USE_SMU_REG
 ccflags-y += -DSDIO_CHANGE=1
@@ -260,7 +172,7 @@ ccflags-y += -DSDIO_CHANGE=1
 ccflags-y += -DPROJ_TYPE=APOLLO_C
 ccflags-y += -DDCXO_TYPE=CRYSTAL_MODE
 ccflags-y += -DDPLL_CLOCK=DPLL_CLOCK_40M
-#ccflags-y += -DCONFIG_SSTAR_APOLLO_SUPPORT_SGI
+#ccflags-y += -DCONFIG_ATBM_APOLLO_SUPPORT_SGI
 endif
 
 ifeq ($(CONFIG_APOLLOD),y)
@@ -272,13 +184,13 @@ ccflags-y += -DSDIO_CHANGE=1
 ccflags-y += -DPROJ_TYPE=APOLLO_C
 ccflags-y += -DDCXO_TYPE=CRYSTAL_MODE
 ccflags-y += -DDPLL_CLOCK=DPLL_CLOCK_40M
-#ccflags-y += -DCONFIG_SSTAR_APOLLO_SUPPORT_SGI
+#ccflags-y += -DCONFIG_ATBM_APOLLO_SUPPORT_SGI
 endif
 ifeq ($(CONFIG_APOLLOE),y)
 ccflags-y += -DCHIP_V1601=0
 ccflags-y += -DSDIO_CHANGE=1
 ccflags-y += -DPROJ_TYPE=APOLLO_E
-ccflags-y += -DCONFIG_SSTAR_APOLLO_SUPPORT_SGI
+ccflags-y += -DCONFIG_ATBM_APOLLO_SUPPORT_SGI
 endif
 ifeq ($(CONFIG_ATHENAB_24M),y)
 ccflags-y += -DDCXO_USE_SMU_REG
@@ -287,9 +199,6 @@ ccflags-y += -DTEST_DPLL_CONFIG
 ccflags-y += -DPROJ_TYPE=ATHENA_B
 ccflags-y += -DDCXO_TYPE=CRYSTAL_MODE
 ccflags-y += -DDPLL_CLOCK=DPLL_CLOCK_24M
-ccflags-y += -DSSTAR_SDIO_PATCH
-ccflags-y += -DCONFIG_TX_NO_CONFIRM
-
 endif
 ifeq ($(CONFIG_ATHENALITE),y)
 ccflags-y += -DCHKSUM_HW_SUPPORT
@@ -312,33 +221,24 @@ ccflags-y += -DDCXO_TYPE=CRYSTAL_MODE
 ccflags-y += -DDPLL_CLOCK=DPLL_CLOCK_24M
 endif
 
-ccflags-y += -DCONFIG_SSTAR_APOLLO_SUPPORT_SGI
+ccflags-y += -DCONFIG_ATBM_APOLLO_SUPPORT_SGI
 ifeq ($(USB_BUS),y)
 ccflags-y += -DUSB_BUS
 ccflags-y += -DUSB_USE_TASTLET_TXRX
 ccflags-y += -DUSB_BUS_BUG
-ccflags-y += -DCONFIG_USB_URB_RX_SUBMIT_DIRECTLY
-#ccflags-y += -DCONFIG_WSM_CMD_XMIT_DIRECTLY
-#ccflags-y += -DCONFIG_USB_DATA_XMIT_DIRECTLY
-#ccflags-y += -DCONFIG_USE_DMA_ADDR_BUFFER
+ccflags-y += -DCONFIG_USE_DMA_ADDR_BUFFER
 #ccflags-y += -DCONFIG_USB_AGGR_URB_TX
 #ccflags-y += -DCONFIG_TX_NO_CONFIRM
-#ccflags-y += -DSSTAR_IPC_ASSOC
-#ccflags-y += -DSSTAR_PRIVATE_IE
-#ccflags-y += -DSIGMASTAR_FILTER_MACADDR_ONLY
-#ccflags-y += -DCONFIG_SSTAR_5G_PRETEND_2G
-endif
-ifeq ($(TX_NO_CONFIRM),y)
-#ccflags-y += -DCONFIG_USE_DMA_ADDR_BUFFER
-ccflags-y += -DCONFIG_USB_AGGR_URB_TX
-ccflags-y += -DCONFIG_TX_NO_CONFIRM
+#ccflags-y += -DATBM_IPC_ASSOC
+#ccflags-y += -DATBM_PRIVATE_IE
+
 endif
 ifeq ($(SDIO_BUS),y)
 ccflags-y += -DMCAST_FWDING
 ccflags-y += -DRESET_CHANGE
 ccflags-y += -DSDIO_BUS
-#ccflags-y += -DSSTAR_SDIO_TXRX_ENHANCE
-#ccflags-y += -DSSTAR_WSM_SDIO_TX_MULT
+#ccflags-y += -DATBM_SDIO_TXRX_ENHANCE
+#ccflags-y += -DATBM_WSM_SDIO_TX_MULT
 #ccflags-y += -DRESET_CHIP
 endif
 ifeq ($(SPI_BUS),y)
@@ -348,11 +248,12 @@ endif
 MODFLAGS =-DMODULE -fno-pic 
 CFLAGS_MODULE =$(MODFLAGS)
 
-ifeq ($(CONFIG_SSTAR_APOLLO_DEBUGFS),y)
-ccflags-y  += -DCONFIG_SSTAR_APOLLO_DEBUGFS
+ifeq ($(CONFIG_ATBM_APOLLO_DEBUGFS),y)
+ccflags-y  += -DCONFIG_ATBM_APOLLO_DEBUGFS
 endif
-#ccflags-y  += -DCONFIG_SSTAR_APOLLO_DEBUG
-ccflags-y += -DCONFIG_MAC80211_SSTAR_RC_DEFAULT_MINSTREL
+ccflags-y  += -DCONFIG_ATBM_APOLLO_DEBUG
+ccflags-y += $(ATBM_WIFI__EXT_CCFLAGS)
+ccflags-y += -DCONFIG_MAC80211_ATBM_RC_DEFAULT_MINSTREL
 #ccflags-y += -DMINSTREL_SAMPLE_SKIP_LOW_RATE_HT
 #ccflags-y += -DMINSTREL_SAMPLE_SKIP_LOW_RATE
 
@@ -368,15 +269,15 @@ ccflags-y += -DCONFIG_MAC80211_SSTAR_RC_DEFAULT_MINSTREL
 # ccflags-y += -DCONFIG_MAC80211_DEBUG_COUNTERS
 ccflags-y  += -DPROBE_RESP_EXTRA_IE
 #ccflags-y  += -DIPV6_FILTERING
-#ccflags-y += -DCONFIG_SSTAR_APOLLO_TESTMODE
+#ccflags-y += -DCONFIG_ATBM_APOLLO_TESTMODE
 #ccflags-y += -DCONFIG_NL80211_TESTMODE
-ccflags-y += -DCONFIG_MAC80211_SSTAR_ROAMING_CHANGES
-ifeq ($(CONFIG_MAC80211_SSTAR_DEBUGFS),y)
-ccflags-y  += -DCONFIG_MAC80211_SSTAR_DEBUGFS
+ccflags-y += -DCONFIG_MAC80211_ATBM_ROAMING_CHANGES
+ifeq ($(CONFIG_MAC80211_ATBM_DEBUGFS),y)
+ccflags-y  += -DCONFIG_MAC80211_ATBM_DEBUGFS
 endif
-ccflags-$(CONFIG_MAC80211_SSTAR_RC_MINSTREL) += -DCONFIG_MAC80211_SSTAR_RC_MINSTREL
-ccflags-$(CONFIG_MAC80211_SSTAR_RC_MINSTREL_HT) += -DCONFIG_MAC80211_SSTAR_RC_MINSTREL_HT
-$(SSTAR_MODULES_NAME)-y := \
+ccflags-$(CONFIG_MAC80211_ATBM_RC_MINSTREL) += -DCONFIG_MAC80211_ATBM_RC_MINSTREL
+ccflags-$(CONFIG_MAC80211_ATBM_RC_MINSTREL_HT) += -DCONFIG_MAC80211_ATBM_RC_MINSTREL_HT
+$(ATBM_MODULES_NAME)-y := \
 	mac80211/bridge.o \
         mac80211/main.o \
         mac80211/status.o \
@@ -405,42 +306,42 @@ $(SSTAR_MODULES_NAME)-y := \
         mac80211/chan.o \
 	mac80211/wext_cfg.o \
 	mac80211/ap_sme.o \
-	mac80211/ieee80211_Sstar_mem.o \
-	mac80211/ieee80211_Sstar_skb.o
+	mac80211/ieee80211_atbm_mem.o \
+	mac80211/ieee80211_atbm_skb.o
 
-$(SSTAR_MODULES_NAME)-$(CONFIG_MAC80211_SSTAR_LEDS) += mac80211/led.o
-$(SSTAR_MODULES_NAME)-$(CONFIG_MAC80211_SSTAR_DEBUGFS) += \
+$(ATBM_MODULES_NAME)-$(CONFIG_MAC80211_ATBM_LEDS) += mac80211/led.o
+$(ATBM_MODULES_NAME)-$(CONFIG_MAC80211_ATBM_DEBUGFS) += \
         mac80211/debugfs.o \
         mac80211/debugfs_sta.o \
         mac80211/debugfs_netdev.o \
         mac80211/debugfs_key.o
 
-$(SSTAR_MODULES_NAME)-$(CONFIG_MAC80211_SSTAR_MESH) += \
+$(ATBM_MODULES_NAME)-$(CONFIG_MAC80211_ATBM_MESH) += \
         mac80211/mesh.o \
         mac80211/mesh_pathtbl.o \
         mac80211/mesh_plink.o \
         mac80211/mesh_hwmp.o
 
-$(SSTAR_MODULES_NAME)-$(CONFIG_PM) += mac80211/pm.o
+$(ATBM_MODULES_NAME)-$(CONFIG_PM) += mac80211/pm.o
 
-$(SSTAR_MODULES_NAME)-$(CONFIG_MAC80211_SSTAR_DRIVER_API_TRACER) += mac80211/driver-trace.o
+$(ATBM_MODULES_NAME)-$(CONFIG_MAC80211_ATBM_DRIVER_API_TRACER) += mac80211/driver-trace.o
 CFLAGS_driver-trace.o := -I$(src)
 
 # objects for PID algorithm
-rc80211_pid-$(CONFIG_MAC80211_SSTAR_DEBUGFS) := mac80211/rc80211_pid_algo.o
-rc80211_pid-$(CONFIG_MAC80211_SSTAR_DEBUGFS) += mac80211/rc80211_pid_debugfs.o
+rc80211_pid-$(CONFIG_MAC80211_ATBM_DEBUGFS) := mac80211/rc80211_pid_algo.o
+rc80211_pid-$(CONFIG_MAC80211_ATBM_DEBUGFS) += mac80211/rc80211_pid_debugfs.o
 
 rc80211_minstrel-y := mac80211/rc80211_minstrel.o
-rc80211_minstrel-$(CONFIG_MAC80211_SSTAR_DEBUGFS) += mac80211/rc80211_minstrel_debugfs.o
+rc80211_minstrel-$(CONFIG_MAC80211_ATBM_DEBUGFS) += mac80211/rc80211_minstrel_debugfs.o
 
 rc80211_minstrel_ht-y := mac80211/rc80211_minstrel_ht.o
-rc80211_minstrel_ht-$(CONFIG_MAC80211_SSTAR_DEBUGFS) += mac80211/rc80211_minstrel_ht_debugfs.o
+rc80211_minstrel_ht-$(CONFIG_MAC80211_ATBM_DEBUGFS) += mac80211/rc80211_minstrel_ht_debugfs.o
 
-$(SSTAR_MODULES_NAME)-$(CONFIG_MAC80211_SSTAR_RC_PID) += $(rc80211_pid-y)
-$(SSTAR_MODULES_NAME)-$(CONFIG_MAC80211_SSTAR_RC_MINSTREL) += $(rc80211_minstrel-y)
-$(SSTAR_MODULES_NAME)-$(CONFIG_MAC80211_SSTAR_RC_MINSTREL_HT) += $(rc80211_minstrel_ht-y)
+$(ATBM_MODULES_NAME)-$(CONFIG_MAC80211_ATBM_RC_PID) += $(rc80211_pid-y)
+$(ATBM_MODULES_NAME)-$(CONFIG_MAC80211_ATBM_RC_MINSTREL) += $(rc80211_minstrel-y)
+$(ATBM_MODULES_NAME)-$(CONFIG_MAC80211_ATBM_RC_MINSTREL_HT) += $(rc80211_minstrel_ht-y)
 
-$(SSTAR_MODULES_NAME)-y += \
+$(ATBM_MODULES_NAME)-y += \
 		fwio.o \
 		txrx.o \
 		queue.o \
@@ -451,24 +352,21 @@ $(SSTAR_MODULES_NAME)-y += \
 		main.o \
 		util.o \
 		dbg_event.o \
-		Sstar_smartconfig.o \
+		atbm_smartconfig.o \
 		smartconfig.o  \
-		dev_ioctl.o  \
-		Sstar_p2p.o   \
-		module_fs.o  \
-		internal_cmd.o
+		atbm_p2p.o
 ifeq ($(USB_BUS),y)
-$(SSTAR_MODULES_NAME)-y += apollo_usb.o Sstar_platform.o hwio_usb.o bh_usb.o
+$(ATBM_MODULES_NAME)-y += apollo_usb.o atbm_platform.o hwio_usb.o bh_usb.o
 else ifeq ($(SDIO_BUS),y)
-$(SSTAR_MODULES_NAME)-y += apollo_sdio.o Sstar_platform.o hwio_sdio.o bh_sdio.o dcxo_dpll.o
+$(ATBM_MODULES_NAME)-y += apollo_sdio.o atbm_platform.o hwio_sdio.o bh_sdio.o dcxo_dpll.o
 else ifeq ($(SPI_BUS),y)
-$(SSTAR_MODULES_NAME)-y += apollo_spi.o Sstar_platform.o hwio_spi.o bh_spi.o
+$(ATBM_MODULES_NAME)-y += apollo_spi.o atbm_platform.o hwio_spi.o bh_spi.o
 endif
-$(SSTAR_MODULES_NAME)-y	+= debug.o
-$(SSTAR_MODULES_NAME)-$(CONFIG_PM)		+= pm.o
+$(ATBM_MODULES_NAME)-y	+= debug.o
+$(ATBM_MODULES_NAME)-$(CONFIG_PM)		+= pm.o
 
 
-obj-$(CONFIG_SSTAR_APOLLO) += $(SSTAR_MODULES_NAME).o
+obj-$(CONFIG_ATBM_APOLLO) += $(ATBM_MODULES_NAME).o
 
 ccflags-y += -D__CHECK_ENDIAN__
 MODFLAGS =-DMODULE -fno-pic

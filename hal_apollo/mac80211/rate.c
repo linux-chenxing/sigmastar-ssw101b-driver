@@ -13,7 +13,7 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/debugfs.h>
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include "rate.h"
 #include "ieee80211_i.h"
 #include "debugfs.h"
@@ -49,7 +49,7 @@ int ieee80211_rate_control_register(struct rate_control_ops *ops)
 		}
 	}
 
-	alg = Sstar_kzalloc(sizeof(*alg), GFP_KERNEL);
+	alg = atbm_kzalloc(sizeof(*alg), GFP_KERNEL);
 	if (alg == NULL) {
 		mutex_unlock(&rate_ctrl_mutex);
 		return -ENOMEM;
@@ -71,7 +71,7 @@ void ieee80211_rate_control_unregister(struct rate_control_ops *ops)
 	list_for_each_entry(alg, &rate_ctrl_algs, list) {
 		if (alg->ops == ops) {
 			list_del(&alg->list);
-			Sstar_kfree(alg);
+			atbm_kfree(alg);
 			break;
 		}
 	}
@@ -106,7 +106,7 @@ ieee80211_rate_control_ops_get(const char *name)
 {
 	struct rate_control_ops *ops;
 	const char *alg_name;
-	#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0))
+	#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0))
 	kparam_block_sysfs_write(ieee80211_default_rc_algo);
 	#else
 	kernel_param_lock(THIS_MODULE);
@@ -128,7 +128,7 @@ ieee80211_rate_control_ops_get(const char *name)
 	/* try built-in one if specific alg requested but not found */
 	if (!ops && strlen(CONFIG_COMPAT_MAC80211_RC_DEFAULT))
 		ops = ieee80211_try_rate_control_ops_get(CONFIG_COMPAT_MAC80211_RC_DEFAULT);
-	#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0))
+	#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0))
 	kparam_unblock_sysfs_write(ieee80211_default_rc_algo);
 	#else
 	kernel_param_unlock(THIS_MODULE);
@@ -142,7 +142,7 @@ static void ieee80211_rate_control_ops_put(struct rate_control_ops *ops)
 	module_put(ops->module);
 }
 
-#ifdef CONFIG_MAC80211_SSTAR_DEBUGFS
+#ifdef CONFIG_MAC80211_ATBM_DEBUGFS
 static ssize_t rcname_read(struct file *file, char __user *userbuf,
 			   size_t count, loff_t *ppos)
 {
@@ -166,7 +166,7 @@ static struct rate_control_ref *rate_control_alloc(const char *name,
 	struct dentry *debugfsdir = NULL;
 	struct rate_control_ref *ref;
 
-	ref = Sstar_kmalloc(sizeof(struct rate_control_ref), GFP_KERNEL);
+	ref = atbm_kmalloc(sizeof(struct rate_control_ref), GFP_KERNEL);
 	if (!ref)
 		goto fail_ref;
 	kref_init(&ref->kref);
@@ -175,7 +175,7 @@ static struct rate_control_ref *rate_control_alloc(const char *name,
 	if (!ref->ops)
 		goto fail_ops;
 
-#ifdef CONFIG_MAC80211_SSTAR_DEBUGFS
+#ifdef CONFIG_MAC80211_ATBM_DEBUGFS
 	debugfsdir = debugfs_create_dir("rc", local->hw.wiphy->debugfsdir);
 	local->debugfs.rcdir = debugfsdir;
 	debugfs_create_file("name", 0400, debugfsdir, ref, &rcname_ops);
@@ -189,7 +189,7 @@ static struct rate_control_ref *rate_control_alloc(const char *name,
 fail_priv:
 	ieee80211_rate_control_ops_put(ref->ops);
 fail_ops:
-	Sstar_kfree(ref);
+	atbm_kfree(ref);
 fail_ref:
 	return NULL;
 }
@@ -201,13 +201,13 @@ static void rate_control_release(struct kref *kref)
 	ctrl_ref = container_of(kref, struct rate_control_ref, kref);
 	ctrl_ref->ops->free(ctrl_ref->priv);
 
-#ifdef CONFIG_MAC80211_SSTAR_DEBUGFS
+#ifdef CONFIG_MAC80211_ATBM_DEBUGFS
 	debugfs_remove_recursive(ctrl_ref->local->debugfs.rcdir);
 	ctrl_ref->local->debugfs.rcdir = NULL;
 #endif
 
 	ieee80211_rate_control_ops_put(ctrl_ref->ops);
-	Sstar_kfree(ctrl_ref);
+	atbm_kfree(ctrl_ref);
 }
 
 static bool rc_no_data_or_no_ack_use_min(struct ieee80211_tx_rate_control *txrc)
@@ -334,12 +334,12 @@ static void rate_idx_match_mask(struct ieee80211_tx_rate *rate,
 	 * selected.
 	 */
 }
-#if defined(CONFIG_NL80211_TESTMODE) || defined(CONFIG_SSTAR_IOCTRL)
+#if defined(CONFIG_NL80211_TESTMODE) || defined(CONFIG_ATBM_IOCTRL)
 
 
-/*g_Sstar_rate_Ctl[0]  multicast rate control
-**g_Sstar_rate_Ctl[1]  unicast rate control */
-struct tagsstarRateControl g_Sstar_rate_Ctl; 
+/*g_atbm_rate_Ctl[0]  multicast rate control
+**g_atbm_rate_Ctl[1]  unicast rate control */
+struct tagAtbmRateControl g_atbm_rate_Ctl; 
 
 #define RATEFIXED 1
 #define RATEUNFIXED 0
@@ -360,7 +360,7 @@ void rate_control_get_rate(struct ieee80211_sub_if_data *sdata,
 	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(txrc->skb);
 	int i;
 	u32 mask;
-#if defined(CONFIG_NL80211_TESTMODE) || defined(CONFIG_SSTAR_IOCTRL)
+#if defined(CONFIG_NL80211_TESTMODE) || defined(CONFIG_ATBM_IOCTRL)
 
 	struct ieee80211_hdr *hdr = (void *)txrc->skb->data;
 	int index = 0;
@@ -410,39 +410,39 @@ void rate_control_get_rate(struct ieee80211_sub_if_data *sdata,
 	}
 
 	BUG_ON(info->control.rates[0].idx < 0);
-#if defined(CONFIG_NL80211_TESTMODE) || defined(CONFIG_SSTAR_IOCTRL)
+#if defined(CONFIG_NL80211_TESTMODE) || defined(CONFIG_ATBM_IOCTRL)
 
 
-	/*g_Sstar_rate_Ctl[0]  multicast rate control
-	**g_Sstar_rate_Ctl[1]  unicast rate control */
+	/*g_atbm_rate_Ctl[0]  multicast rate control
+	**g_atbm_rate_Ctl[1]  unicast rate control */
 	if (is_multicast_ether_addr(hdr->addr1)) {
 		index = RATE_CONTROL_MUTICAST;
 	}else{
 		index = RATE_CONTROL_UNICAST;
 	}
 	/* rate fixed*/
-	if (0 != g_Sstar_rate_Ctl.rate_fix[index])
+	if (0 != g_atbm_rate_Ctl.rate_fix[index])
 	{
-		if (g_Sstar_rate_Ctl.my_flags[index] & IEEE80211_TX_RC_MCS)
+		if (g_atbm_rate_Ctl.my_flags[index] & IEEE80211_TX_RC_MCS)
 		{
-			if (g_Sstar_rate_Ctl.my_index[index] > INDEX_MCS_MAX || g_Sstar_rate_Ctl.my_index[index] < INDEX_MCS_MIN)
+			if (g_atbm_rate_Ctl.my_index[index] > INDEX_MCS_MAX || g_atbm_rate_Ctl.my_index[index] < INDEX_MCS_MIN)
 			{
-				Sstar_printk_err("Rate fix to %d wrong\n", g_Sstar_rate_Ctl.my_index[index]);
+				printk("Rate fix to %d wrong\n", g_atbm_rate_Ctl.my_index[index]);
 				return;
 			}
 		}
 		else
 		{
-			if (g_Sstar_rate_Ctl.my_index[index] > INDEX_MAX || g_Sstar_rate_Ctl.my_index[index] < INDEX_MIN)
+			if (g_atbm_rate_Ctl.my_index[index] > INDEX_MAX || g_atbm_rate_Ctl.my_index[index] < INDEX_MIN)
 			{
-				Sstar_printk_err("Rate fix to %d wrong\n", g_Sstar_rate_Ctl.my_index[index]);
+				printk("Rate fix to %d wrong\n", g_atbm_rate_Ctl.my_index[index]);
 				return;
 			}
 		}
 
 		for (i = 0; i < IEEE80211_TX_MAX_RATES; i++) {
-			info->control.rates[i].idx = g_Sstar_rate_Ctl.my_index[index];
-			info->control.rates[i].flags = g_Sstar_rate_Ctl.my_flags[index];
+			info->control.rates[i].idx = g_atbm_rate_Ctl.my_index[index];
+			info->control.rates[i].flags = g_atbm_rate_Ctl.my_flags[index];
 			if(info->flags & IEEE80211_TX_CTL_NO_ACK)
 				info->control.rates[i].count = 1;
 			else
@@ -462,7 +462,7 @@ void rate_control_put(struct rate_control_ref *ref)
 {
 	kref_put(&ref->kref, rate_control_release);
 }
-#if defined(CONFIG_NL80211_TESTMODE) || defined(CONFIG_SSTAR_IOCTRL)
+#if defined(CONFIG_NL80211_TESTMODE) || defined(CONFIG_ATBM_IOCTRL)
 
 
 enum altm_rate_control{
@@ -480,14 +480,14 @@ enum altm_rate_control{
 	ALTM_RATE_GET_INDEX_MULTI = 36,
 
 };
-enum Sstar_nl80211_testmode_data_attributes {
-	SSTAR_TM_MSG_ID = 0x0001,	/* u32 type containing the SSTAR message ID */
-	SSTAR_TM_MSG_DATA,	/* message payload */
+enum atbm_nl80211_testmode_data_attributes {
+	ATBM_TM_MSG_ID = 0x0001,	/* u32 type containing the ATBM message ID */
+	ATBM_TM_MSG_DATA,	/* message payload */
 
 	/* Max indicator so module test may add its own attributes */
-	SSTAR_TM_MSG_ATTR_MAX,
+	ATBM_TM_MSG_ATTR_MAX,
 };
-extern int Sstar_tesmode_reply(struct wiphy *wiphy,
+extern int atbm_tesmode_reply(struct wiphy *wiphy,
 				const void *data, int len);
 int rate_altm_control_test(struct wiphy *wiphy, void *data, int len)
 {
@@ -500,7 +500,7 @@ int rate_altm_control_test(struct wiphy *wiphy, void *data, int len)
 	struct ieee80211_local *local = wiphy_priv(wiphy);
 	if(local->hw.vendcmd_nl80211 == 0)
 	{
-		struct nlattr *data_p = nla_find(data, len, SSTAR_TM_MSG_DATA);
+		struct nlattr *data_p = nla_find(data, len, ATBM_TM_MSG_DATA);
 		if (!data_p)
 			return -EINVAL;
 		msg = (struct altm_msg *)nla_data(data_p);
@@ -508,45 +508,45 @@ int rate_altm_control_test(struct wiphy *wiphy, void *data, int len)
 	else
 		msg = (struct altm_msg *)data;
 
-	Sstar_printk_always("type:%d value:%d\n", msg->type, msg->value);
+	printk("type:%d value:%d\n", msg->type, msg->value);
 	switch (msg->type)
 	{
 		case ALTM_RATE_SET_FIX:
 			//test_debug_enable = 1;
-			g_Sstar_rate_Ctl.rate_fix[RATE_CONTROL_UNICAST] = msg->value;
+			g_atbm_rate_Ctl.rate_fix[RATE_CONTROL_UNICAST] = msg->value;
 			break;
 		case ALTM_RATE_SET_FLAGS:
-			g_Sstar_rate_Ctl.my_flags[RATE_CONTROL_UNICAST] = msg->value;
+			g_atbm_rate_Ctl.my_flags[RATE_CONTROL_UNICAST] = msg->value;
 			break;
 		case ALTM_RATE_SET_INDEX:
-			g_Sstar_rate_Ctl.my_index[RATE_CONTROL_UNICAST] = msg->value;
+			g_atbm_rate_Ctl.my_index[RATE_CONTROL_UNICAST] = msg->value;
 			break;
 		case ALTM_RATE_GET_FIX:
-			ret = Sstar_tesmode_reply(wiphy, &g_Sstar_rate_Ctl.rate_fix[RATE_CONTROL_UNICAST], sizeof(u32));
+			ret = atbm_tesmode_reply(wiphy, &g_atbm_rate_Ctl.rate_fix[RATE_CONTROL_UNICAST], sizeof(u32));
 			break;
 		case ALTM_RATE_GET_FLAGS:
-			ret = Sstar_tesmode_reply(wiphy, &g_Sstar_rate_Ctl.my_flags[RATE_CONTROL_UNICAST], sizeof(u8));
+			ret = atbm_tesmode_reply(wiphy, &g_atbm_rate_Ctl.my_flags[RATE_CONTROL_UNICAST], sizeof(u8));
 			break;
 		case ALTM_RATE_GET_INDEX:
-			ret = Sstar_tesmode_reply(wiphy, &g_Sstar_rate_Ctl.my_index[RATE_CONTROL_UNICAST], sizeof(u8));
+			ret = atbm_tesmode_reply(wiphy, &g_atbm_rate_Ctl.my_index[RATE_CONTROL_UNICAST], sizeof(u8));
 			break;
 		case ALTM_RATE_SET_FIX_MULTI:
-			g_Sstar_rate_Ctl.rate_fix[RATE_CONTROL_MUTICAST] = msg->value;
+			g_atbm_rate_Ctl.rate_fix[RATE_CONTROL_MUTICAST] = msg->value;
 			break;
 		case ALTM_RATE_SET_FLAGS_MULTI:
-			g_Sstar_rate_Ctl.my_flags[RATE_CONTROL_MUTICAST] = msg->value;
+			g_atbm_rate_Ctl.my_flags[RATE_CONTROL_MUTICAST] = msg->value;
 			break;
 		case ALTM_RATE_SET_INDEX_MULTI:
-			g_Sstar_rate_Ctl.my_index[RATE_CONTROL_MUTICAST] = msg->value;
+			g_atbm_rate_Ctl.my_index[RATE_CONTROL_MUTICAST] = msg->value;
 			break;
 		case ALTM_RATE_GET_FIX_MULTI:
-			ret = Sstar_tesmode_reply(wiphy, &g_Sstar_rate_Ctl.rate_fix[RATE_CONTROL_MUTICAST], sizeof(u32));
+			ret = atbm_tesmode_reply(wiphy, &g_atbm_rate_Ctl.rate_fix[RATE_CONTROL_MUTICAST], sizeof(u32));
 			break;
 		case ALTM_RATE_GET_FLAGS_MULTI:
-			ret = Sstar_tesmode_reply(wiphy, &g_Sstar_rate_Ctl.my_flags[RATE_CONTROL_MUTICAST], sizeof(u8));
+			ret = atbm_tesmode_reply(wiphy, &g_atbm_rate_Ctl.my_flags[RATE_CONTROL_MUTICAST], sizeof(u8));
 			break;
 		case ALTM_RATE_GET_INDEX_MULTI:
-			ret = Sstar_tesmode_reply(wiphy, &g_Sstar_rate_Ctl.my_index[RATE_CONTROL_MUTICAST], sizeof(u8));
+			ret = atbm_tesmode_reply(wiphy, &g_atbm_rate_Ctl.my_index[RATE_CONTROL_MUTICAST], sizeof(u8));
 			break;
 		default:
 			break;
@@ -561,38 +561,38 @@ void frame_hexdump(char *prefix, u8 *data, int len)
 {
 
 	int i;
-	Sstar_printk_always( "%s hexdump:\n", prefix);
+	printk( "%s hexdump:\n", prefix);
 	for (i = 0; i < len; i++) {
 	   if((i % 16)==0)
-		   Sstar_printk_always("\n");
-	   Sstar_printk_always("%02x ", data[i]);
+		   printk("\n");
+	   printk("%02x ", data[i]);
 
 	}
 }
 
-void SSTARWIFI_DBG_PRINT(const char * func,const int line) { \
+void ATBMWIFI_DBG_PRINT(const char * func,const int line) { \
 	if(test_debug_enable)
-		Sstar_printk_always("%s %d \n",func,line);
+		printk("%s %d \n",func,line);
 }
-//EXPORT_SYMBOL(SSTARWIFI_DBG_PRINT);
+//EXPORT_SYMBOL(ATBMWIFI_DBG_PRINT);
 
-void SSTARWIFI_DBG_PRINT2(const char * func,const int line,unsigned int data) { \
+void ATBMWIFI_DBG_PRINT2(const char * func,const int line,unsigned int data) { \
 	if(test_debug_enable)
-		Sstar_printk_always("%s %d data[%x]\n",func,line,data);
+		printk("%s %d data[%x]\n",func,line,data);
 }
-//EXPORT_SYMBOL(SSTARWIFI_DBG_PRINT2);
+//EXPORT_SYMBOL(ATBMWIFI_DBG_PRINT2);
 
 
-void SSTARWIFI_DBG_DUMP(char *prefix, u8 *data, int len)
+void ATBMWIFI_DBG_DUMP(char *prefix, u8 *data, int len)
 {
 	if(test_debug_enable)
 		frame_hexdump(prefix,data,len);
 }
-//EXPORT_SYMBOL(SSTARWIFI_DBG_DUMP);
+//EXPORT_SYMBOL(ATBMWIFI_DBG_DUMP);
 
 
 
-int Sstar_ieee80211_init_rate_ctrl_alg(struct ieee80211_local *local,
+int atbm_ieee80211_init_rate_ctrl_alg(struct ieee80211_local *local,
 				 const char *name)
 {
 	struct rate_control_ref *ref, *old;
@@ -624,8 +624,8 @@ int Sstar_ieee80211_init_rate_ctrl_alg(struct ieee80211_local *local,
 
 	wiphy_debug(local->hw.wiphy, "Selected rate control algorithm '%s'\n",
 		    ref->ops->name);
-#if defined(CONFIG_NL80211_TESTMODE) || defined(CONFIG_SSTAR_IOCTRL)
-	memset(&g_Sstar_rate_Ctl, 0, sizeof(g_Sstar_rate_Ctl));
+#if defined(CONFIG_NL80211_TESTMODE) || defined(CONFIG_ATBM_IOCTRL)
+	memset(&g_atbm_rate_Ctl, 0, sizeof(g_atbm_rate_Ctl));
 #endif
 	return 0;
 }

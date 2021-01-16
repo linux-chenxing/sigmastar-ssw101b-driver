@@ -79,11 +79,6 @@ enum ieee80211_sta_info_flags {
 	WLAN_STA_PAIRWISE_KEY_SET,
 	WLAN_STA_WPA_RSN,
 	WLAN_STA_WPS,
-	WLAN_STA_40M_CH,
-	WLAN_STA_40M_CH_SEND_20M,
-	WLAN_STA_HANDSHAKE4OF4_SENDING,
-	WLAN_STA_HANDSHAKE4OF4_SUCCESS,
-	WLAN_STA_RESTART,
 };
 
 #define STA_TID_NUM 16
@@ -282,12 +277,12 @@ struct sta_info {
 	struct ieee80211_sub_if_data *sdata;
 	struct ieee80211_key __rcu *gtk[NUM_DEFAULT_KEYS + NUM_DEFAULT_MGMT_KEYS];
 	struct ieee80211_key __rcu *ptk;
-#ifdef CONFIG_MAC80211_SSTAR_ROAMING_CHANGES
+#ifdef CONFIG_MAC80211_ATBM_ROAMING_CHANGES
 	struct rcu_head rcu;
 #endif
 	struct rate_control_ref *rate_ctrl;
 	void *rate_ctrl_priv;
-	#ifdef SSTAR_AP_SME
+	#ifdef ATBM_AP_SME
 	u8* challenge;
 	u8* associate_ie;
 	size_t associate_ie_len;
@@ -295,7 +290,7 @@ struct sta_info {
 	spinlock_t lock;
 
 	struct work_struct drv_unblock_wk;
-#ifdef CONFIG_MAC80211_SSTAR_ROAMING_CHANGES
+#ifdef CONFIG_MAC80211_ATBM_ROAMING_CHANGES
 	struct work_struct sta_free_wk;
 #endif
 
@@ -314,7 +309,6 @@ struct sta_info {
 	 */
 	struct sk_buff_head ps_tx_buf[IEEE80211_NUM_ACS];
 	struct sk_buff_head tx_filtered[IEEE80211_NUM_ACS];
-	struct sk_buff_head handshake_buffed;
 	unsigned long driver_buffered_tids;
 
 	/* Updated from RX path only, no locking requirements */
@@ -326,9 +320,7 @@ struct sta_info {
 	unsigned long rx_fragments;
 	unsigned long rx_dropped;
 	int last_signal;
-	int last_signal2;
-	struct Sstar_ewma avg_signal;
-	struct Sstar_ewma avg_signal2;
+	struct atbm_ewma avg_signal;
 	/* Plus 1 for non-QoS frames */
 	__le16 last_seq_ctrl[NUM_RX_DATA_QUEUES + 1];
 
@@ -353,7 +345,7 @@ struct sta_info {
 	struct sta_ampdu_mlme ampdu_mlme;
 	u8 timer_to_tid[STA_TID_NUM];
 
-#ifdef CONFIG_MAC80211_SSTAR_MESH
+#ifdef CONFIG_MAC80211_ATBM_MESH
 	/*
 	 * Mesh peer link attributes
 	 * TODO: move to a sub-structure that is referenced with pointer?
@@ -368,10 +360,10 @@ struct sta_info {
 	u32 plink_timeout;
 	struct timer_list plink_timer;
 #endif
-#ifdef SSTAR_AP_SME
+#ifdef ATBM_AP_SME
 	struct timer_list sta_session_timer;
 #endif
-#ifdef CONFIG_MAC80211_SSTAR_DEBUGFS
+#ifdef CONFIG_MAC80211_ATBM_DEBUGFS
 	struct sta_info_debugfsdentries {
 		struct dentry *dir;
 		bool add_has_run;
@@ -382,15 +374,14 @@ struct sta_info {
 
 	/* should be right in front of sta to be in the same cache line */
 	bool dummy;
-	u8 	mic_len;
-	u8  handshake_state;
+
 	/* keep last! */
 	struct ieee80211_sta sta;
 };
 
 static inline enum nl80211_plink_state sta_plink_state(struct sta_info *sta)
 {
-#ifdef CONFIG_MAC80211_SSTAR_MESH
+#ifdef CONFIG_MAC80211_ATBM_MESH
 	return sta->plink_state;
 #endif
 	return NL80211_PLINK_LISTEN;
@@ -541,9 +532,8 @@ void ieee80211_sta_expire(struct ieee80211_sub_if_data *sdata,
 void ieee80211_sta_ps_deliver_wakeup(struct sta_info *sta);
 void ieee80211_sta_ps_deliver_poll_response(struct sta_info *sta);
 void ieee80211_sta_ps_deliver_uapsd(struct sta_info *sta);
-#ifdef CONFIG_MAC80211_SSTAR_ROAMING_CHANGES
+#ifdef CONFIG_MAC80211_ATBM_ROAMING_CHANGES
 void sta_info_free_rcu(struct rcu_head *rcu_h);
 #endif
-void sta_info_set_mgmt_suit(struct sta_info *sta,struct cfg80211_crypto_settings *settings);
 
 #endif /* STA_INFO_H */

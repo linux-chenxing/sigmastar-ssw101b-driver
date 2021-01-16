@@ -204,7 +204,7 @@ static ssize_t key_key_read(struct file *file, char __user *userbuf,
 {
 	struct ieee80211_key *key = file->private_data;
 	int i, bufsize = 2 * key->conf.keylen + 2;
-	char *buf = Sstar_kmalloc(bufsize, GFP_KERNEL);
+	char *buf = atbm_kmalloc(bufsize, GFP_KERNEL);
 	char *p = buf;
 	ssize_t res;
 
@@ -215,7 +215,7 @@ static ssize_t key_key_read(struct file *file, char __user *userbuf,
 		p += scnprintf(p, bufsize + buf - p, "%02x", key->conf.key[i]);
 	p += scnprintf(p, bufsize+buf-p, "\n");
 	res = simple_read_from_buffer(userbuf, count, ppos, buf, p - buf);
-	Sstar_kfree(buf);
+	atbm_kfree(buf);
 	return res;
 }
 KEY_OPS(key);

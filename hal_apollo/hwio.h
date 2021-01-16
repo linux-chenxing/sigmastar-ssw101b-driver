@@ -1,7 +1,7 @@
 /*
- * Low-level API for mac80211 sigmastar apollo wifi drivers
+ * Low-level API for mac80211 altobeam apollo wifi drivers
  *
- * Copyright (c) 2016, sigmastar
+ * Copyright (c) 2016, altobeam
  *
  * Based on:
  * Copyright (c) 2010, stericsson
@@ -17,11 +17,11 @@
  * published by the Free Software Foundation.
  */
 
-#ifndef SSTAR_APOLLO_HWIO_H_INCLUDED
-#define SSTAR_APOLLO_HWIO_H_INCLUDED
+#ifndef ATBM_APOLLO_HWIO_H_INCLUDED
+#define ATBM_APOLLO_HWIO_H_INCLUDED
 
 
-/* extern */ struct Sstar_common;
+/* extern */ struct atbm_common;
 /* Hardware Type Definitions */
 #define HIF_1601_FPGA		(0)
 #define HIF_1601_CHIP		(1)
@@ -54,18 +54,10 @@
 #include "hwio_spi.h"
 #endif 
 
-int Sstar_fw_write(struct Sstar_common *priv, u32 addr, const void *buf,u32 buf_len);
-int Sstar_before_load_firmware(struct Sstar_common *hw_priv);
-int Sstar_after_load_firmware(struct Sstar_common *hw_priv);
-void Sstar_firmware_init_check(struct Sstar_common *hw_priv);
-int Sstar_reset_lmc_cpu(struct Sstar_common *hw_priv);
-int Sstar_reset_chip(struct Sstar_common *hw_priv);
-
-#ifndef Sstar_module_muxlock
-#define Sstar_module_muxlock()
-#endif
-
-#ifndef Sstar_module_muxunlock
-#define Sstar_module_muxunlock()
-#endif
-#endif //SSTAR_APOLLO_HWIO_H_INCLUDED
+int atbm_fw_write(struct atbm_common *priv, u32 addr, const void *buf,u32 buf_len);
+int atbm_before_load_firmware(struct atbm_common *hw_priv);
+int atbm_after_load_firmware(struct atbm_common *hw_priv);
+void atbm_firmware_init_check(struct atbm_common *hw_priv);
+int atbm_reset_lmc_cpu(struct atbm_common *hw_priv);
+int atbm_reset_chip(struct atbm_common *hw_priv);
+#endif //ATBM_APOLLO_HWIO_H_INCLUDED

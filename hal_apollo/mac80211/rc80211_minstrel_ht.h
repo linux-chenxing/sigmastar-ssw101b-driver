@@ -116,7 +116,7 @@ struct minstrel_ht_sta_priv {
 		struct minstrel_ht_sta ht;
 		struct minstrel_sta_info legacy;
 	};
-#ifdef CONFIG_MAC80211_SSTAR_DEBUGFS
+#ifdef CONFIG_MAC80211_ATBM_DEBUGFS
 	struct dentry *dbg_stats;
 #endif
 	void *ratelist;

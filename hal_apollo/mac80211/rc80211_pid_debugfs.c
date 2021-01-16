@@ -15,7 +15,7 @@
 #include <linux/slab.h>
 #include <linux/export.h>
 
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include "rate.h"
 
 #include "rc80211_pid.h"
@@ -92,7 +92,7 @@ static int rate_control_pid_events_open(struct inode *inode, struct file *file)
 	unsigned long status;
 
 	/* Allocate a state struct */
-	file_info = Sstar_kmalloc(sizeof(*file_info), GFP_KERNEL);
+	file_info = atbm_kmalloc(sizeof(*file_info), GFP_KERNEL);
 	if (file_info == NULL)
 		return -ENOMEM;
 
@@ -113,7 +113,7 @@ static int rate_control_pid_events_release(struct inode *inode,
 {
 	struct rc_pid_events_file_info *file_info = file->private_data;
 
-	Sstar_kfree(file_info);
+	atbm_kfree(file_info);
 
 	return 0;
 }

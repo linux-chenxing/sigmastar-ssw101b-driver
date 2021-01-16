@@ -11,9 +11,9 @@
 #include "wme.h"
 #include "mesh.h"
 
-#ifdef CONFIG_MAC80211_SSTAR_VERBOSE_MHWMP_DEBUG
+#ifdef CONFIG_MAC80211_ATBM_VERBOSE_MHWMP_DEBUG
 #define mhwmp_dbg(fmt, args...) \
-	Sstar_printk_always("Mesh HWMP (%s): " fmt "\n", sdata->name, ##args)
+	printk(KERN_DEBUG "Mesh HWMP (%s): " fmt "\n", sdata->name, ##args)
 #else
 #define mhwmp_dbg(fmt, args...)   do { (void)(0); } while (0)
 #endif
@@ -113,19 +113,19 @@ static int mesh_path_sel_frame_tx(enum mpath_frame_type action, u8 flags,
 		struct ieee80211_sub_if_data *sdata)
 {
 	struct ieee80211_local *local = sdata->local;
-	struct sk_buff *skb = Sstar_dev_alloc_skb(local->hw.extra_tx_headroom + 400);
-	struct Sstar_ieee80211_mgmt *mgmt;
+	struct sk_buff *skb = atbm_dev_alloc_skb(local->hw.extra_tx_headroom + 400);
+	struct atbm_ieee80211_mgmt *mgmt;
 	u8 *pos;
 	int ie_len;
 
 	if (!skb)
 		return -1;
-	Sstar_skb_reserve(skb, local->hw.extra_tx_headroom);
+	atbm_skb_reserve(skb, local->hw.extra_tx_headroom);
 	/* 25 is the size of the common mgmt part (24) plus the size of the
 	 * common action part (1)
 	 */
-	mgmt = (struct Sstar_ieee80211_mgmt *)
-		Sstar_skb_put(skb, 25 + sizeof(mgmt->u.action.u.mesh_action));
+	mgmt = (struct atbm_ieee80211_mgmt *)
+		atbm_skb_put(skb, 25 + sizeof(mgmt->u.action.u.mesh_action));
 	memset(mgmt, 0, 25 + sizeof(mgmt->u.action.u.mesh_action));
 	mgmt->frame_control = cpu_to_le16(IEEE80211_FTYPE_MGMT |
 					  IEEE80211_STYPE_ACTION);
@@ -142,23 +142,23 @@ static int mesh_path_sel_frame_tx(enum mpath_frame_type action, u8 flags,
 	case MPATH_PREQ:
 		mhwmp_dbg("sending PREQ to %pM", target);
 		ie_len = 37;
-		pos = Sstar_skb_put(skb, 2 + ie_len);
-		*pos++ = SSTAR_WLAN_EID_PREQ;
+		pos = atbm_skb_put(skb, 2 + ie_len);
+		*pos++ = ATBM_WLAN_EID_PREQ;
 		break;
 	case MPATH_PREP:
 		mhwmp_dbg("sending PREP to %pM", target);
 		ie_len = 31;
-		pos = Sstar_skb_put(skb, 2 + ie_len);
-		*pos++ = SSTAR_WLAN_EID_PREP;
+		pos = atbm_skb_put(skb, 2 + ie_len);
+		*pos++ = ATBM_WLAN_EID_PREP;
 		break;
 	case MPATH_RANN:
 		mhwmp_dbg("sending RANN from %pM", orig_addr);
 		ie_len = sizeof(struct ieee80211_rann_ie);
-		pos = Sstar_skb_put(skb, 2 + ie_len);
-		*pos++ = SSTAR_WLAN_EID_RANN;
+		pos = atbm_skb_put(skb, 2 + ie_len);
+		*pos++ = ATBM_WLAN_EID_RANN;
 		break;
 	default:
-		Sstar_kfree_skb(skb);
+		atbm_kfree_skb(skb);
 		return -ENOTSUPP;
 		break;
 	}
@@ -211,12 +211,12 @@ static void prepare_frame_for_deferred_tx(struct ieee80211_sub_if_data *sdata,
 {
 	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
 
-	Sstar_skb_set_mac_header(skb, 0);
-	Sstar_skb_set_network_header(skb, 0);
-	Sstar_skb_set_transport_header(skb, 0);
+	atbm_skb_set_mac_header(skb, 0);
+	atbm_skb_set_network_header(skb, 0);
+	atbm_skb_set_transport_header(skb, 0);
 
 	/* Send all internal mgmt frames on VO. Accordingly set TID to 7. */
-	Sstar_skb_set_queue_mapping(skb, IEEE80211_AC_VO);
+	atbm_skb_set_queue_mapping(skb, IEEE80211_AC_VO);
 	skb->priority = 7;
 
 	info->control.vif = &sdata->vif;
@@ -240,19 +240,19 @@ int mesh_path_error_tx(u8 ttl, u8 *target, __le32 target_sn,
 		       struct ieee80211_sub_if_data *sdata)
 {
 	struct ieee80211_local *local = sdata->local;
-	struct sk_buff *skb = Sstar_dev_alloc_skb(local->hw.extra_tx_headroom + 400);
-	struct Sstar_ieee80211_mgmt *mgmt;
+	struct sk_buff *skb = atbm_dev_alloc_skb(local->hw.extra_tx_headroom + 400);
+	struct atbm_ieee80211_mgmt *mgmt;
 	u8 *pos;
 	int ie_len;
 
 	if (!skb)
 		return -1;
-	Sstar_skb_reserve(skb, local->tx_headroom + local->hw.extra_tx_headroom);
+	atbm_skb_reserve(skb, local->tx_headroom + local->hw.extra_tx_headroom);
 	/* 25 is the size of the common mgmt part (24) plus the size of the
 	 * common action part (1)
 	 */
-	mgmt = (struct Sstar_ieee80211_mgmt *)
-		Sstar_skb_put(skb, 25 + sizeof(mgmt->u.action.u.mesh_action));
+	mgmt = (struct atbm_ieee80211_mgmt *)
+		atbm_skb_put(skb, 25 + sizeof(mgmt->u.action.u.mesh_action));
 	memset(mgmt, 0, 25 + sizeof(mgmt->u.action.u.mesh_action));
 	mgmt->frame_control = cpu_to_le16(IEEE80211_FTYPE_MGMT |
 					  IEEE80211_STYPE_ACTION);
@@ -265,8 +265,8 @@ int mesh_path_error_tx(u8 ttl, u8 *target, __le32 target_sn,
 	mgmt->u.action.u.mesh_action.action_code =
 					WLAN_MESH_ACTION_HWMP_PATH_SELECTION;
 	ie_len = 15;
-	pos = Sstar_skb_put(skb, 2 + ie_len);
-	*pos++ = SSTAR_WLAN_EID_PERR;
+	pos = atbm_skb_put(skb, 2 + ie_len);
+	*pos++ = ATBM_WLAN_EID_PERR;
 	*pos++ = ie_len;
 	/* ttl */
 	*pos++ = ttl;
@@ -362,7 +362,7 @@ static u32 airtime_link_metric_get(struct ieee80211_local *local,
  * path routing information is updated.
  */
 static u32 hwmp_route_info_get(struct ieee80211_sub_if_data *sdata,
-			    struct Sstar_ieee80211_mgmt *mgmt,
+			    struct atbm_ieee80211_mgmt *mgmt,
 			    u8 *hwmp_ie, enum mpath_frame_type action)
 {
 	struct ieee80211_local *local = sdata->local;
@@ -505,7 +505,7 @@ static u32 hwmp_route_info_get(struct ieee80211_sub_if_data *sdata,
 }
 
 static void hwmp_preq_frame_process(struct ieee80211_sub_if_data *sdata,
-				    struct Sstar_ieee80211_mgmt *mgmt,
+				    struct atbm_ieee80211_mgmt *mgmt,
 				    u8 *preq_elem, u32 metric)
 {
 	struct ieee80211_if_mesh *ifmsh = &sdata->u.mesh;
@@ -608,7 +608,7 @@ next_hop_deref_protected(struct mesh_path *mpath)
 
 
 static void hwmp_prep_frame_process(struct ieee80211_sub_if_data *sdata,
-				    struct Sstar_ieee80211_mgmt *mgmt,
+				    struct atbm_ieee80211_mgmt *mgmt,
 				    u8 *prep_elem, u32 metric)
 {
 	struct mesh_path *mpath;
@@ -673,7 +673,7 @@ fail:
 }
 
 static void hwmp_perr_frame_process(struct ieee80211_sub_if_data *sdata,
-			     struct Sstar_ieee80211_mgmt *mgmt, u8 *perr_elem)
+			     struct atbm_ieee80211_mgmt *mgmt, u8 *perr_elem)
 {
 	struct ieee80211_if_mesh *ifmsh = &sdata->u.mesh;
 	struct mesh_path *mpath;
@@ -715,7 +715,7 @@ static void hwmp_perr_frame_process(struct ieee80211_sub_if_data *sdata,
 }
 
 static void hwmp_rann_frame_process(struct ieee80211_sub_if_data *sdata,
-				struct Sstar_ieee80211_mgmt *mgmt,
+				struct atbm_ieee80211_mgmt *mgmt,
 				struct ieee80211_rann_ie *rann)
 {
 	struct ieee80211_if_mesh *ifmsh = &sdata->u.mesh;
@@ -784,10 +784,10 @@ static void hwmp_rann_frame_process(struct ieee80211_sub_if_data *sdata,
 
 
 void mesh_rx_path_sel_frame(struct ieee80211_sub_if_data *sdata,
-			    struct Sstar_ieee80211_mgmt *mgmt,
+			    struct atbm_ieee80211_mgmt *mgmt,
 			    size_t len)
 {
-	struct ieee802_Sstar_11_elems elems;
+	struct ieee802_atbm_11_elems elems;
 	size_t baselen;
 	u32 last_hop_metric;
 	struct sta_info *sta;
@@ -853,7 +853,7 @@ static void mesh_queue_preq(struct mesh_path *mpath, u8 flags)
 	struct ieee80211_if_mesh *ifmsh = &sdata->u.mesh;
 	struct mesh_preq_queue *preq_node;
 
-	preq_node = Sstar_kmalloc(sizeof(struct mesh_preq_queue), GFP_ATOMIC);
+	preq_node = atbm_kmalloc(sizeof(struct mesh_preq_queue), GFP_ATOMIC);
 	if (!preq_node) {
 		mhwmp_dbg("could not allocate PREQ node");
 		return;
@@ -862,7 +862,7 @@ static void mesh_queue_preq(struct mesh_path *mpath, u8 flags)
 	spin_lock_bh(&ifmsh->mesh_preq_queue_lock);
 	if (ifmsh->preq_queue_len == MAX_PREQ_QUEUE_LEN) {
 		spin_unlock_bh(&ifmsh->mesh_preq_queue_lock);
-		Sstar_kfree(preq_node);
+		atbm_kfree(preq_node);
 		if (printk_ratelimit())
 			mhwmp_dbg("PREQ node queue full");
 		return;
@@ -970,7 +970,7 @@ void mesh_path_start_discovery(struct ieee80211_sub_if_data *sdata)
 
 enddiscovery:
 	rcu_read_unlock();
-	Sstar_kfree(preq_node);
+	atbm_kfree(preq_node);
 }
 
 /**
@@ -1029,12 +1029,12 @@ int mesh_nexthop_lookup(struct sk_buff *skb,
 			mesh_queue_preq(mpath, PREQ_Q_F_START);
 		}
 
-		if (Sstar_skb_queue_len(&mpath->frame_queue) >=
+		if (atbm_skb_queue_len(&mpath->frame_queue) >=
 				MESH_FRAME_QUEUE_LEN)
-			skb_to_free = Sstar_skb_dequeue(&mpath->frame_queue);
+			skb_to_free = atbm_skb_dequeue(&mpath->frame_queue);
 
 		info->flags |= IEEE80211_TX_INTFL_NEED_TXPROCESSING;
-		Sstar_skb_queue_tail(&mpath->frame_queue, skb);
+		atbm_skb_queue_tail(&mpath->frame_queue, skb);
 		if (skb_to_free)
 			mesh_path_discard_frame(skb_to_free, sdata);
 		err = -ENOENT;

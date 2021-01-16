@@ -16,7 +16,7 @@
 #include <linux/rtnetlink.h>
 #include <linux/slab.h>
 #include <linux/export.h>
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include "ieee80211_i.h"
 #include "driver-ops.h"
 #include "debugfs_key.h"
@@ -200,7 +200,7 @@ static void ieee80211_key_disable_hw_accel(struct ieee80211_key *key)
 			  "failed to remove key (%d, %pM) from hardware (%d)\n",
 			  key->conf.keyidx, sta ? sta->addr : bcast_addr, ret);
 
-#ifdef CONFIG_MAC80211_SSTAR_ROAMING_CHANGES
+#ifdef CONFIG_MAC80211_ATBM_ROAMING_CHANGES
 	/*
 	 * In STA mode during roaming do not clear this flag.
 	 * We don't want to switch to SW encryption in case
@@ -363,7 +363,7 @@ struct ieee80211_key *ieee80211_key_alloc(u32 cipher, int idx, size_t key_len,
 
 	BUG_ON(idx < 0 || idx >= NUM_DEFAULT_KEYS + NUM_DEFAULT_MGMT_KEYS);
 
-	key = Sstar_kzalloc(sizeof(struct ieee80211_key) + key_len, GFP_KERNEL);
+	key = atbm_kzalloc(sizeof(struct ieee80211_key) + key_len, GFP_KERNEL);
 	if (!key)
 		return ERR_PTR(-ENOMEM);
 
@@ -412,7 +412,7 @@ struct ieee80211_key *ieee80211_key_alloc(u32 cipher, int idx, size_t key_len,
 		key->u.ccmp.tfm = ieee80211_aes_key_setup_encrypt(key_data);
 		if (IS_ERR(key->u.ccmp.tfm)) {
 			err = PTR_ERR(key->u.ccmp.tfm);
-			Sstar_kfree(key);
+			atbm_kfree(key);
 			return ERR_PTR(err);
 		}
 		break;
@@ -430,7 +430,7 @@ struct ieee80211_key *ieee80211_key_alloc(u32 cipher, int idx, size_t key_len,
 			ieee80211_aes_cmac_key_setup(key_data);
 		if (IS_ERR(key->u.aes_cmac.tfm)) {
 			err = PTR_ERR(key->u.aes_cmac.tfm);
-			Sstar_kfree(key);
+			atbm_kfree(key);
 			return ERR_PTR(err);
 		}
 		break;
@@ -447,7 +447,7 @@ struct ieee80211_key *ieee80211_key_alloc(u32 cipher, int idx, size_t key_len,
 	return key;
 }
 
-#ifdef CONFIG_MAC80211_SSTAR_ROAMING_CHANGES
+#ifdef CONFIG_MAC80211_ATBM_ROAMING_CHANGES
 /**
  * ieee80211_key_free_rcu - key free rcu callback
  */
@@ -455,14 +455,14 @@ static void ieee80211_key_free_rcu(struct rcu_head *rcu_h)
 {
 	struct ieee80211_key *key =
 		container_of(rcu_h, struct ieee80211_key, rcu);
-	Sstar_kfree(key);
+	atbm_kfree(key);
 }
 #endif
 static void __ieee80211_key_destroy(struct ieee80211_key *key)
 {
 	if (!key)
 		return;
-#ifdef CONFIG_MAC80211_SSTAR_ROAMING_CHANGES
+#ifdef CONFIG_MAC80211_ATBM_ROAMING_CHANGES
 	/*
 	 * In STA mode during roaming all TX queues should be
 	 * stopped. Therefore we don't need to wait on synchronize_rcu()
@@ -508,7 +508,7 @@ static void __ieee80211_key_destroy(struct ieee80211_key *key)
 		key->sdata->crypto_tx_tailroom_needed_cnt--;
 	}
 
-	Sstar_kfree(key);
+	atbm_kfree(key);
 }
 
 int ieee80211_key_link(struct ieee80211_key *key,

@@ -1,4 +1,4 @@
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include <net/rtnetlink.h>
 
 #include "ieee80211_i.h"
@@ -27,30 +27,7 @@ static bool ieee80211_quiesce(struct ieee80211_sub_if_data *sdata)
 		return true;
 	}
 }
-static void ieee80211_suspend_sta_disconnect(struct ieee80211_sub_if_data *sdata)
-{
-	struct ieee80211_local *local = sdata->local;
-	struct sta_info *sta;
 
-	if(sdata->vif.type == NL80211_IFTYPE_STATION){
-		ieee80211_connection_loss(&sdata->vif);
-	}else if(sdata->vif.type == NL80211_IFTYPE_AP){	
-		mutex_lock(&local->sta_mtx);
-		list_for_each_entry(sta, &local->sta_list, list) {
-			if ((sta->uploaded)&&(sta->sdata == sdata)) {				
-				WARN_ON(ieee80211_rx_sta_cook_deauthen(sta)==false);
-				WARN_ON(ieee80211_tx_sta_deauthen(sta)==false);		
-			}
-		}
-		mutex_unlock(&local->sta_mtx);		
-	}
-
-	flush_workqueue(local->workqueue);
-
-	drv_flush(local, sdata, false);
-	sta_info_flush(local, sdata);
-	synchronize_net();
-}
 int __ieee80211_suspend(struct ieee80211_hw *hw, struct cfg80211_wowlan *wowlan)
 {
 	struct ieee80211_local *local = hw_to_local(hw);
@@ -90,7 +67,7 @@ int __ieee80211_suspend(struct ieee80211_hw *hw, struct cfg80211_wowlan *wowlan)
 
 		if(local->pending_scan_sdata&&(local->pending_scan_sdata == sdata))
 		{
-			Sstar_printk_pm("cancle pendding scan request\n");
+			printk("cancle pendding scan request\n");
 			local->scan_sdata = local->pending_scan_sdata;
 			local->scan_req = local->pending_scan_req;
 			local->pending_scan_sdata = NULL;
@@ -100,12 +77,6 @@ int __ieee80211_suspend(struct ieee80211_hw *hw, struct cfg80211_wowlan *wowlan)
 		
 		ieee80211_work_purge(sdata);
 		ieee80211_roc_purge(sdata);
-		#ifdef SSTAR_SUPPORT_WOW
-		if(wowlan == NULL)
-		#endif
-		{
-			ieee80211_suspend_sta_disconnect(sdata);
-		}
 	}
 	if (hw->flags & IEEE80211_HW_AMPDU_AGGREGATION) {
 		mutex_lock(&local->sta_mtx);
@@ -143,8 +114,8 @@ int __ieee80211_suspend(struct ieee80211_hw *hw, struct cfg80211_wowlan *wowlan)
 	}
 
 	local->wowlan = wowlan && local->open_count;
-	Sstar_printk_pm( "%s:wowlan(%d)\n",__func__,local->wowlan);
-#ifndef SSTAR_SUPPORT_WOW
+	printk(KERN_ERR "%s:wowlan(%d)\n",__func__,local->wowlan);
+#ifndef ATBM_SUPPORT_WOW
 	local->wowlan = 0;
 #endif
 	if (local->wowlan) {
@@ -169,9 +140,8 @@ int __ieee80211_suspend(struct ieee80211_hw *hw, struct cfg80211_wowlan *wowlan)
 		}
 		goto suspend;
 	}
-#ifdef SSTAR_SUSPEND_REMOVE_INTERFACE
+#ifdef ATBM_SUSPEND_REMOVE_INTERFACE
 	/* disable keys */
-	#pragma message("Suspend Remove Interface")
 	list_for_each_entry(sdata, &local->interfaces, list)
 		ieee80211_disable_keys(sdata);
 

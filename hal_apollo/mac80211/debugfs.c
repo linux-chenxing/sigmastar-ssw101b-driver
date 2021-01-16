@@ -70,7 +70,7 @@ DEBUGFS_READONLY_FILE(user_power, "%d",
 DEBUGFS_READONLY_FILE(power, "%d",
 		      local->hw.conf.power_level);
 DEBUGFS_READONLY_FILE(frequency, "%d",
-		      channel_center_freq(local->hw.conf.chan_conf->channel));
+		      local->hw.conf.chan_conf->channel->center_freq);
 DEBUGFS_READONLY_FILE(total_ps_buffered, "%d",
 		      local->total_ps_buffered);
 DEBUGFS_READONLY_FILE(wep_iv, "%#08x",
@@ -253,7 +253,7 @@ static ssize_t hwflags_read(struct file *file, char __user *user_buf,
 	struct ieee80211_local *local = file->private_data;
 	int mxln = 500;
 	ssize_t rv;
-	char *buf = Sstar_kzalloc(mxln, GFP_KERNEL);
+	char *buf = atbm_kzalloc(mxln, GFP_KERNEL);
 	int sf = 0; /* how many written so far */
 
 	if (!buf)
@@ -313,7 +313,7 @@ static ssize_t hwflags_read(struct file *file, char __user *user_buf,
 		sf += snprintf(buf + sf, mxln - sf, "TX_AMPDU_SETUP_IN_HW\n");
 
 	rv = simple_read_from_buffer(user_buf, count, ppos, buf, strlen(buf));
-	Sstar_kfree(buf);
+	atbm_kfree(buf);
 	return rv;
 }
 
@@ -329,7 +329,7 @@ static ssize_t queues_read(struct file *file, char __user *user_buf,
 	for (q = 0; q < local->hw.queues; q++)
 		res += sprintf(buf + res, "%02d: %#.8lx/%d\n", q,
 				local->queue_stop_reasons[q],
-				Sstar_skb_queue_len(&local->pending[q]));
+				atbm_skb_queue_len(&local->pending[q]));
 	spin_unlock_irqrestore(&local->queue_stop_reason_lock, flags);
 
 	return simple_read_from_buffer(user_buf, count, ppos, buf, res);
@@ -438,7 +438,7 @@ void debugfs_hw_add(struct ieee80211_local *local)
 		local->dot11MulticastReceivedFrameCount);
 	DEBUGFS_STATS_ADD(transmitted_frame_count,
 		local->dot11TransmittedFrameCount);
-#ifdef CONFIG_MAC80211_SSTAR_DEBUG_COUNTERS
+#ifdef CONFIG_MAC80211_ATBM_DEBUG_COUNTERS
 	DEBUGFS_STATS_ADD(tx_handlers_drop, local->tx_handlers_drop);
 	DEBUGFS_STATS_ADD(tx_handlers_queued, local->tx_handlers_queued);
 	DEBUGFS_STATS_ADD(tx_handlers_drop_unencrypted,

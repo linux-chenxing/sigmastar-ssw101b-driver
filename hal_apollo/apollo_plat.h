@@ -1,5 +1,5 @@
 /* *
- * Copyright (c) 2016, sigmastar
+ * Copyright (c) 2016, altobeam
  * Author:
  *
  *Based on apollo code
@@ -9,8 +9,8 @@
  * License terms: GNU General Public License (GPL) version 2
  */
 
-#ifndef SSTAR_APOLLO_PLAT_H_INCLUDED
-#define SSTAR_APOLLO_PLAT_H_INCLUDED
+#ifndef ATBM_APOLLO_PLAT_H_INCLUDED
+#define ATBM_APOLLO_PLAT_H_INCLUDED
 
 /*
 *********************************************************
@@ -31,8 +31,8 @@
 #define PLATFORM_AMLOGIC_S805		(13)	
 #define PLATFORM_AMLOGIC_905		(8)	
 
-#ifndef  SSTAR_WIFI_PLATFORM
-#define SSTAR_WIFI_PLATFORM			PLATFORM_XUNWEI
+#ifndef  ATBM_WIFI_PLATFORM
+#define ATBM_WIFI_PLATFORM			PLATFORM_XUNWEI
 #endif
 
 #define APOLLO_1505  0
@@ -47,7 +47,7 @@
 #define ATHENA_LITE_ECO  8
 #define ARES_A  	 9
 #define ARES_B  	 10
-#define HERA         11
+
 
 
 #ifndef PROJ_TYPE
@@ -70,22 +70,22 @@
 
 #include <linux/ioport.h>
 
-struct Sstar_platform_data {
+struct atbm_platform_data {
 	const char *mmc_id;
 	const int irq_gpio;
 	const int power_gpio;
 	const int reset_gpio;
-	int (*power_ctrl)(const struct Sstar_platform_data *pdata,
+	int (*power_ctrl)(const struct atbm_platform_data *pdata,
 			  bool enable);
-	int (*clk_ctrl)(const struct Sstar_platform_data *pdata,
+	int (*clk_ctrl)(const struct atbm_platform_data *pdata,
 			  bool enable);
-	int (*insert_ctrl)(const struct Sstar_platform_data *pdata,
+	int (*insert_ctrl)(const struct atbm_platform_data *pdata,
 			  bool enable);
 };
 
 /* Declaration only. Should be implemented in arch/xxx/mach-yyy */
-struct Sstar_platform_data *Sstar_get_platform_data(void);
+struct atbm_platform_data *atbm_get_platform_data(void);
 
 
 
-#endif /* SSTAR_APOLLO_PLAT_H_INCLUDED */
+#endif /* ATBM_APOLLO_PLAT_H_INCLUDED */

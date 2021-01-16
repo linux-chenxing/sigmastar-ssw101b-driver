@@ -13,7 +13,7 @@
  * published by the Free Software Foundation.
  */
 #include <linux/export.h>
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include "ieee80211_i.h"
 #include "driver-trace.h"
 #include "driver-ops.h"
@@ -192,7 +192,7 @@ void ieee80211_offchannel_return(struct ieee80211_local *local,
 			 * packet per queue in mac80211 rather than on
 			 * the interface qdisc.
 			 */
-#ifdef CONFIG_MAC80211_SSTAR_ROAMING_CHANGES
+#ifdef CONFIG_MAC80211_ATBM_ROAMING_CHANGES
 			if (!sdata->queues_locked)
 #endif
 				netif_tx_wake_all_queues(sdata->dev);
@@ -303,9 +303,6 @@ void ieee80211_start_next_roc(struct ieee80211_local *local)
 			ieee80211_queue_work(&local->hw, &local->work_work);
 		}	
 		ieee80211_run_pending_scan(local);
-#ifdef CONFIG_SSTAR_STA_LISTEN
-		__ieee80211_recalc_idle(local);
-#endif
 		return;
 	}
 
@@ -363,7 +360,7 @@ void ieee80211_roc_notify_destroy(struct ieee80211_roc_work *roc)
 					roc->frame->data, roc->frame->len,
 					false, GFP_KERNEL);
 #endif
-		Sstar_kfree_skb(roc->frame);
+		atbm_kfree_skb(roc->frame);
 	}
 	if(roc->started&&(!roc->notified)&&(!roc->mgmt_tx_cookie)){
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0))
@@ -398,7 +395,7 @@ void ieee80211_roc_notify_destroy(struct ieee80211_roc_work *roc)
 	list_for_each_entry_safe(dep, tmp, &roc->dependents, list)
 		ieee80211_roc_notify_destroy(dep);
 
-	Sstar_kfree(roc);
+	atbm_kfree(roc);
 }
 
 void ieee80211_sw_roc_work(struct work_struct *work)
@@ -490,9 +487,9 @@ static void ieee80211_hw_roc_done(struct work_struct *work)
 		goto out_unlock;
 
 	cookie = roc->mgmt_tx_cookie ? roc->mgmt_tx_cookie: roc->cookie;
-	Sstar_printk_mgmt( "%s:cookie(%x),roc_cookie(%x)\n",__func__,(int)cookie,(int)local->roc_cookie);
+	printk(KERN_ERR "%s:cookie(%x),roc_cookie(%x)\n",__func__,(int)cookie,(int)local->roc_cookie);
 	if(cookie != local->roc_cookie) {
-		Sstar_printk_err( "%s:cookie(%llx),local->roc_cookie(%llx)\n",__func__,cookie,local->roc_cookie);
+		printk(KERN_ERR "%s:cookie(%llx),local->roc_cookie(%llx)\n",__func__,cookie,local->roc_cookie);
 		local->roc_cookie = 0;
 		goto out_unlock;
 	}
@@ -558,7 +555,7 @@ void ieee80211_roc_purge(struct ieee80211_sub_if_data *sdata)
 	mutex_unlock(&local->mtx);
 	
 	if(pendding_roc != NULL){
-		Sstar_printk_mgmt("%s:cancle pendding_roc\n",__func__);
+		printk(KERN_ERR "%s:cancle pendding_roc\n",__func__);
 		ieee80211_roc_notify_destroy(pendding_roc);
 	}
 	list_for_each_entry_safe(roc, tmp, &tmp_list, list) {

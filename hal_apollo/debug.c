@@ -1,8 +1,8 @@
 /*
- * mac80211 glue code for mac80211 sigmastar APOLLO drivers
+ * mac80211 glue code for mac80211 altobeam APOLLO drivers
  * DebugFS code
  * *
- * Copyright (c) 2016, sigmastar
+ * Copyright (c) 2016, altobeam
  * Author:
  *
  * Based on apollo code
@@ -13,28 +13,20 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-#ifdef CONFIG_SSTAR_APOLLO_DEBUG
-
 /*Linux version 3.4.0 compilation*/
 //#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0))
 #include<linux/module.h>
 //#endif
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
-#include <linux/kobject.h>
-
 #include "apollo.h"
 #include "debug.h"
 
 #define DBG_EVENT_LOG
+#ifdef CONFIG_ATBM_APOLLO_DEBUG
 #include "dbg_event.h"
-#ifdef CONFIG_WIRELESS_EXT
-extern unsigned int Sstar_get_tx_power(void);
-#endif
-extern int Sstar_wifi_run_status_get(void);
-
 /* join_status */
-static const char * const Sstar_debug_join_status[] = {
+static const char * const atbm_debug_join_status[] = {
 	"passive",
 	"monitor",
 	"station",
@@ -42,13 +34,13 @@ static const char * const Sstar_debug_join_status[] = {
 };
 
 /* WSM_JOIN_PREAMBLE_... */
-static const char * const Sstar_debug_preamble[] = {
+static const char * const atbm_debug_preamble[] = {
 	"long",
 	"short",
 	"long on 1 and 2 Mbps",
 };
 
-static const char * const Sstar_debug_fw_types[] = {
+static const char * const atbm_debug_fw_types[] = {
 	"ETF",
 	"WFM",
 	"WSM",
@@ -56,14 +48,14 @@ static const char * const Sstar_debug_fw_types[] = {
 	"Platform test",
 };
 
-static const char * const Sstar_debug_link_id[] = {
+static const char * const atbm_debug_link_id[] = {
 	"OFF",
 	"REQ",
 	"SOFT",
 	"HARD",
 };
 
-static const char *Sstar_debug_mode(int mode)
+static const char *atbm_debug_mode(int mode)
 {
 	switch (mode) {
 	case NL80211_IFTYPE_UNSPECIFIED:
@@ -87,8 +79,8 @@ static const char *Sstar_debug_mode(int mode)
 	}
 }
 
-static void Sstar_queue_status_show(P_VDEBUG_SEQFILE seq,
-				     struct Sstar_queue *q)
+static void atbm_queue_status_show(P_VDEBUG_SEQFILE seq,
+				     struct atbm_queue *q)
 {
 	int i, if_id;
 	VDEBUG_PRINTF(seq, "Queue       %d:\n", q->queue_id);
@@ -96,28 +88,23 @@ static void Sstar_queue_status_show(P_VDEBUG_SEQFILE seq,
 	VDEBUG_PRINTF(seq, "  queued:   %d\n", q->num_queued);
 	VDEBUG_PRINTF(seq, "  pending:  %d\n", q->num_pending);
 	VDEBUG_PRINTF(seq, "  sent:     %d\n", q->num_sent);
-#ifndef	SSTAR_WIFI_QUEUE_LOCK_BUG
 	VDEBUG_PRINTF(seq, "  locked:   %s\n", q->tx_locked_cnt ? "yes" : "no");
-#else
-	VDEBUG_PRINTF(seq, "  locked[0]:   %s\n", q->tx_locked_cnt[0] ? "yes" : "no");
-	VDEBUG_PRINTF(seq, "  locked[1]:   %s\n", q->tx_locked_cnt[1] ? "yes" : "no");
-#endif
-#ifndef	SSTAR_WIFI_QUEUE_LOCK_BUG
+#ifndef	ATBM_WIFI_QUEUE_LOCK_BUG
 	VDEBUG_PRINTF(seq, "  overfull: %s\n", q->overfull ? "yes" : "no");
 #else
 	VDEBUG_PRINTF(seq, "  overfull[0]: %s\n", q->overfull[0] ? "yes" : "no");
 	VDEBUG_PRINTF(seq, "  overfull[1]: %s\n", q->overfull[1] ? "yes" : "no");
 #endif
 	VDEBUG_PUTS(seq,   "  link map: 0-> ");
-	for (if_id = 0; if_id < SSTAR_WIFI_MAX_VIFS; if_id++) {
+	for (if_id = 0; if_id < ATBM_WIFI_MAX_VIFS; if_id++) {
 		for (i = 0; i < q->stats->map_capacity; ++i)
 			VDEBUG_PRINTF(seq, "%.2d ", q->link_map_cache[if_id][i]);
 		VDEBUG_PRINTF(seq, "<-%d\n", q->stats->map_capacity);
 	}
 }
 
-static void Sstar_debug_print_map(P_VDEBUG_SEQFILE seq,
-				   struct Sstar_vif *priv,
+static void atbm_debug_print_map(P_VDEBUG_SEQFILE seq,
+				   struct atbm_vif *priv,
 				   const char *label,
 				   u32 map)
 {
@@ -129,57 +116,12 @@ static void Sstar_debug_print_map(P_VDEBUG_SEQFILE seq,
 		   priv->hw_priv->tx_queue_stats.map_capacity - 1);
 }
 
-int Sstar_ht_show_info(P_VDEBUG_SEQFILE seq, void *v)
-{
-	unsigned int txpower = 0;
-	struct Sstar_common *hw_priv = VDEBUG_PRIV(seq);
-
-	VDEBUG_PUTS(seq,   "tx power info: \n");
-#ifdef CONFIG_WIRELESS_EXT
-	txpower = Sstar_get_tx_power();
-#endif
-	if(txpower & BIT(0))
-		VDEBUG_PUTS(seq,   "    20M high txpower\n");
-	else
-		VDEBUG_PUTS(seq,   "    20M normal txpower\n");
-
-
-	if(txpower & BIT(1))
-		VDEBUG_PUTS(seq,   "    40M high txpower\n");
-	else
-		VDEBUG_PUTS(seq,   "    40M normal txpower\n");
-
-	VDEBUG_PUTS(seq,   "ht info: \n");
-	if((hw_priv->channel_type == NL80211_CHAN_HT20)||(hw_priv->channel_type == NL80211_CHAN_NO_HT))
-		VDEBUG_PUTS(seq,   "    20M\n");
-	else
-		VDEBUG_PUTS(seq,   "    40M\n");
-
-	return 0;
-}
-int Sstar_wifi_show_status(P_VDEBUG_SEQFILE seq, void *v)
-{
-	int status;
-	//struct Sstar_common *hw_priv = VDEBUG_PRIV(seq);
-
-	VDEBUG_PUTS(seq,   "wifi run status(1: Exception  0: Normal): \n");
-
-	status = Sstar_wifi_run_status_get();
-	if(status == 1)
-		VDEBUG_PUTS(seq,   "    1\n");
-	else
-		VDEBUG_PUTS(seq,   "    0\n");
-
-	return 0;
-}
-
-int Sstar_status_show_common(P_VDEBUG_SEQFILE seq, void *v)
+int atbm_status_show_common(P_VDEBUG_SEQFILE seq, void *v)
 {
 	int i;
 	struct list_head *item;
-	struct Sstar_common *hw_priv = VDEBUG_PRIV(seq);
-	struct Sstar_debug_common *d = hw_priv->debug;
-#ifdef CONFIG_SSTAR_BA_STATUS
+	struct atbm_common *hw_priv = VDEBUG_PRIV(seq);
+	struct atbm_debug_common *d = hw_priv->debug;
 	int ba_cnt, ba_acc, ba_cnt_rx, ba_acc_rx, ba_avg = 0, ba_avg_rx = 0;
 	bool ba_ena;
 
@@ -194,13 +136,13 @@ int Sstar_status_show_common(P_VDEBUG_SEQFILE seq, void *v)
 	if (ba_cnt_rx)
 		ba_avg_rx = ba_acc_rx / ba_cnt_rx;
 	spin_unlock_bh(&hw_priv->ba_lock);
-#endif
+
 	VDEBUG_PUTS(seq,   "apollo wifi Wireless LAN driver status\n");
 	VDEBUG_PRINTF(seq, "Hardware:   %d.%d\n",
 		hw_priv->wsm_caps.hardwareId,
 		hw_priv->wsm_caps.hardwareSubId);
 	VDEBUG_PRINTF(seq, "Firmware:   %s %d.%d\n",
-		Sstar_debug_fw_types[hw_priv->wsm_caps.firmwareType],
+		atbm_debug_fw_types[hw_priv->wsm_caps.firmwareType],
 		hw_priv->wsm_caps.firmwareVersion,
 		hw_priv->wsm_caps.firmwareBuildNumber);
 	VDEBUG_PRINTF(seq, "FW API:     %d\n",
@@ -209,16 +151,16 @@ int Sstar_status_show_common(P_VDEBUG_SEQFILE seq, void *v)
 		hw_priv->wsm_caps.firmwareCap);
 	if (hw_priv->channel)
 		VDEBUG_PRINTF(seq, "Channel:    %d%s\n",
-			channel_hw_value(hw_priv->channel),
+			hw_priv->channel->hw_value,
 			hw_priv->channel_switch_in_progress ?
 			" (switching)" : "");
 	VDEBUG_PRINTF(seq, "HT:         %s\n",
-		Sstar_is_ht(&hw_priv->ht_info) ? "on" : "off");
-	if (Sstar_is_ht(&hw_priv->ht_info)) {
+		atbm_is_ht(&hw_priv->ht_info) ? "on" : "off");
+	if (atbm_is_ht(&hw_priv->ht_info)) {
 		VDEBUG_PRINTF(seq, "Greenfield: %s\n",
-			Sstar_ht_greenfield(&hw_priv->ht_info) ? "yes" : "no");
+			atbm_ht_greenfield(&hw_priv->ht_info) ? "yes" : "no");
 		VDEBUG_PRINTF(seq, "AMPDU dens: %d\n",
-			Sstar_ht_ampdu_density(&hw_priv->ht_info));
+			atbm_ht_ampdu_density(&hw_priv->ht_info));
 	}
 	spin_lock_bh(&hw_priv->tx_policy_cache.lock);
 	i = 0;
@@ -226,7 +168,6 @@ int Sstar_status_show_common(P_VDEBUG_SEQFILE seq, void *v)
 		++i;
 	spin_unlock_bh(&hw_priv->tx_policy_cache.lock);
 	VDEBUG_PRINTF(seq, "RC in use:  %d\n", i);
-#ifdef CONFIG_SSTAR_BA_STATUS
 	VDEBUG_PRINTF(seq, "BA stat:    %d, %d (%d)\n",
 		ba_cnt, ba_acc, ba_avg);
 	VDEBUG_PRINTF(seq, "BA RX stat:    %d, %d (%d)\n",
@@ -234,9 +175,8 @@ int Sstar_status_show_common(P_VDEBUG_SEQFILE seq, void *v)
 	VDEBUG_PRINTF(seq, "Block ACK:  %s\n", ba_ena ? "on" : "off");
 
 	VDEBUG_PUTS(seq, "\n");
-#endif
 	for (i = 0; i < 4; ++i) {
-		Sstar_queue_status_show(seq, &hw_priv->tx_queue[i]);
+		atbm_queue_status_show(seq, &hw_priv->tx_queue[i]);
 		VDEBUG_PUTS(seq, "\n");
 	}
 	VDEBUG_PRINTF(seq, "TX burst:   %d\n",
@@ -290,10 +230,10 @@ int Sstar_status_show_common(P_VDEBUG_SEQFILE seq, void *v)
 	return 0;
 }
 
-int Sstar_statistics_show(P_VDEBUG_SEQFILE seq, void *v)
+int atbm_statistics_show(P_VDEBUG_SEQFILE seq, void *v)
 {
 	int ret;
-	struct Sstar_common *hw_priv = VDEBUG_PRIV(seq);
+	struct atbm_common *hw_priv = VDEBUG_PRIV(seq);
 	struct wsm_statistics_table statistics;
 
 	ret = wsm_get_statistics_table(hw_priv, &statistics);
@@ -304,10 +244,10 @@ int Sstar_statistics_show(P_VDEBUG_SEQFILE seq, void *v)
 	return 0;
 }
 
-int Sstar_pkt_show(P_VDEBUG_SEQFILE seq, void *v)
+int atbm_pkt_show(P_VDEBUG_SEQFILE seq, void *v)
 {
 	int ret;
-	struct Sstar_common *hw_priv = VDEBUG_PRIV(seq);
+	struct atbm_common *hw_priv = VDEBUG_PRIV(seq);
 	struct wsm_counters_table counters;
 
 	ret = wsm_get_counters_table(hw_priv, &counters);
@@ -330,10 +270,10 @@ int Sstar_pkt_show(P_VDEBUG_SEQFILE seq, void *v)
 	return 0;
 }
 
-int Sstar_counters_show(P_VDEBUG_SEQFILE seq, void *v)
+int atbm_counters_show(P_VDEBUG_SEQFILE seq, void *v)
 {
 	int ret;
-	struct Sstar_common *hw_priv = VDEBUG_PRIV(seq);
+	struct atbm_common *hw_priv = VDEBUG_PRIV(seq);
 	struct wsm_counters_table counters;
 
 	ret = wsm_get_counters_table(hw_priv, &counters);
@@ -379,10 +319,10 @@ int Sstar_counters_show(P_VDEBUG_SEQFILE seq, void *v)
 
 
 
-ssize_t Sstar_11n_write(struct file *file,
+ssize_t atbm_11n_write(struct file *file,
 	const char __user *user_buf, size_t count, loff_t *ppos)
 {
-	struct Sstar_common *hw_priv = file->private_data;
+	struct atbm_common *hw_priv = file->private_data;
 	struct ieee80211_supported_band *band[2] = {
 		hw_priv->hw->wiphy->bands[IEEE80211_BAND_2GHZ],
 		hw_priv->hw->wiphy->bands[IEEE80211_BAND_5GHZ],
@@ -398,18 +338,18 @@ ssize_t Sstar_11n_write(struct file *file,
 		ena = 1;
 
 	band[0]->ht_cap.ht_supported = ena;
-#ifdef CONFIG_SSTAR_APOLLO_5GHZ_SUPPORT
+#ifdef CONFIG_ATBM_APOLLO_5GHZ_SUPPORT
 	band[1]->ht_cap.ht_supported = ena;
-#endif /* CONFIG_SSTAR_APOLLO_5GHZ_SUPPORT */
+#endif /* CONFIG_ATBM_APOLLO_5GHZ_SUPPORT */
 
 	return count;
 }
 
 
-ssize_t Sstar_wsm_dumps(struct file *file,
+ssize_t atbm_wsm_dumps(struct file *file,
 	const char __user *user_buf, size_t count, loff_t *ppos)
 {
-	struct Sstar_common *hw_priv = file->private_data;
+	struct atbm_common *hw_priv = file->private_data;
 	char buf[1];
 
 	if (!count)
@@ -426,11 +366,11 @@ ssize_t Sstar_wsm_dumps(struct file *file,
 }
 
 
-#if defined(CONFIG_SSTAR_APOLLO_WSM_DUMPS_SHORT)
-static ssize_t Sstar_short_dump_read(struct file *file,
+#if defined(CONFIG_ATBM_APOLLO_WSM_DUMPS_SHORT)
+static ssize_t atbm_short_dump_read(struct file *file,
 	char __user *user_buf, size_t count, loff_t *ppos)
 {
-	struct Sstar_common *hw_priv = file->private_data;
+	struct atbm_common *hw_priv = file->private_data;
 	char buf[20];
 	size_t size = 0;
 
@@ -441,10 +381,10 @@ static ssize_t Sstar_short_dump_read(struct file *file,
 					buf, size);
 }
 
-static ssize_t Sstar_short_dump_write(struct file *file,
+static ssize_t atbm_short_dump_write(struct file *file,
 	const char __user *user_buf, size_t count, loff_t *ppos)
 {
-	struct Sstar_common *priv = file->private_data;
+	struct atbm_common *priv = file->private_data;
 	char buf[20];
 	unsigned long dump_size = 0;
 
@@ -455,27 +395,89 @@ static ssize_t Sstar_short_dump_write(struct file *file,
 
 	if (kstrtoul(buf, 10, &dump_size))
 		return -EINVAL;
-	Sstar_printk_always("%s get %lu\n", __func__, dump_size);
+	printk(KERN_ERR "%s get %lu\n", __func__, dump_size);
 
 	priv->wsm_dump_max_size = dump_size;
 
 	return count;
 }
 
-#endif /* CONFIG_SSTAR_APOLLO_WSM_DUMPS_SHORT */
+#endif /* CONFIG_ATBM_APOLLO_WSM_DUMPS_SHORT */
+
+int atbm_debug_init_common(struct atbm_common *hw_priv)
+{
+	int ret = -ENOMEM;
+	struct atbm_debug_common *d =
+		atbm_kzalloc(sizeof(struct atbm_debug_common), GFP_KERNEL);
+	hw_priv->debug = d;
+	if (!d)
+		return ret;
+#ifdef CONFIG_ATBM_APOLLO_DEBUGFS
+
+	d->debugfs_phy = debugfs_create_dir("apollo",
+			hw_priv->hw->wiphy->debugfsdir);
+	if (!d->debugfs_phy)
+		goto err;
+
+	if (!debugfs_create_file("status", S_IRUSR, d->debugfs_phy,
+			hw_priv, &fops_status_common))
+		goto err;
+
+	if (!debugfs_create_file("counters", S_IRUSR, d->debugfs_phy,
+			hw_priv, &fops_counters))
+		goto err;
+
+	if (!debugfs_create_file("11n", S_IRUSR | S_IWUSR,
+			d->debugfs_phy, hw_priv, &fops_11n))
+		goto err;
+
+	if (!debugfs_create_file("wsm_dumps", S_IWUSR, d->debugfs_phy,
+			hw_priv, &fops_wsm_dumps))
+		goto err;
+
+#if defined(CONFIG_ATBM_APOLLO_WSM_DUMPS_SHORT)
+	if (!debugfs_create_file("wsm_dump_size", S_IRUSR | S_IWUSR,
+			d->debugfs_phy, hw_priv, &fops_short_dump))
+		goto err;
+#endif /* CONFIG_ATBM_APOLLO_WSM_DUMPS_SHORT */
 
 
-int Sstar_status_show_priv(P_VDEBUG_SEQFILE seq, void *v)
+#endif /* CONFIG_ATBM_APOLLO_DEBUGFS*/
+	EELOG_INIT();
+	EELOG_Start();
+
+	return 0;
+#ifdef CONFIG_ATBM_APOLLO_DEBUGFS
+	err:
+		hw_priv->debug = NULL;
+#endif
+#ifdef CONFIG_ATBM_APOLLO_DEBUGFS
+	debugfs_remove_recursive(d->debugfs_phy);
+#endif /* CONFIG_ATBM_APOLLO_DEBUGFS*/
+	atbm_kfree(d);
+	return ret;
+}
+
+void atbm_debug_release_common(struct atbm_common *hw_priv)
+{
+	struct atbm_debug_common *d = hw_priv->debug;
+	if (d) {
+		hw_priv->debug = NULL;
+		atbm_kfree(d);
+	}
+}
+
+int atbm_status_show_priv(P_VDEBUG_SEQFILE seq, void *v)
 {
 	int i;
-	struct Sstar_vif *priv = VDEBUG_PRIV(seq);
-	struct Sstar_debug_priv *d = &priv->debug;
+	struct atbm_vif *priv = VDEBUG_PRIV(seq);
+	struct atbm_debug_priv *d = priv->debug;
 
 	VDEBUG_PRINTF(seq, "Mode:       %s%s\n",
-		Sstar_debug_mode(priv->mode),
+		atbm_debug_mode(priv->mode),
 		priv->listening ? " (listening)" : "");
 	VDEBUG_PRINTF(seq, "Assoc:      %s\n",
-		Sstar_debug_join_status[priv->join_status]);
+		atbm_debug_join_status[priv->join_status]);
 	if (priv->rx_filter.promiscuous)
 		VDEBUG_PUTS(seq,   "Filter:     promisc\n");
 	else if (priv->rx_filter.fcs)
@@ -509,7 +511,7 @@ int Sstar_status_show_priv(P_VDEBUG_SEQFILE seq, void *v)
 			priv->edca.params[i].txOpLimit,
 			priv->edca.params[i].maxReceiveLifetime);
 	}
-	if (priv->join_status == SSTAR_APOLLO_JOIN_STATUS_STA) {
+	if (priv->join_status == ATBM_APOLLO_JOIN_STATUS_STA) {
 		static const char *pmMode = "unknown";
 		switch (priv->powersave_mode.pmMode) {
 		case WSM_PSM_ACTIVE:
@@ -523,7 +525,7 @@ int Sstar_status_show_priv(P_VDEBUG_SEQFILE seq, void *v)
 			break;
 		}
 		VDEBUG_PRINTF(seq, "Preamble:   %s\n",
-			Sstar_debug_preamble[
+			atbm_debug_preamble[
 			priv->association_mode.preambleType]);
 		VDEBUG_PRINTF(seq, "AMPDU spcn: %d\n",
 			priv->association_mode.mpduStartSpacing);
@@ -548,19 +550,19 @@ int Sstar_status_show_priv(P_VDEBUG_SEQFILE seq, void *v)
 	VDEBUG_PRINTF(seq, "Bcnloss:    %d\n",
 		priv->cqm_beacon_loss_count);
 
-	Sstar_debug_print_map(seq, priv, "Link map:   ",
+	atbm_debug_print_map(seq, priv, "Link map:   ",
 		priv->link_id_map);
-	Sstar_debug_print_map(seq, priv, "Asleep map: ",
+	atbm_debug_print_map(seq, priv, "Asleep map: ",
 		priv->sta_asleep_mask);
-	Sstar_debug_print_map(seq, priv, "PSPOLL map: ",
+	atbm_debug_print_map(seq, priv, "PSPOLL map: ",
 		priv->pspoll_mask);
 
 	VDEBUG_PUTS(seq, "\n");
 
-	for (i = 0; i < SSTARWIFI_MAX_STA_IN_AP_MODE; ++i) {
+	for (i = 0; i < ATBMWIFI_MAX_STA_IN_AP_MODE; ++i) {
 		if (priv->link_id_db[i].status) {
 			VDEBUG_PRINTF(seq, "Link %d:     %s, %pM\n",
-				i + 1, Sstar_debug_link_id[
+				i + 1, atbm_debug_link_id[
 				priv->link_id_db[i].status],
 				priv->link_id_db[i].mac);
 		}
@@ -587,184 +589,180 @@ int Sstar_status_show_priv(P_VDEBUG_SEQFILE seq, void *v)
 		d->tx_ttl);
 	return 0;
 }
-int Sstar_print_fw_version(struct Sstar_common *hw_priv, u8* buf, size_t len)
+
+
+
+
+
+ssize_t atbm_hang_write(struct file *file,
+	const char __user *user_buf, size_t count, loff_t *ppos)
+{
+	struct atbm_vif *priv = file->private_data;
+#ifdef CONFIG_PM
+	struct atbm_common *hw_priv = ABwifi_vifpriv_to_hwpriv(priv);
+#endif
+	char buf[1];
+
+	if (!count)
+		return -EINVAL;
+	if (copy_from_user(buf, user_buf, 1))
+		return -EFAULT;
+
+	if (priv->vif) {
+#ifdef CONFIG_PM
+		atbm_pm_stay_awake(&hw_priv->pm_state, 3*HZ);
+//		ieee80211_driver_hang_notify(priv->vif, GFP_KERNEL);
+#endif
+	} else
+		return -ENODEV;
+
+	return count;
+}
+
+
+#define VIF_DEBUGFS_NAME_S 10
+int atbm_debug_init_priv(struct atbm_common *hw_priv,
+			   struct atbm_vif *priv)
+{
+	int ret = -ENOMEM;
+	//struct atbm_debug_priv *d;
+#ifdef CONFIG_ATBM_APOLLO_DEBUGFS
+	char name[VIF_DEBUGFS_NAME_S];
+#endif
+	if (WARN_ON(!hw_priv))
+		return ret;
+
+	if (WARN_ON(!hw_priv->debug))
+		return ret;
+
+	if (WARN_ON(priv->if_id > ATBM_WIFI_MAX_VIFS))
+		return ret;
+
+        priv->debug = &hw_priv->debug->priv_debug[priv->if_id];
+
+#ifdef CONFIG_ATBM_APOLLO_DEBUGFS
+	memset(name, 0, VIF_DEBUGFS_NAME_S);
+	ret = snprintf(name, VIF_DEBUGFS_NAME_S, "vif_%d", priv->if_id);
+	if (WARN_ON(ret < 0))
+		goto err;
+
+	d->debugfs_phy = debugfs_create_dir(name,
+					    hw_priv->debug->debugfs_phy);
+	if (WARN_ON(!d->debugfs_phy))
+		goto err;
+
+	if (WARN_ON(!debugfs_create_file("hang", S_IWUSR, d->debugfs_phy,
+			priv, &fops_hang)))
+		goto err;
+
+	if (!debugfs_create_file("status", S_IRUSR, d->debugfs_phy,
+			priv, &fops_status_priv))
+		goto err;
+#endif /*CONFIG_ATBM_APOLLO_DEBUGFS*/
+
+	return 0;
+#ifdef CONFIG_ATBM_APOLLO_DEBUGFS
+	err:
+		priv->debug = NULL;
+#endif
+#ifdef CONFIG_ATBM_APOLLO_DEBUGFS
+	debugfs_remove_recursive(d->debugfs_phy);
+#endif /*CONFIG_ATBM_APOLLO_DEBUGFS*/
+//	kfree(d);
+	return ret;
+
+}
+
+void atbm_debug_release_priv(struct atbm_vif *priv)
+{
+	struct atbm_debug_priv *d = priv->debug;
+	if (d) {
+		priv->debug = NULL;
+//		kfree(d);
+	}
+}
+
+int atbm_print_fw_version(struct atbm_common *hw_priv, u8* buf, size_t len)
 {
 	return snprintf(buf, len, "%s %d.%d",
-			Sstar_debug_fw_types[hw_priv->wsm_caps.firmwareType],
+			atbm_debug_fw_types[hw_priv->wsm_caps.firmwareType],
 			hw_priv->wsm_caps.firmwareVersion,
 			hw_priv->wsm_caps.firmwareBuildNumber);
 }
-
-#ifdef CONFIG_SSTAR_APOLLO_DEBUGFS
-static int Sstar_counters_open(struct inode *inode, struct file *file)
+#ifdef CONFIG_ATBM_APOLLO_DEBUGFS
+static int atbm_counters_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, &Sstar_counters_show,
+	return single_open(file, &atbm_counters_show,
 		inode->i_private);
 }
 static const struct file_operations fops_counters = {
-	.open = Sstar_counters_open,
+	.open = atbm_counters_open,
 	.read = seq_read,
 	.llseek = seq_lseek,
 	.release = single_release,
 	.owner = THIS_MODULE,
 };
-static int Sstar_generic_open(struct inode *inode, struct file *file)
+static int atbm_generic_open(struct inode *inode, struct file *file)
 {
 	file->private_data = inode->i_private;
 	return 0;
 }
-static ssize_t Sstar_11n_read(struct file *file,
+static ssize_t atbm_11n_read(struct file *file,
 	char __user *user_buf, size_t count, loff_t *ppos)
 {
-	struct Sstar_common *hw_priv = file->private_data;
+	struct atbm_common *hw_priv = file->private_data;
 	struct ieee80211_supported_band *band =
 		hw_priv->hw->wiphy->bands[IEEE80211_BAND_2GHZ];
 	return simple_read_from_buffer(user_buf, count, ppos,
 		band->ht_cap.ht_supported ? "1\n" : "0\n", 2);
 }
-
-static int Sstar_ht_open_info(struct inode *inode, struct file *file)
+static int atbm_status_open_priv(struct inode *inode, struct file *file)
 {
-	return single_open(file, &Sstar_ht_show_info,
+	return single_open(file, &atbm_status_show_priv,
 		inode->i_private);
 }
-static int Sstar_wifi_run_status(struct inode *inode, struct file *file)
+static int atbm_status_open_common(struct inode *inode, struct file *file)
 {
-	return single_open(file, &Sstar_wifi_show_status,
-		inode->i_private);
-}
-
-static int Sstar_status_open_common(struct inode *inode, struct file *file)
-{
-	return single_open(file, &Sstar_status_show_common,
+	return single_open(file, &atbm_status_show_common,
 		inode->i_private);
 }
 static const struct file_operations fops_11n = {
-	.open = Sstar_generic_open,
-	.read = Sstar_11n_read,
-	.write = Sstar_11n_write,
+	.open = atbm_generic_open,
+	.read = atbm_11n_read,
+	.write = atbm_11n_write,
 	.llseek = default_llseek,
 };
 static const struct file_operations fops_wsm_dumps = {
-	.open = Sstar_generic_open,
-	.write = Sstar_wsm_dumps,
+	.open = atbm_generic_open,
+	.write = atbm_wsm_dumps,
 	.llseek = default_llseek,
 };
-#if defined(CONFIG_SSTAR_APOLLO_WSM_DUMPS_SHORT)
 static const struct file_operations fops_short_dump = {
-	.open = Sstar_generic_open,
-	.write = Sstar_short_dump_write,
-	.read = Sstar_short_dump_read,
+	.open = atbm_generic_open,
+	.write = atbm_short_dump_write,
+	.read = atbm_short_dump_read,
 	.llseek = default_llseek,
 };
-#endif
+static const struct file_operations fops_status_priv = {
+	.open = atbm_status_open_priv,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+	.owner = THIS_MODULE,
+};
 static const struct file_operations fops_status_common = {
-	.open = Sstar_status_open_common,
+	.open = atbm_status_open_common,
 	.read = seq_read,
 	.llseek = seq_lseek,
 	.release = single_release,
 	.owner = THIS_MODULE,
 };
-
-static const struct file_operations fops_ht_info = {
-	.open = Sstar_ht_open_info,
-	.read = seq_read,
-	.llseek = seq_lseek,
-	.release = single_release,
-	.owner = THIS_MODULE,
+static const struct file_operations fops_hang = {
+	.open = atbm_generic_open,
+	.write = atbm_hang_write,
+	.llseek = default_llseek,
 };
-
-static const struct file_operations fops_wifi_run_status = {
-	.open = Sstar_wifi_run_status,
-	.read = seq_read,
-	.llseek = seq_lseek,
-	.release = single_release,
-	.owner = THIS_MODULE,
-};
-
 #else
-#endif /*CONFIG_SSTAR_APOLLO_DEBUGFS*/
+#endif /*CONFIG_ATBM_APOLLO_DEBUGFS*/
+#endif //CONFIG_ATBM_APOLLO_DEBUG
 
-int Sstar_debug_init_priv(struct Sstar_common *hw_priv,
-			   struct Sstar_vif *priv)
-{
-	memset(&priv->debug,0,sizeof(priv->debug));
-	return 0;
-}
-
-void Sstar_debug_release_priv(struct Sstar_vif *priv)
-{
-	memset(&priv->debug,0,sizeof(priv->debug));
-}
-int Sstar_debug_init_common(struct Sstar_common *hw_priv)
-{
-	int ret = -ENOMEM;
-	struct Sstar_debug_common *d =
-		Sstar_kzalloc(sizeof(struct Sstar_debug_common), GFP_KERNEL);
-	hw_priv->debug = d;
-	if (!d)
-		return ret;
-#ifdef CONFIG_SSTAR_APOLLO_DEBUGFS
-
-	Sstar_printk_init("Sstar_debug_init_common: create dir............ \n\n");
-
-	d->debugfs_phy = debugfs_create_dir("apollo",
-			hw_priv->hw->wiphy->debugfsdir);
-	if (!d->debugfs_phy)
-		goto err;
-
-	if (!debugfs_create_file("ht", S_IRUSR, d->debugfs_phy,
-			hw_priv, &fops_ht_info))
-		goto err;
-	
-	if (!debugfs_create_file("run_sta", S_IRUSR, d->debugfs_phy,
-			hw_priv, &fops_wifi_run_status))
-		goto err;
-
-	if (!debugfs_create_file("status", S_IRUSR, d->debugfs_phy,
-			hw_priv, &fops_status_common))
-		goto err;
-
-	if (!debugfs_create_file("counters", S_IRUSR, d->debugfs_phy,
-			hw_priv, &fops_counters))
-		goto err;
-
-	if (!debugfs_create_file("11n", S_IRUSR | S_IWUSR,
-			d->debugfs_phy, hw_priv, &fops_11n))
-		goto err;
-
-	if (!debugfs_create_file("wsm_dumps", S_IWUSR, d->debugfs_phy,
-			hw_priv, &fops_wsm_dumps))
-		goto err;
-
-#if defined(CONFIG_SSTAR_APOLLO_WSM_DUMPS_SHORT)
-	if (!debugfs_create_file("wsm_dump_size", S_IRUSR | S_IWUSR,
-			d->debugfs_phy, hw_priv, &fops_short_dump))
-		goto err;
-#endif /* CONFIG_SSTAR_APOLLO_WSM_DUMPS_SHORT */
-#endif
-	EELOG_INIT();
-	EELOG_Start();
-
-	return 0;
-#ifdef CONFIG_SSTAR_APOLLO_DEBUGFS
-	err:
-		hw_priv->debug = NULL;
-#endif
-#ifdef CONFIG_SSTAR_APOLLO_DEBUGFS
-	debugfs_remove_recursive(d->debugfs_phy);
-#endif /* CONFIG_SSTAR_APOLLO_DEBUGFS*/
-	Sstar_kfree(d);
-	return ret;
-}
-
-void Sstar_debug_release_common(struct Sstar_common *hw_priv)
-{
-	struct Sstar_debug_common *d = hw_priv->debug;
-	if (d) {
-		hw_priv->debug = NULL;
-		Sstar_kfree(d);
-	}
-}
-
-#endif

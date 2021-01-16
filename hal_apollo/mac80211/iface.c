@@ -15,7 +15,7 @@
 #include <linux/if_arp.h>
 #include <linux/netdevice.h>
 #include <linux/rtnetlink.h>
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include <net/ieee80211_radiotap.h>
 #ifdef CONFIG_WIRELESS_EXT 
 #include <net/iw_handler.h>
@@ -29,12 +29,6 @@
 #include "wme.h"
 #include "rate.h"
 
-#ifdef CHKSUM_HW_SUPPORT
-#pragma message("TCP/IP Hw Check Sum Enbale")
-#endif
-#ifdef CONFIG_SSTAR_STA_LISTEN
-static void ieee80211_sdata_listen_recalc(struct ieee80211_local *local,bool start,bool flush);
-#endif
 /**
  * DOC: Interface list locking
  *
@@ -66,9 +60,9 @@ static int ieee80211_change_mtu(struct net_device *dev, int new_mtu)
 		return -EINVAL;
 	}
 
-#ifdef CONFIG_MAC80211_SSTAR_VERBOSE_DEBUG
-	Sstar_printk_debug( "%s: setting MTU %d\n", dev->name, new_mtu);
-#endif /* CONFIG_MAC80211_SSTAR_VERBOSE_DEBUG */
+#ifdef CONFIG_MAC80211_ATBM_VERBOSE_DEBUG
+	printk(KERN_DEBUG "%s: setting MTU %d\n", dev->name, new_mtu);
+#endif /* CONFIG_MAC80211_ATBM_VERBOSE_DEBUG */
 	dev->mtu = new_mtu;
 	return 0;
 }
@@ -118,25 +112,6 @@ static int ieee80211_check_concurrent_iface(struct ieee80211_sub_if_data *sdata,
 		struct net_device *ndev = nsdata->dev;
 
 		if (ndev != dev && ieee80211_sdata_running(nsdata)) {
-
-			/*
-			*only support one monitor mode
-			*/
-			if(iftype == NL80211_IFTYPE_MONITOR && 
-				nsdata->vif.type == NL80211_IFTYPE_MONITOR){
-				Sstar_printk_err("%s:only support one monitor mode[%s],[%s]\n",
-				__func__,sdata->name,nsdata->name);
-				return -EBUSY;
-			}
-			/*
-			*only support one ap mode
-			*/
-			if(iftype == NL80211_IFTYPE_AP &&
-				nsdata->vif.type == NL80211_IFTYPE_AP){
-				Sstar_printk_err("%s:only support one ap mode[%s],[%s]\n",
-				__func__,sdata->name,nsdata->name);
-				return -EBUSY;
-			}
 			/*
 			 * Allow only a single IBSS interface to be up at any
 			 * time. This is restricted because beacon distribution
@@ -155,7 +130,7 @@ static int ieee80211_check_concurrent_iface(struct ieee80211_sub_if_data *sdata,
 			 * The remaining checks are only performed for interfaces
 			 * with the same MAC address.
 			 */
-			if (Sstar_compare_ether_addr(dev->dev_addr, ndev->dev_addr))
+			if (atbm_compare_ether_addr(dev->dev_addr, ndev->dev_addr))
 				continue;
 
 			/*
@@ -346,15 +321,18 @@ static int ieee80211_do_open(struct net_device *dev, bool coming_up)
 
 		ieee80211_adjust_monitor_flags(sdata, 1);
 		ieee80211_configure_filter(sdata);
-		netif_carrier_on(dev);
-		if(sdata->raw_dev == true){
-			local->only_monitors++;
-			local->monitor_sdata=sdata;
-			Sstar_printk_always( "%s:[%s] change to monitor mode(%d)\n",__func__,sdata->name,coming_up);
-		}else {
-			Sstar_printk_always( "%s:[%s] new monitor mode(%d)\n",__func__,sdata->name,coming_up);
+#ifdef ATBM_SUPPORT_PKG_MONITOR
+		if(strstr(sdata->name,"mon") != NULL){
+			netif_carrier_on(dev);
 			break;
-		}		
+		}
+		printk(KERN_ERR "%s:[%s] change to monitor mode(%d)\n",__func__,sdata->name,coming_up);
+		local->only_monitors++;
+		local->monitor_sdata=sdata;
+#else
+		netif_carrier_on(dev);
+		break;
+#endif
 	default:
 		if (coming_up) {
 			res = drv_add_interface(local, &sdata->vif);
@@ -408,7 +386,7 @@ static int ieee80211_do_open(struct net_device *dev, bool coming_up)
 		rate_control_rate_init(sta);
 	}
 
-	mutex_lock(&local->mtx);	
+	mutex_lock(&local->mtx);
 	hw_reconf_flags |= __ieee80211_recalc_idle(local);
 	mutex_unlock(&local->mtx);
 
@@ -474,25 +452,21 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata,
 	int i;
 	enum nl80211_channel_type orig_ct;
 	
-#ifdef CONFIG_SSTAR_STA_LISTEN
-	mutex_lock(&local->mtx);
-	if(local->listen_sdata == sdata)
-		ieee80211_sdata_listen_recalc(local,false,false);
-	mutex_unlock(&local->mtx);
-#endif
 	clear_bit(SDATA_STATE_RUNNING, &sdata->state);
 
 	if (local->scan_sdata == sdata)
 		ieee80211_scan_cancel(local);
 	else if(local->pending_scan_sdata&&(local->pending_scan_sdata == sdata))
 	{
-		Sstar_printk_exit("cancle pendding scan request\n");
+		printk("cancle pendding scan request\n");
 		local->scan_sdata = local->pending_scan_sdata;
 		local->scan_req = local->pending_scan_req;
 		local->pending_scan_sdata = NULL;
 		local->pending_scan_req = NULL;
 		ieee80211_scan_cancel(local);
-	}		
+	}
+		
+
 	/*
 	 * Stop TX on this interface first.
 	 */
@@ -504,7 +478,7 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata,
 	 */
 	ieee80211_work_purge(sdata);
 
-#ifdef SSTAR_AP_SME
+#ifdef ATBM_AP_SME
 	ieee80211_ap_sme_mlme_purge(sdata);
 	ieee80211_ap_sme_event_purge(sdata);
 #endif
@@ -540,44 +514,22 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata,
 
 	del_timer_sync(&sdata->dynamic_ps_timer);
 	cancel_work_sync(&sdata->dynamic_ps_enable_work);
-#ifdef CONFIG_SSTAR_5G_PRETEND_2G
-	ieee80211_dfs_cac_abort(sdata);
-#endif
+
 	/* APs need special treatment */
 	if (sdata->vif.type == NL80211_IFTYPE_AP) {
 		struct ieee80211_sub_if_data *vlan, *tmpsdata;
-#ifdef SSTAR_PROBE_RESP_EXTRA_IE
-		struct proberesp_data *old_proberesp;
-#endif
 		struct beacon_data *old_beacon =
 			rtnl_dereference(sdata->u.ap.beacon);
-		struct beacon_extra *old_extra = rtnl_dereference(sdata->u.ap.beacon_extra);
-		struct probe_response_extra *old_proberesp_extra = rtnl_dereference(sdata->u.ap.probe_response_extra);
-		
-#ifdef SSTAR_PROBE_RESP_EXTRA_IE
-		old_proberesp = rtnl_dereference(sdata->u.ap.proberesp);		
-		RCU_INIT_POINTER(sdata->u.ap.proberesp, NULL);
-#endif
-		
+
 		/* sdata_running will return false, so this will disable */
 		ieee80211_bss_info_change_notify(sdata,
 						 BSS_CHANGED_BEACON_ENABLED);
 
 		/* remove beacon */
 		RCU_INIT_POINTER(sdata->u.ap.beacon, NULL);
-		RCU_INIT_POINTER(sdata->u.ap.beacon_extra,NULL);
-		RCU_INIT_POINTER(sdata->u.ap.probe_response_extra,NULL);
 		synchronize_rcu();
-		Sstar_kfree(old_beacon);
-		if(old_extra)
-			Sstar_kfree(old_extra);
-#ifdef SSTAR_PROBE_RESP_EXTRA_IE
-		if(old_proberesp)
-			Sstar_kfree(old_proberesp);
-#endif
-		if(old_proberesp_extra)
-			Sstar_kfree(old_proberesp_extra);
-		
+		atbm_kfree(old_beacon);
+
 		/* down all dependent devices, that is VLANs */
 		list_for_each_entry_safe(vlan, tmpsdata, &sdata->u.ap.vlans,
 					 u.vlan.list)
@@ -585,19 +537,10 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata,
 		WARN_ON(!list_empty(&sdata->u.ap.vlans));
 
 		/* free all potentially still buffered bcast frames */
-		local->total_ps_buffered -= Sstar_skb_queue_len(&sdata->u.ap.ps_bc_buf);
-		Sstar_skb_queue_purge(&sdata->u.ap.ps_bc_buf);
-	}if(sdata->vif.type == NL80211_IFTYPE_STATION){
-		struct probe_request_extra *extra = rtnl_dereference(sdata->u.mgd.probe_request_extra);
-		
-		RCU_INIT_POINTER(sdata->u.mgd.probe_request_extra,NULL);
-		synchronize_rcu();
-		if(extra)
-			Sstar_kfree(extra);
-		
-		ieee80211_free_authen_bss(sdata);
+		local->total_ps_buffered -= atbm_skb_queue_len(&sdata->u.ap.ps_bc_buf);
+		atbm_skb_queue_purge(&sdata->u.ap.ps_bc_buf);
 	}
-	ieee80211_update_ap_config(sdata,NULL,true);
+
 	if (going_down)
 		local->open_count--;
 
@@ -620,15 +563,15 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata,
 
 		ieee80211_adjust_monitor_flags(sdata, -1);
 		ieee80211_configure_filter(sdata);
-		if(WARN_ON((strstr(sdata->name,"mon") != NULL) || (sdata->raw_dev == false))){
+		#ifdef ATBM_SUPPORT_PKG_MONITOR
+		if(strstr(sdata->name,"mon") != NULL){
 			break;
 		}
-		Sstar_printk_err("%s:[%s] stop monitor mode\n",__func__,sdata->name);
 		local->only_monitors--;
 		local->monitor_sdata = NULL;
-		rcu_assign_pointer(sdata->local->internal_monitor.req.monitor_rx,NULL);
-		rcu_assign_pointer(sdata->local->internal_monitor.req.priv,NULL);
-		synchronize_rcu();
+		#else
+		break;
+		#endif
 	default:
 		flush_work(&sdata->work);
 		/*
@@ -638,8 +581,8 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata,
 		 * frames at this very time on another CPU.
 		 */
 		synchronize_rcu();
-		Sstar_skb_queue_purge(&sdata->skb_queue);
-		#ifdef SSTAR_AP_SME
+		atbm_skb_queue_purge(&sdata->skb_queue);
+		#ifdef ATBM_AP_SME
 		ieee80211_ap_sme_mlme_purge(sdata);
 		ieee80211_ap_sme_event_purge(sdata);
 		#endif
@@ -656,12 +599,7 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata,
 		 * except maybe group keys in AP more or WDS?
 		 */
 		ieee80211_free_keys(sdata);
-		mutex_lock(&local->mtx);
-		if(sdata->last_scan_ie)
-			Sstar_kfree(sdata->last_scan_ie);
-		sdata->last_scan_ie_len = 0;
-		sdata->last_scan_ie = NULL;
-		mutex_unlock(&local->mtx);
+
 		if (going_down)
 			drv_remove_interface(local, &sdata->vif);
 	}
@@ -705,11 +643,11 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata,
 
 	spin_lock_irqsave(&local->queue_stop_reason_lock, flags);
 	for (i = 0; i < IEEE80211_MAX_QUEUES; i++) {
-		Sstar_skb_queue_walk_safe(&local->pending[i], skb, tmp) {
+		atbm_skb_queue_walk_safe(&local->pending[i], skb, tmp) {
 			struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
 			if (info->control.vif == &sdata->vif) {
-				__Sstar_skb_unlink(skb, &local->pending[i]);
-				Sstar_dev_kfree_skb_irq(skb);
+				__atbm_skb_unlink(skb, &local->pending[i]);
+				atbm_dev_kfree_skb_irq(skb);
 			}
 		}
 	}
@@ -776,7 +714,7 @@ static void ieee80211_teardown_sdata(struct net_device *dev)
 	ieee80211_debugfs_remove_netdev(sdata);
 
 	for (i = 0; i < IEEE80211_FRAGMENT_MAX; i++)
-		__Sstar_skb_queue_purge(&sdata->fragments[i].skb_list);
+		__atbm_skb_queue_purge(&sdata->fragments[i].skb_list);
 	sdata->fragment_next = 0;
 
 	if (ieee80211_vif_is_mesh(&sdata->vif))
@@ -785,19 +723,7 @@ static void ieee80211_teardown_sdata(struct net_device *dev)
 	flushed = sta_info_flush(local, sdata);
 	WARN_ON(flushed);
 }
-static void ieee80211_sdata_uninit(struct net_device *dev)
-{
-#ifdef CONFIG_SSTAR_STA_LISTEN
-	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
-	struct ieee80211_local *local = sdata->local;
-	mutex_lock(&local->mtx);
-	Sstar_printk_err("%s:listen_sdata(%p)\n",__func__,local->listen_sdata);
-	if(local->listen_sdata == sdata)
-		ieee80211_sdata_listen_recalc(local,false,true);
-	mutex_unlock(&local->mtx);
-#endif
-	ieee80211_teardown_sdata(dev);
-}
+
 static u16 ieee80211_netdev_select_queue(struct net_device *dev,
                                          struct sk_buff *skb
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0))
@@ -811,9 +737,9 @@ static u16 ieee80211_netdev_select_queue(struct net_device *dev,
 	return ieee80211_select_queue(IEEE80211_DEV_TO_SUB_IF(dev), skb);
 }
 /*
-*CONFIG_SSTAR_IOCTRL : use net ioctrl to process some cmd
+*CONFIG_ATBM_IOCTRL : use net ioctrl to process some cmd
 */
-#if defined(CONFIG_SSTAR_IOCTRL)
+#if defined(CONFIG_ATBM_IOCTRL)
 
 typedef struct android_wifi_priv_cmd_s {
 	char *buf;
@@ -937,7 +863,7 @@ int ieee80211_android_cmd_handle_default(struct ieee80211_sub_if_data *sdata,
 	char *cmd,u32 cmd_len,u8 cmd_index)
 {
 	int ret = 0;
-	Sstar_printk_debug("%s:android cmd-->(%s) unhandle\n",__func__,cmd);
+	printk(KERN_DEBUG "%s:android cmd-->(%s) unhandle\n",__func__,cmd);
 
 	return ret;
 }
@@ -1042,7 +968,7 @@ int ieee80211_netdev_cmd_handle_default(struct net_device *dev,
 	struct ifreq *rq)
 {
 	int ret = 0;
-	Sstar_printk_debug( "%s\n",__func__);
+	printk(KERN_ERR "%s\n",__func__);
 	return ret;
 }
 int ieee80211_android_cmdstr_to_num(char *cmdstr)
@@ -1059,103 +985,14 @@ int ieee80211_android_cmdstr_to_num(char *cmdstr)
 
 	return cmd_num;
 }
-extern int Sstar_altmtest_cmd(struct ieee80211_hw *hw, void *data, int len);
-extern int Sstar_wext_cmd(struct net_device *dev, void *data, int len);
-
 /*
 * process wext cmd ,but now........
 */
 int ieee80211_netdev_process_wext_cmd(struct net_device *dev, struct ifreq *rq)
 {
-	struct altm_wext_msg{
-		int type;
-		int value;
-		char externData[256];
-	};
-
-	int ret=0;
-	struct ieee80211_sub_if_data *sdata = NULL;
-	struct ieee80211_local *local = NULL;
-	struct ieee80211_hw *hw = NULL;
-	struct Sstar_vif *priv = NULL;
-	struct altm_wext_msg vendor_msg;
-
-	Sstar_printk_debug("%s\n",__func__);
-
-	if(dev == NULL){
-		Sstar_printk_err("Sstar_wext_cmd() dev NULL\n");
-		return -1;
-	}
-
-	sdata = IEEE80211_DEV_TO_SUB_IF(dev);
-	if(sdata == NULL){
-		Sstar_printk_err("error, netdev sdata NULL\n");
-		return -1;
-	}
-
-	local = sdata->local;
-	if(local == NULL){
-		Sstar_printk_err("error, netdev local NULL\n");
-		return -1;
-	}
-	
-	hw = &local->hw;
-	if(hw == NULL){
-		Sstar_printk_err("error, netdev hw NULL\n");
-		return -1;
-	}
-	
-//	mutex_lock(&local->iflist_mtx);
-
-	priv = (struct Sstar_vif *)sdata->vif.drv_priv;
-	if(priv == NULL){
-		Sstar_printk_err("error, netdev priv NULL\n");
-		ret = -EINVAL;
-		goto exit;
-	}
-	
-	if (!rq->ifr_data) 
-	{
-		Sstar_printk_err("error, netdev ifr->ifr_data == NULL\n");
-		ret = -EINVAL;
-		goto exit;
-	}
-	
-	memset(&vendor_msg,0,sizeof(struct altm_wext_msg));
-	
-	if (copy_from_user(&vendor_msg, rq->ifr_data, sizeof(struct altm_msg))) 
-	{
-		Sstar_printk_err("error, netdev copy_from_user\n");
-		ret = -EFAULT;
-		goto exit;
-	}
-
-	Sstar_printk_debug("1,type = %d, value = %d\n", vendor_msg.type, vendor_msg.value);
-
-	sdata->local->hw.vendcmd_nl80211 = 1;
-
-	ret = Sstar_wext_cmd(dev, &vendor_msg, sizeof(struct altm_wext_msg)); 
-	Sstar_printk_debug("2,type = %d, value = %d\n", vendor_msg.type, vendor_msg.value);
-	if(ret != 0){
-		Sstar_printk_err("error, netdev Sstar_wext_cmd\n");
-		ret = -EFAULT;
-		goto exit;
-	}
-	
-	if (copy_to_user(rq->ifr_data,(u8*)(&vendor_msg),sizeof(vendor_msg)))
-	{
-		Sstar_printk_err("error, netdev copy_to_user err\n");
-		ret = -EFAULT;
-		goto exit;
-	}
-	
-	Sstar_printk_debug("3,type = %d, value = %d\n", vendor_msg.type, vendor_msg.value);
-	
-exit:
-	sdata->local->hw.vendcmd_nl80211 = 0;
-//	mutex_unlock(&local->iflist_mtx);
-	return ret; 
-
+	int ret = 0;
+	printk(KERN_DEBUG "%s\n",__func__);
+	return ret;
 }
 /*
 *process android cmd,only retrun success
@@ -1191,11 +1028,11 @@ int ieee80211_netdev_process_android_cmd(struct net_device *dev, struct ifreq *r
 		ret = -EINVAL;
 		goto exit;
 	}
-	android_cmd = Sstar_kmalloc(android_cmd_struct.total_len,GFP_KERNEL);
+	android_cmd = atbm_kmalloc(android_cmd_struct.total_len,GFP_KERNEL);
 
 	if(android_cmd == NULL)
 	{
-		printk(KERN_ERR "Sstar_kmalloc err\n");
+		printk(KERN_ERR "atbm_kmalloc err\n");
 		ret = -EFAULT;
 		goto exit;
 	}
@@ -1230,7 +1067,7 @@ int ieee80211_netdev_process_android_cmd(struct net_device *dev, struct ifreq *r
 	ret = call_fn(sdata,android_cmd,android_cmd_struct.total_len,cmd_num);
 exit:
 	if(android_cmd)
-		Sstar_kfree(android_cmd);
+		atbm_kfree(android_cmd);
 	return ret;
 #else
 
@@ -1238,9 +1075,9 @@ exit:
 #endif
 }
 extern int rate_altm_control_test(struct wiphy *wiphy, void *data, int len);
-
+extern int atbm_altmtest_cmd(struct ieee80211_hw *hw, void *data, int len);
 /*
-*vendor cmd ----> Sstar_tool
+*vendor cmd ----> atbm_tool
 */
 int ieee80211_netdev_process_vendor_cmd(struct net_device *dev, struct ifreq *rq)
 {
@@ -1252,7 +1089,7 @@ int ieee80211_netdev_process_vendor_cmd(struct net_device *dev, struct ifreq *rq
 	
 	if (!rq->ifr_data) 
 	{
-		Sstar_printk_err("%s:ifr->ifr_data == NULL\n",__func__);
+		printk(KERN_ERR "%s:ifr->ifr_data == NULL\n",__func__);
 		ret = -EINVAL;
 		goto exit;
 	}
@@ -1261,23 +1098,23 @@ int ieee80211_netdev_process_vendor_cmd(struct net_device *dev, struct ifreq *rq
 	
 	if (copy_from_user(&vendor_msg, rq->ifr_data, sizeof(struct altm_msg))) 
 	{
-		Sstar_printk_err("copy_from_user err\n");
+		printk(KERN_ERR "copy_from_user err\n");
 		ret = -EFAULT;
 		goto exit;
 	}
 	len = sizeof(struct altm_msg);
-	Sstar_printk_debug("type = %d, value = %d\n", vendor_msg.type, vendor_msg.value);
+	printk("type = %d, value = %d\n", vendor_msg.type, vendor_msg.value);
 	for(i=0;i<30;i++)
-		Sstar_printk_debug("%d ", vendor_msg.externData[i]);
+		printk("%d ", vendor_msg.externData[i]);
 	sdata->local->hw.vendcmd_nl80211 = 1;
 	ret = rate_altm_control_test(sdata->local->hw.wiphy,&vendor_msg,len);
-	ret |= Sstar_altmtest_cmd(&sdata->local->hw, &vendor_msg, len); 
+	ret |= atbm_altmtest_cmd(&sdata->local->hw, &vendor_msg, len); 
 	
 	if((ret > 0)&&(ret<=len))
 	{
 		if (copy_to_user(rq->ifr_data,(u8*)(&sdata->local->hw.vendreturn),sizeof(struct response)))
 		{
-			Sstar_printk_err("copy_to_user err\n");
+			printk(KERN_ERR "copy_to_user err\n");
 			ret = -EFAULT;
 		}
 		else
@@ -1305,7 +1142,7 @@ int ieee80211_netdev_ioctrl(struct net_device *dev, struct ifreq *rq, int cmd)
 		||
 		(cmd < IEEE80211_NETDEV_BASE_CMD) )
 	{
-		Sstar_printk_err( "%s:cmd err\n",__func__);
+		printk(KERN_ERR "%s:cmd err\n",__func__);
 		ret = -EINVAL;
 
 		goto exit;
@@ -1317,48 +1154,17 @@ exit:
 	return ret;
 }
 #endif
-#ifdef CONFIG_SSTAR_SUPPORT_NET_TIMEOUT
-static void ieee80211_tx_timeout(struct net_device *dev)
-{
-	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
-	struct ieee80211_local *local = sdata->local;
-	unsigned long flags;
-	u8 i;
-	struct sk_buff *skb = Sstar_dev_alloc_skb(0);
-	
-	spin_lock_irqsave(&local->queue_stop_reason_lock, flags);
-
-	for (i = 0; i <local->hw.queues; i++)
-		Sstar_printk_debug("%s:queue[%d],reason[%ld]\n",__func__,i,local->queue_stop_reasons[i]);
-
-	spin_unlock_irqrestore(&local->queue_stop_reason_lock, flags);
-	
-	#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0))
-	dev->trans_start = jiffies;
-	#endif
-
-	if (unlikely(!skb))
-		return;
-
-	skb->pkt_type = IEEE80211_SDATA_QUEUE_FLUSH;
-	Sstar_skb_queue_tail(&sdata->skb_queue, skb);
-	ieee80211_queue_work(&local->hw, &sdata->work);
-}
-#endif
 static const struct net_device_ops ieee80211_dataif_ops = {
 	.ndo_open		= ieee80211_open,
 	.ndo_stop		= ieee80211_stop,
-	.ndo_uninit		= ieee80211_sdata_uninit,
+	.ndo_uninit		= ieee80211_teardown_sdata,
 	.ndo_start_xmit		= ieee80211_subif_start_xmit,
 	.ndo_set_rx_mode	= ieee80211_set_multicast_list,
 	.ndo_change_mtu 	= ieee80211_change_mtu,
 	.ndo_set_mac_address 	= ieee80211_change_mac,
 	.ndo_select_queue	= ieee80211_netdev_select_queue,
-#if defined(CONFIG_SSTAR_IOCTRL)
+#if defined(CONFIG_ATBM_IOCTRL)
 	.ndo_do_ioctl = ieee80211_netdev_ioctrl,
-#endif
-#ifdef CONFIG_SSTAR_SUPPORT_NET_TIMEOUT
-	.ndo_tx_timeout = ieee80211_tx_timeout,
 #endif
 };
 
@@ -1411,9 +1217,6 @@ static const struct net_device_ops ieee80211_monitorif_ops = {
 	.ndo_change_mtu 	= ieee80211_change_mtu,
 	.ndo_set_mac_address 	= eth_mac_addr,
 	.ndo_select_queue	= ieee80211_monitor_select_queue,
-#if defined(CONFIG_SSTAR_IOCTRL)
-	.ndo_do_ioctl = ieee80211_netdev_ioctrl,
-#endif
 };
 
 static void ieee80211_if_setup(struct net_device *dev)
@@ -1453,8 +1256,8 @@ static void ieee80211_iface_work(struct work_struct *work)
 		return;
 
 	/* first process frames */
-	while ((skb = Sstar_skb_dequeue(&sdata->skb_queue))) {
-		struct Sstar_ieee80211_mgmt *mgmt = (void *)skb->data;
+	while ((skb = atbm_skb_dequeue(&sdata->skb_queue))) {
+		struct atbm_ieee80211_mgmt *mgmt = (void *)skb->data;
 
 		if (skb->pkt_type == IEEE80211_SDATA_QUEUE_AGG_START) {
 			ra_tid = (void *)&skb->cb;
@@ -1464,22 +1267,7 @@ static void ieee80211_iface_work(struct work_struct *work)
 			ra_tid = (void *)&skb->cb;
 			ieee80211_stop_tx_ba_cb(&sdata->vif, ra_tid->ra,
 						ra_tid->tid);
-		}
-		#ifdef CONFIG_SSTAR_SUPPORT_NET_TIMEOUT
-		else if(skb->pkt_type == IEEE80211_SDATA_QUEUE_FLUSH){
-			u8 i;
-			unsigned long flags;
-			Sstar_printk_debug("%s:flush queue\n",__func__);
-			drv_flush(local,sdata,true);
-			spin_lock_irqsave(&local->queue_stop_reason_lock, flags);
-
-			for (i = 0; i <local->hw.queues; i++)
-				Sstar_printk_debug("%s:queue[%d],reason[%ld]\n",__func__,i,local->queue_stop_reasons[i]);
-
-			spin_unlock_irqrestore(&local->queue_stop_reason_lock, flags);
-		}
-		#endif
-		else if (ieee80211_is_action(mgmt->frame_control) &&
+		} else if (ieee80211_is_action(mgmt->frame_control) &&
 			   mgmt->u.action.category == WLAN_CATEGORY_BACK) {
 			int len = skb->len;
 
@@ -1540,18 +1328,17 @@ static void ieee80211_iface_work(struct work_struct *work)
 			switch (sdata->vif.type) {
 			case NL80211_IFTYPE_AP:
 			case NL80211_IFTYPE_P2P_GO:
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,3,0))
 				if (ieee80211_is_beacon(mgmt->frame_control)) {
 					struct ieee80211_bss_conf *bss_conf =
 						&sdata->vif.bss_conf;
 					u32 bss_info_changed = 0, erp = 0;
-					#if 0
 					struct ieee80211_channel *channel =
 						ieee80211_get_channel(local->hw.wiphy,
 								IEEE80211_SKB_RXCB(skb)->freq);
 					if(cfg80211_inform_bss_frame(local->hw.wiphy, channel,
 							(struct ieee80211_mgmt *)mgmt, skb->len,
 							IEEE80211_SKB_RXCB(skb)->signal, GFP_ATOMIC))
+					#if 0
 					
 					erp = cfg80211_get_local_erp(local->hw.wiphy,
 							IEEE80211_SKB_RXCB(skb)->freq);
@@ -1559,27 +1346,26 @@ static void ieee80211_iface_work(struct work_struct *work)
 					{
 						const u8 *p;
 						int tmp = 0;
-						p = cfg80211_find_ie(SSTAR_WLAN_EID_SUPP_RATES,
+						p = cfg80211_find_ie(ATBM_WLAN_EID_SUPP_RATES,
 						mgmt->u.beacon.variable,skb->len-
-						offsetof(struct Sstar_ieee80211_mgmt,u.probe_resp.variable));
+						offsetof(struct atbm_ieee80211_mgmt,u.probe_resp.variable));
 						if (p) {
 							/* Check for pure 11b access poin */
 							if (p[1] == 4)
 								erp |= WLAN_ERP_USE_PROTECTION;
 						}
 
-						p = cfg80211_find_ie(SSTAR_WLAN_EID_ERP_INFO,
+						p = cfg80211_find_ie(ATBM_WLAN_EID_ERP_INFO,
 								mgmt->u.beacon.variable, skb->len-
-						offsetof(struct Sstar_ieee80211_mgmt,u.probe_resp.variable));
-						if (!p){
-							Sstar_kfree_skb(skb);
+						offsetof(struct atbm_ieee80211_mgmt,u.probe_resp.variable));
+						if (!p)
 							continue;
-						}
 						tmp = p[ERP_INFO_BYTE_OFFSET];
 						erp |= tmp;
 					}
 
 					#endif
+					
 					if (!!bss_conf->use_cts_prot !=
 							!!(erp & WLAN_ERP_USE_PROTECTION)) {
 						bss_conf->use_cts_prot =
@@ -1588,9 +1374,7 @@ static void ieee80211_iface_work(struct work_struct *work)
 					}
 					ieee80211_bss_info_change_notify(sdata,
 							bss_info_changed);
-				}else
-#endif
-				ieee80211_ap_rx_queued_mgmt_special(sdata, skb);		
+				};
 				break;
 			case NL80211_IFTYPE_STATION:
 				ieee80211_sta_rx_queued_mgmt(sdata, skb);
@@ -1609,7 +1393,7 @@ static void ieee80211_iface_work(struct work_struct *work)
 			}
 
 		}
-		Sstar_kfree_skb(skb);
+		atbm_kfree_skb(skb);
 	}
 
 	/* then other type-dependent work */
@@ -1647,8 +1431,8 @@ static void ieee80211_setup_sdata(struct ieee80211_sub_if_data *sdata,
 {
 	/* clear type-dependent union */
 	memset(&sdata->u, 0, sizeof(sdata->u));
-	atomic_set(&sdata->connectting,IEEE80211_SSTAR_CONNECT_DONE);
-#ifdef CONFIG_MAC80211_SSTAR_ROAMING_CHANGES
+	atomic_set(&sdata->connectting,IEEE80211_ATBM_CONNECT_DONE);
+#ifdef CONFIG_MAC80211_ATBM_ROAMING_CHANGES
 	sdata->queues_locked = 0;
 #endif
 	/* and set some type-dependent values */
@@ -1663,10 +1447,10 @@ static void ieee80211_setup_sdata(struct ieee80211_sub_if_data *sdata,
 	/* only monitor differs */
 	sdata->dev->type = ARPHRD_ETHER;
 
-	Sstar_skb_queue_head_init(&sdata->skb_queue);
+	atbm_skb_queue_head_init(&sdata->skb_queue);
 	INIT_WORK(&sdata->work, ieee80211_iface_work);
 	INIT_WORK(&sdata->reconfig_filter, ieee80211_reconfig_filter);
-#ifdef SSTAR_AP_SME
+#ifdef ATBM_AP_SME
 	ieee80211_ap_sme_queue_mgmt_init(sdata);
 	ieee80211_ap_sme_event_init(sdata);
 #endif
@@ -1692,7 +1476,7 @@ static void ieee80211_setup_sdata(struct ieee80211_sub_if_data *sdata,
 		sdata->vif.p2p = true;
 		/* fall through */
 	case NL80211_IFTYPE_AP:
-		Sstar_skb_queue_head_init(&sdata->u.ap.ps_bc_buf);
+		atbm_skb_queue_head_init(&sdata->u.ap.ps_bc_buf);
 		INIT_LIST_HEAD(&sdata->u.ap.vlans);
 		sdata->local->uapsd_queues = IEEE80211_DEFAULT_UAPSD_QUEUES;
 		break;
@@ -1713,7 +1497,7 @@ static void ieee80211_setup_sdata(struct ieee80211_sub_if_data *sdata,
 		break;
 	case NL80211_IFTYPE_MONITOR:
 		{
-			#ifdef	SSTAR_WIFI_QUEUE_LOCK_BUG
+			#ifdef	ATBM_WIFI_QUEUE_LOCK_BUG
 			struct ieee80211_sub_if_data *attach_sdata = NULL;
 			
 			list_for_each_entry(attach_sdata, &sdata->local->interfaces, list){
@@ -1721,28 +1505,12 @@ static void ieee80211_setup_sdata(struct ieee80211_sub_if_data *sdata,
 					continue;
 				if(strstr(sdata->name,attach_sdata->name) == NULL)
 					continue;
-				Sstar_printk_debug("%s:add[%s],attach[%s]\n",__func__,sdata->name,attach_sdata->name);
+				printk(KERN_ERR "%s:add[%s],attach[%s]\n",__func__,sdata->name,attach_sdata->name);
 				memcpy(sdata->vif.hw_queue,attach_sdata->vif.hw_queue,IEEE80211_NUM_ACS);
 			}
 			#endif
-			/*
-			*when hostapd setups ,it will add a new net devie called mon.wlan0 or mon.p2p0.
-			*at this time we set sdata->raw_dev false ,and the new devie enter RADIOTAP mode
-			*/
-			if(sdata->raw_dev == false){
-				sdata->dev->type = ARPHRD_IEEE80211_RADIOTAP;
-			}else {
-				/*
-				*iwconifg can change wlan0 or p2p0 into monitor time,but some app needs prism header
-				*,others need radiotap header.
-				*
-				*/
-				if(sdata->local->hw.flags & IEEE80211_HW_MONITOR_NEED_PRISM_HEADER){
-					sdata->dev->type = ARPHRD_IEEE80211_PRISM;
-				}else {
-					sdata->dev->type = ARPHRD_IEEE80211_RADIOTAP;
-				}
-			}
+			
+			sdata->dev->type = ARPHRD_IEEE80211_RADIOTAP;
 			netdev_attach_ops(sdata->dev, &ieee80211_monitorif_ops);
 			sdata->u.mntr_flags = MONITOR_FLAG_CONTROL |
 					      MONITOR_FLAG_OTHER_BSS;
@@ -1815,11 +1583,13 @@ static int ieee80211_runtime_change_iftype(struct ieee80211_sub_if_data *sdata,
 		 * mesh.
 		 */
 		break;
+	#ifdef	ATBM_SUPPORT_PKG_MONITOR
 	case NL80211_IFTYPE_MONITOR:
 		if(local->only_monitors)
 			break;
 		else 
 			return -EBUSY;
+	#endif
 	default:
 		return -EBUSY;
 	}
@@ -1835,11 +1605,13 @@ static int ieee80211_runtime_change_iftype(struct ieee80211_sub_if_data *sdata,
 		 * code isn't prepared to handle).
 		 */
 		break;
+	#ifdef	ATBM_SUPPORT_PKG_MONITOR
 	case NL80211_IFTYPE_MONITOR:
-		if(local->only_monitors == 0)
+		if(local->only_monitors)
 			break;
 		else 
 			return -EBUSY;
+	#endif
 	case NL80211_IFTYPE_P2P_CLIENT:
 		p2p = true;
 		internal_type = NL80211_IFTYPE_STATION;
@@ -1887,7 +1659,6 @@ int ieee80211_if_change_type(struct ieee80211_sub_if_data *sdata,
 
 	ASSERT_RTNL();
 
-	Sstar_printk_err("%s:[%s] change to [%d]\n",__func__,sdata->name,type);
 	if (type == ieee80211_vif_type_p2p(&sdata->vif))
 		return 0;
 
@@ -1897,26 +1668,25 @@ int ieee80211_if_change_type(struct ieee80211_sub_if_data *sdata,
 	    type == NL80211_IFTYPE_ADHOC)
 		return -EOPNOTSUPP;
 	#endif
+	#ifdef	ATBM_SUPPORT_PKG_MONITOR
 	if(sdata->local->only_monitors){
-		if(sdata->local->monitor_sdata == sdata){
-			Sstar_printk_err( "%s:[%s] in monitor mode,change to other mode\n",__func__,sdata->local->monitor_sdata->name);
-		}else {
-			Sstar_printk_err( "%s:[%s] in monitor mode,so [%s] can not change\n",__func__,
-				sdata->local->monitor_sdata->name,sdata->name);
+		if(sdata->local->monitor_sdata){
+			printk(KERN_ERR "%s:[%s] in monitor mode,change to other mode\n",__func__,sdata->local->monitor_sdata->name);
 		}
 	}
-	else if((type == NL80211_IFTYPE_MONITOR)&&(sdata->raw_dev == true)){
+	else if((type == NL80211_IFTYPE_MONITOR)&&(strstr(sdata->name,"mon")==NULL)){
 		struct ieee80211_sub_if_data *other_sdata;
 		list_for_each_entry(other_sdata, &sdata->local->interfaces, list){
 			
 			 if ((other_sdata->vif.type != NL80211_IFTYPE_MONITOR)&&
-			 	ieee80211_sdata_running(other_sdata)&&(other_sdata != sdata)){
-			 	Sstar_printk_err("[%s] is running,so please close [%s]\n",other_sdata->name,other_sdata->name);
-				Sstar_printk_err("and try again later to set[%s] to monitor mode\n",sdata->name);
+			 	ieee80211_sdata_running(other_sdata)){
+			 	printk(KERN_ERR "[%s] is running,so please close [%s]\n",other_sdata->name,other_sdata->name);
+				printk(KERN_ERR "and try again later to set[%s] to monitor mode\n",sdata->name);
 				return -EOPNOTSUPP;
 			 }
 		}
 	}
+	#endif
 	if (ieee80211_sdata_running(sdata)) {
 		ret = ieee80211_runtime_change_iftype(sdata, type);
 		if (ret)
@@ -1929,7 +1699,7 @@ int ieee80211_if_change_type(struct ieee80211_sub_if_data *sdata,
 
 	/* reset some values that shouldn't be kept across type changes */
 	sdata->vif.bss_conf.basic_rates =
-		ieee80211_Sstar_mandatory_rates(sdata->local,
+		ieee80211_atbm_mandatory_rates(sdata->local,
 			chan_state->conf.channel->band);
 	sdata->drop_unencrypted = 0;
 	if (type == NL80211_IFTYPE_STATION)
@@ -2005,7 +1775,7 @@ static void ieee80211_assign_perm_addr(struct ieee80211_local *local,
 
 		if (__ffs64(mask) + hweight64(mask) != fls64(mask)) {
 			/* not a contiguous mask ... not handled now! */
-			Sstar_printk_err("not contiguous\n");
+			printk(KERN_DEBUG "not contiguous\n");
 			break;
 		}
 
@@ -2050,7 +1820,7 @@ static void ieee80211_assign_perm_addr(struct ieee80211_local *local,
 	mutex_unlock(&local->iflist_mtx);
 }
 #ifdef CONFIG_WIRELESS_EXT
-extern struct iw_handler_def Sstar_handlers_def;
+extern struct iw_handler_def atbm_handlers_def;
 #endif
 int ieee80211_if_add(struct ieee80211_local *local, const char *name,
 		     struct net_device **new_dev, enum nl80211_iftype type,
@@ -2079,14 +1849,9 @@ int ieee80211_if_add(struct ieee80211_local *local, const char *name,
 #ifdef CHKSUM_HW_SUPPORT
 	ndev->hw_features = (NETIF_F_RXCSUM|NETIF_F_IP_CSUM);
 	ndev->features |= ndev->hw_features;
-	Sstar_printk_init("+++++++++++++++++++++++++++++++hw checksum open ++++++++++++++++++++\n");
+	printk("+++++++++++++++++++++++++++++++hw checksum open ++++++++++++++++++++\n");
 #endif
 
-#ifdef CONFIG_SSTAR_SUPPORT_SG
-	Sstar_printk_init("%s:enable sg\n",__func__);
-	ndev->hw_features |= NETIF_F_SG;
-	ndev->features    |= NETIF_F_SG;
-#endif
 /* This is an optimization, just ignore for older kernels */
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,26))
 	ndev->needed_headroom = local->tx_headroom +
@@ -2125,7 +1890,7 @@ int ieee80211_if_add(struct ieee80211_local *local, const char *name,
 #endif
 
 	for (i = 0; i < IEEE80211_FRAGMENT_MAX; i++)
-		Sstar_skb_queue_head_init(&sdata->fragments[i].skb_list);
+		atbm_skb_queue_head_init(&sdata->fragments[i].skb_list);
 
 	INIT_LIST_HEAD(&sdata->key_list);
 
@@ -2145,16 +1910,8 @@ int ieee80211_if_add(struct ieee80211_local *local, const char *name,
 		}
 	}
 
-	
-#ifdef CONFIG_SSTAR_AP_CHANNEL_CHANGE_EVENT
-	INIT_DELAYED_WORK(&sdata->ap_channel_event_work,ieee80211_ap_channel_event_work);
-#endif
-
 	sdata->dynamic_ps_forced_timeout = -1;
-	#ifdef CONFIG_SSTAR_5G_PRETEND_2G
-	INIT_DELAYED_WORK(&sdata->dfs_cac_timer_work,
-			  ieee80211_dfs_cac_timer_work);
-	#endif
+
 	INIT_WORK(&sdata->dynamic_ps_enable_work,
 		  ieee80211_dynamic_ps_enable_work);
 	INIT_WORK(&sdata->dynamic_ps_disable_work,
@@ -2165,13 +1922,7 @@ int ieee80211_if_add(struct ieee80211_local *local, const char *name,
 	sdata->vif.bss_conf.listen_interval = local->hw.max_listen_interval;
 
 	ieee80211_set_default_queues(sdata);
-	
-	if(new_dev){
-		sdata->raw_dev = false;
-	}else {
-		sdata->raw_dev = true;
-	}
-	
+
 	/* setup type-dependent data */
 	ieee80211_setup_sdata(sdata, type);
 
@@ -2181,11 +1932,9 @@ int ieee80211_if_add(struct ieee80211_local *local, const char *name,
 			sdata->u.mgd.use_4addr = params->use_4addr;
 	}
 	#ifdef CONFIG_WIRELESS_EXT
-    ndev->wireless_handlers = &Sstar_handlers_def;
+    ndev->wireless_handlers = &atbm_handlers_def;
     #endif
-#ifdef CONFIG_SSTAR_SUPPORT_NET_TIMEOUT
-	ndev->watchdog_timeo = msecs_to_jiffies(100);
-#endif
+
 	ret = register_netdevice(ndev);
 	if (ret)
 		goto fail;
@@ -2233,7 +1982,7 @@ void ieee80211_if_remove(struct ieee80211_sub_if_data *sdata)
  * Remove all interfaces, may only be called at hardware unregistration
  * time because it doesn't do RCU-safe list removals.
  */
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,65) || (SSTAR_WIFI_PLATFORM == 10))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,65) || (ATBM_WIFI_PLATFORM == 10))
  void ieee80211_remove_interfaces(struct ieee80211_local *local)
  {
 	 struct ieee80211_sub_if_data *sdata, *tmp;
@@ -2263,9 +2012,6 @@ void ieee80211_if_remove(struct ieee80211_sub_if_data *sdata)
 	 list_for_each_entry_safe(sdata, tmp, &local->interfaces, list) {
 		 list_del(&sdata->list);
  
-#ifdef CONFIG_MAC80211_BRIDGE
-	    br0_detach(sdata);
-#endif //CONFIG_MAC80211_BRIDGE
 		 if (sdata->dev)
 			 unregister_netdevice_queue(sdata->dev, &unreg_list);
 		 else
@@ -2276,7 +2022,7 @@ void ieee80211_if_remove(struct ieee80211_sub_if_data *sdata)
 	 list_for_each_entry_safe(sdata, tmp, &wdev_list, list) {
 		 list_del(&sdata->list);
 		 cfg80211_unregister_wdev(&sdata->wdev);
-		 Sstar_kfree(sdata);
+		 atbm_kfree(sdata);
 	 }
  }
 
@@ -2291,9 +2037,6 @@ void ieee80211_remove_interfaces(struct ieee80211_local *local)
 	mutex_lock(&local->iflist_mtx);
 	list_for_each_entry_safe(sdata, tmp, &local->interfaces, list) {
 		list_del(&sdata->list);
-#ifdef CONFIG_MAC80211_BRIDGE
-		br0_detach(sdata);
-#endif //CONFIG_MAC80211_BRIDGE
 
 		if (ieee80211_vif_is_mesh(&sdata->vif))
 			mesh_path_flush_by_iface(sdata);
@@ -2310,15 +2053,11 @@ void ieee80211_remove_interfaces(struct ieee80211_local *local)
 	struct ieee80211_sub_if_data *sdata, *tmp;
 
 	ASSERT_RTNL();
-	
 
 	list_for_each_entry_safe(sdata, tmp, &local->interfaces, list) {
 		mutex_lock(&local->iflist_mtx);
 		list_del(&sdata->list);
 		mutex_unlock(&local->iflist_mtx);
-#ifdef CONFIG_MAC80211_BRIDGE
-		br0_detach(sdata);
-#endif //CONFIG_MAC80211_BRIDGE
 
 		unregister_netdevice(sdata->dev);
 	}
@@ -2331,7 +2070,7 @@ static u32 ieee80211_idle_off(struct ieee80211_local *local,
 	if (!(local->hw.conf.flags & IEEE80211_CONF_IDLE))
 		return 0;
 
-#ifdef CONFIG_MAC80211_SSTAR_VERBOSE_DEBUG
+#ifdef CONFIG_MAC80211_ATBM_VERBOSE_DEBUG
 	wiphy_debug(local->hw.wiphy, "device no longer idle - %s\n", reason);
 #endif
 
@@ -2345,7 +2084,7 @@ static u32 ieee80211_idle_on(struct ieee80211_local *local)
 	if (local->hw.conf.flags & IEEE80211_CONF_IDLE)
 		return 0;
 
-#ifdef CONFIG_MAC80211_SSTAR_VERBOSE_DEBUG
+#ifdef CONFIG_MAC80211_ATBM_VERBOSE_DEBUG
 	wiphy_debug(local->hw.wiphy, "device now idle\n");
 #endif
 	list_for_each_entry(sdata, &local->interfaces, list)
@@ -2354,84 +2093,11 @@ static u32 ieee80211_idle_on(struct ieee80211_local *local)
 	local->hw.conf.flags |= IEEE80211_CONF_IDLE;
 	return IEEE80211_CONF_CHANGE_IDLE;
 }
-#ifdef CONFIG_SSTAR_STA_LISTEN
-static void ieee80211_sdata_listen_recalc(struct ieee80211_local *local,bool start,bool flush)
-{
-	struct ieee80211_sub_if_data *sdata;
-	bool running = 0;
-	lockdep_assert_held(&local->mtx);
-	
-	if(!local->listen_sdata || !local->listen_channel){
-		return;
-	}
-	
-	running = ieee80211_sdata_running(local->listen_sdata);
-	
-	if(start == true){
-		if((local->listen_started == false)&&running){
-			list_for_each_entry(sdata, &local->interfaces, list)
-				drv_flush(local, sdata, false);
-			if(local->ops->sta_triger_listen)
-					local->ops->sta_triger_listen(&local->hw,&local->listen_sdata->vif,local->listen_channel);
-				local->listen_started = true;
-		}
-	}else {
-		if((local->listen_started == true)&&running){
-			list_for_each_entry(sdata, &local->interfaces, list)
-				drv_flush(local, sdata, false);
-			if(local->ops->sta_stop_listen)
-				local->ops->sta_stop_listen(&local->hw,&local->listen_sdata->vif);
-			local->listen_started = false;
-		}
 
-		if(flush == true){
-			local->listen_sdata = NULL;
-			local->listen_channel = NULL;
-		}
-	}
-}
-
-int ieee80211_set_sta_channel(struct ieee80211_sub_if_data *sdata,int channel)
-{
-	int freq;	
-	struct ieee80211_channel *chan = NULL;
-	struct ieee80211_local *local = sdata->local;
-
-	if(sdata->vif.type != NL80211_IFTYPE_STATION){
-		return -EINVAL;
-	}
-
-	if(channel<14){
-		freq = 2412+(channel-1)*5;
-	}else if(channel == 14){
-		freq = 2484;
-	}else{
-		freq = 5000 + 5 * channel;
-	}
-
-	chan = ieee80211_get_channel(local->hw.wiphy,freq);
-
-	if(chan == NULL){
-		Sstar_printk_err("%s: channel err(%d)\n",__func__,channel);
-		return -EINVAL;
-	}
-	mutex_lock(&local->mtx);
-	ieee80211_sdata_listen_recalc(local,false,true);
-	local->listen_sdata = sdata;
-	local->listen_channel = chan;
-	local->listen_started = false;
-	__ieee80211_recalc_idle(local);
-	mutex_unlock(&local->mtx);
-
-	return 0; 
-}
-
-#endif
 u32 __ieee80211_recalc_idle(struct ieee80211_local *local)
 {
 	struct ieee80211_sub_if_data *sdata;
 	int count = 0;
-	int authening = 0;
 	bool working = false, scanning = false, hw_roc = false;
 	struct ieee80211_work *wk;
 	unsigned int led_trig_start = 0, led_trig_stop = 0;
@@ -2450,12 +2116,7 @@ u32 __ieee80211_recalc_idle(struct ieee80211_local *local)
 		}
 
 		sdata->old_idle = sdata->vif.bss_conf.idle;
-		if(sdata->vif.type == NL80211_IFTYPE_STATION && 
-			rcu_dereference_protected(sdata->u.mgd.authen_bss,lockdep_is_held(&local->mtx))){
-			authening = 1;
-			sdata->vif.bss_conf.idle = false;
-			continue;
-		}
+
 		/* do not count disabled managed interfaces */
 		if (sdata->vif.type == NL80211_IFTYPE_STATION &&
 		    !sdata->u.mgd.associated) {
@@ -2500,20 +2161,7 @@ u32 __ieee80211_recalc_idle(struct ieee80211_local *local)
 			continue;
 		ieee80211_bss_info_change_notify(sdata, BSS_CHANGED_IDLE);
 	}
-#ifdef CONFIG_SSTAR_STA_LISTEN
-	if(local->listen_channel && local->listen_sdata&&ieee80211_sdata_running(local->listen_sdata)){
-		/*
-		*idle ,start listen mode
-		*/
-		if((working==true) || (scanning==true) || (hw_roc == true) ||(authening == true) || count){
-			ieee80211_sdata_listen_recalc(local,false,false);
-		}else {
-			
-			ieee80211_sdata_listen_recalc(local,true,false);			
-			count++;
-		}
-	}
-#endif
+
 	if (working || scanning || hw_roc)
 		led_trig_start |= IEEE80211_TPT_LEDTRIG_FL_WORK;
 	else
@@ -2526,10 +2174,6 @@ u32 __ieee80211_recalc_idle(struct ieee80211_local *local)
 
 	ieee80211_mod_tpt_led_trig(local, led_trig_start, led_trig_stop);
 
-	if (authening){
-		Sstar_printk_debug("%s:authenning keep alive\n",__func__);
-		return ieee80211_idle_off(local, "authenning");
-	}
 	if (hw_roc)
 		return ieee80211_idle_off(local, "hw remain-on-channel");
 	if (working)

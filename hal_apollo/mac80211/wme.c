@@ -14,7 +14,7 @@
 #include <net/ip.h>
 #include <net/pkt_sched.h>
 
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include "ieee80211_i.h"
 #include "wme.h"
 
@@ -81,7 +81,7 @@ u16 ieee80211_select_queue(struct ieee80211_sub_if_data *sdata,
 	case NL80211_IFTYPE_WDS:
 		ra = sdata->u.wds.remote_addr;
 		break;
-#ifdef CONFIG_MAC80211_SSTAR_MESH
+#ifdef CONFIG_MAC80211_ATBM_MESH
 	case NL80211_IFTYPE_MESH_POINT:
 		ra = skb->data;
 		break;
@@ -123,13 +123,13 @@ u16 ieee80211_downgrade_queue(struct ieee80211_local *local,
 			      struct sk_buff *skb)
 {
 	/* in case we are a client verify acm is not set for this ac */
-#ifdef CONFIG_SSTAR_APOLLO_TESTMODE
+#ifdef CONFIG_ATBM_APOLLO_TESTMODE
 	/*And if acm is set check whether the ac has been admitted */
 	while (unlikely((local->wmm_acm & BIT(skb->priority)) &&
 		!(local->wmm_admitted_ups & BIT(skb->priority)))) {
 #else
 	while (unlikely(local->wmm_acm & BIT(skb->priority))) {
-#endif /*CONFIG_SSTAR_APOLLO_TESTMODE*/
+#endif /*CONFIG_ATBM_APOLLO_TESTMODE*/
 		if (wme_downgrade_ac(skb)) {
 			/*
 			 * This should not really happen. The AP has marked all

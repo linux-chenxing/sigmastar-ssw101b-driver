@@ -1,7 +1,7 @@
 /*
- * Mac80211 SDIO driver for sigmastar APOLLO device
+ * Mac80211 SDIO driver for altobeam APOLLO device
  * *
- * Copyright (c) 2016, sigmastar
+ * Copyright (c) 2016, altobeam
  * Author:
  *
  * Based on apollo code Copyright (c) 2010, ST-Ericsson
@@ -12,7 +12,7 @@
  * published by the Free Software Foundation.
  */
  #define DEBUG 1
-//#undef CONFIG_SSTAR_APOLLO_USE_GPIO_IRQ 
+//#undef CONFIG_ATBM_APOLLO_USE_GPIO_IRQ 
 #include <linux/version.h>
 #include <linux/module.h>
 #include <linux/gpio.h>
@@ -22,12 +22,10 @@
 #include <linux/mmc/card.h>
 #include <linux/mmc/sdio.h>
 #include <linux/spinlock.h>
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include <linux/kthread.h>
 #include <linux/notifier.h>
 #include <linux/reboot.h>
-#include <linux/platform_device.h>
-
 
 #include "apollo.h"
 #include "sbus.h"
@@ -35,21 +33,14 @@
 #include "debug.h"
 #include "hwio.h"
 #include "svn_version.h"
-MODULE_DESCRIPTION("mac80211 sigmastar apollo wifi SDIO driver");
+MODULE_DESCRIPTION("mac80211 altobeam apollo wifi SDIO driver");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("Sstar_wlan");
+MODULE_ALIAS("atbm_wlan");
 struct build_info{
 	int ver;
 	int dpll;
 	char driver_info[64];
 };
-#ifdef CONFIG_SSTAR_SUPPORT_SG
-#pragma message("Support Network SG")
-#endif
-
-#ifdef CONFIG_TX_NO_CONFIRM
-#pragma message("Tx No Confirm")
-#endif
 
 //const char DRIVER_INFO[]={"[====="__DATE__" "__TIME__"""=====]"};
 const char DRIVER_INFO[]={"[====="" """"=====]"};
@@ -64,45 +55,34 @@ static int driver_build_info(void)
 	else
 		build.dpll=26;
 	memcpy(build.driver_info,(void*)DRIVER_INFO,sizeof(DRIVER_INFO));
-	Sstar_printk_init("SVN_VER=%d,DPLL_CLOCK=%d,BUILD_TIME=%s\n",build.ver,build.dpll,build.driver_info);
+	printk("SVN_VER=%d,DPLL_CLOCK=%d,BUILD_TIME=%s\n",build.ver,build.dpll,build.driver_info);
 
 #if (OLD_RATE_POLICY==0)
-	Sstar_printk_init("----drvier RATEPOLCIY=NEW\n");
+	printk("----drvier RATEPOLCIY=NEW\n");
 #else
-	Sstar_printk_init("----drvier RATEPOLCIY=OLD\n");
+	printk("----drvier RATEPOLCIY=OLD\n");
 #endif
 
 #if (PROJ_TYPE==APOLLO_1601)
-	Sstar_printk_init("----drvier support chip APOLLOB 1601\n");
+	printk("----drvier support chip APOLLOB 1601\n");
 #elif (PROJ_TYPE==APOLLO_1606)
-	Sstar_printk_init("----drvier support chip APOLLOB 1606\n");
+	printk("----drvier support chip APOLLOB 1606\n");
 #elif (PROJ_TYPE==APOLLO_C)
-	Sstar_printk_init("----drvier support chip APOLLOC \n");
+	printk("----drvier support chip APOLLOC \n");
 #elif (PROJ_TYPE==ATHENA_B)
-	Sstar_printk_init("----drvier support chip ATHENA_B \n");
+	printk("----drvier support chip ATHENA_B \n");
 #endif
 
 	return 0;
 }
-#define SDIO_RX_WORKQUEUE
+
 struct sbus_priv {
 	struct sdio_func	*func;
-	struct Sstar_common	*core;
-	
-	struct workqueue_struct 	*tx_workqueue;
-	struct work_struct tx_complete_work;
-#ifdef SDIO_RX_WORKQUEUE
-	struct work_struct rx_complete_work;
-	struct workqueue_struct 	*rx_workqueue;
-#else
-	struct tasklet_struct rx_cmp_tasklet;
-#endif	
-	
-	
-	const struct Sstar_platform_data *pdata;
+	struct atbm_common	*core;
+	const struct atbm_platform_data *pdata;
 	spinlock_t		lock;
 	sbus_irq_handler	irq_handler;
-	int 			Sstar_bgf_irq;
+	int 			atbm_bgf_irq;
 	int 			oob_irq_enabled;
 	void			*irq_priv;
 	struct sbus_wtd         * wtd;
@@ -115,159 +95,32 @@ struct sbus_wtd {
 	atomic_t				wtd_run;
 	atomic_t				wtd_probe;
 };
-static const struct sdio_device_id Sstar_sdio_ids[] = {
+static const struct sdio_device_id atbm_sdio_ids[] = {
 	{ SDIO_DEVICE(SDIO_ANY_ID, SDIO_ANY_ID) },
 	{ /* end: all zeroes */			},
 };
 
-static int  Sstar_sdio_init(void);
-static void  Sstar_sdio_exit(void);
-extern 	int Sstar_plat_request_gpio_irq(const struct Sstar_platform_data *pdata,struct sbus_priv *self,int * Sstar_bgf_irq);
-extern 	void Sstar_plat_free_gpio_irq(const struct Sstar_platform_data *pdata,struct sbus_priv *self,int Sstar_bgf_irq);
-static int Sstar_sdio_reset_chip(struct sbus_priv *self);
-extern void Sstar_sdio_rx_bh(struct Sstar_common *hw_priv);
-extern void Sstar_sdio_tx_bh(struct Sstar_common *hw_priv);
+static int  atbm_sdio_init(void);
+static void  atbm_sdio_exit(void);
+extern 	int atbm_plat_request_gpio_irq(const struct atbm_platform_data *pdata,struct sbus_priv *self,int * atbm_bgf_irq);
+extern 	void atbm_plat_free_gpio_irq(const struct atbm_platform_data *pdata,struct sbus_priv *self,int atbm_bgf_irq);
+static int atbm_sdio_reset_chip(struct sbus_priv *self);
 
 static struct sbus_wtd         g_wtd={
 	.wtd_init  = 0,
 	.wtd_thread = NULL,
 };
-#ifdef SDIO_RX_WORKQUEUE
-static void Sstar_rx_complete_work(struct work_struct *work)
-{
-	struct sbus_priv *self =
-			container_of(work, struct sbus_priv , rx_complete_work);
-
-	Sstar_sdio_rx_bh(self->core);
-}
-#endif
-static void Sstar_tx_complete_work(struct work_struct *work)
-{
-	struct sbus_priv *self =
-				container_of(work, struct sbus_priv , tx_complete_work);
-	Sstar_sdio_tx_bh(self->core);
-}
-static int Sstar_sdio_xmit_init(struct sbus_priv *self)
-{
-	struct Sstar_common *hw_priv = self->core;
-	
-	Sstar_printk_init("Sstarwifi INIT_WORK enable\n");
-	INIT_WORK(&self->tx_complete_work, Sstar_tx_complete_work);
-	self->tx_workqueue= create_singlethread_workqueue(ieee80211_alloc_name(hw_priv->hw,"tx_workqueue")/*"tx_workqueue"*/);
-
-	if(self->tx_workqueue == NULL)
-		return -1;
-
-	hw_priv->xmit_buff = Sstar_kzalloc(SDIO_TX_MAXLEN, GFP_KERNEL);
-
-	if(hw_priv->xmit_buff == NULL){
-		return -1;
-	}
-	
-	return 0;
-}
-
-static int Sstar_sdio_xmit_deinit(struct sbus_priv *self)
-{
-	flush_workqueue(self->tx_workqueue);
-	destroy_workqueue(self->tx_workqueue);
-	self->tx_workqueue = NULL;	
-	if(self->core->xmit_buff){
-		Sstar_kfree(self->core->xmit_buff);
-		self->core->xmit_buff = NULL;
-	}	
-	return 0;
-}
-static int Sstar_sdio_rev_init(struct sbus_priv *self)
-{
-	struct Sstar_common *hw_priv = self->core;
-	
-	Sstar_printk_init("Sstarwifi INIT_WORK enable\n");
-	hw_priv->bh_running = false;
-#ifdef SDIO_RX_WORKQUEUE
-	INIT_WORK(&self->rx_complete_work, Sstar_rx_complete_work);
-	self->rx_workqueue= create_singlethread_workqueue(ieee80211_alloc_name(hw_priv->hw,"rx_workqueue")/*"rx_workqueue"*/);
-	if(self->rx_workqueue == NULL)
-		return -1;
-#else
-	tasklet_init(&self->rx_cmp_tasklet, Sstar_sdio_rx_bh, hw_priv);
-#endif
-    return 0;
-}
-
-static int Sstar_sdio_rev_deinit(struct sbus_priv *self)
-{
-#ifdef SDIO_RX_WORKQUEUE	
-	flush_workqueue(self->rx_workqueue);
-	destroy_workqueue(self->rx_workqueue);
-	self->rx_workqueue = NULL;
-#else
-	tasklet_kill(&self->rx_cmp_tasklet); 
-#endif
-	return 0;
-}
-
-static int Sstar_sdio_xmit_schedule(struct sbus_priv *self)
-{
-	struct Sstar_common *hw_priv = self->core;
-
-	if(atomic_read(&hw_priv->bh_term)|| hw_priv->bh_error || (hw_priv->bh_thread == NULL))
-		return -1;
-	if(self->tx_workqueue==NULL)
-	{
-		Sstar_printk_err("Sstar_bh_schedule_tx term ERROR\n");
-		return -1;
-	}
-	queue_work(self->tx_workqueue,&self->tx_complete_work);
-	return 0;
-
-}
-static int Sstar_sdio_rev_schedule(struct sbus_priv *self)
-{
-	struct Sstar_common *hw_priv = self->core;
-	
-	if(atomic_read(&hw_priv->bh_term)|| hw_priv->bh_error || (hw_priv->bh_thread == NULL))
-		return -1;
-#ifdef SDIO_RX_WORKQUEUE
-	if((self->rx_workqueue==NULL))
-	{
-		return -1;
-	}
-	queue_work(self->rx_workqueue,&self->rx_complete_work);
-#else
-	tasklet_schedule(&self->rx_cmp_tasklet);
-#endif
-	return 0;
-}
-static int Sstar_sdio_rev_giveback(struct sbus_priv *self,void *giveback)
-{
-	struct Sstar_common *hw_priv = self->core;
-	struct wsm_rx *rx = (struct wsm_rx *)giveback;
-	u32 hw_xmited = rx->channel_type;
-	int hw_free;
-	
-	spin_lock_bh(&hw_priv->tx_com_lock);
-	BUG_ON((int)hw_xmited > (int)hw_priv->n_xmits);
-	if(hw_priv->n_xmits - hw_xmited <= hw_priv->wsm_caps.numInpChBufs){
-		hw_free =  (hw_priv->wsm_caps.numInpChBufs-hw_priv->hw_bufs_used) - (hw_priv->n_xmits-hw_xmited);
-		if(hw_priv->hw_bufs_free < hw_free)
-			hw_priv->hw_bufs_free = hw_free;
-	}
-	spin_unlock_bh(&hw_priv->tx_com_lock);
-
-	return 0;
-}
 
 /* sbus_ops implemetation */
 
-static int Sstar_sdio_memcpy_fromio(struct sbus_priv *self,
+static int atbm_sdio_memcpy_fromio(struct sbus_priv *self,
 				     unsigned int addr,
 				     void *dst, int count)
 {
 	return sdio_memcpy_fromio(self->func, dst, addr, count);
 }
 
-static int Sstar_sdio_memcpy_toio(struct sbus_priv *self,
+static int atbm_sdio_memcpy_toio(struct sbus_priv *self,
 				   unsigned int addr,
 				   const void *src, int count)
 {
@@ -275,7 +128,7 @@ static int Sstar_sdio_memcpy_toio(struct sbus_priv *self,
 }
 
 
-int Sstar_readb_func0(struct sbus_priv *self,
+int atbm_readb_func0(struct sbus_priv *self,
 						 unsigned int addr,int *ret_err)
 {
 	u8 data;
@@ -285,7 +138,7 @@ int Sstar_readb_func0(struct sbus_priv *self,
 	return data;
 }
 
-int Sstar_writeb_func0(struct sbus_priv *self,
+int atbm_writeb_func0(struct sbus_priv *self,
 						 unsigned int addr,u8 data)
 {
 	int ret_err;
@@ -296,33 +149,56 @@ int Sstar_writeb_func0(struct sbus_priv *self,
 	return ret_err;
 }
 
-static void Sstar_sdio_lock(struct sbus_priv *self)
+static void atbm_sdio_lock(struct sbus_priv *self)
 {
 	sdio_claim_host(self->func);
 }
 
-static void Sstar_sdio_unlock(struct sbus_priv *self)
+static void atbm_sdio_unlock(struct sbus_priv *self)
 {
 	sdio_release_host(self->func);
 }
-#ifndef CONFIG_SSTAR_APOLLO_USE_GPIO_IRQ
-static void Sstar_sdio_irq_handler(struct sdio_func *func)
+#ifndef CONFIG_ATBM_APOLLO_USE_GPIO_IRQ
+static void atbm_sdio_irq_handler(struct sdio_func *func)
 {
 	struct sbus_priv *self = sdio_get_drvdata(func);
 
 	BUG_ON(!self);
+#ifdef ATBM_SDIO_TXRX_ENHANCE
+//	sdio_release_host(func);
 
+#if (ATBM_WIFI_PLATFORM == PLATFORM_XUNWEI)
+	/*Disable interrupt*/
+	/*NOTE :lock already held*/
+	//hw_priv->sbus_ops->lock(hw_priv->sbus_priv);
+	__atbm_irq_enable(self->core,0);
+	//hw_priv->sbus_ops->unlock(hw_priv->sbus_priv);
+#endif
+	atbm_sdio_unlock(self);
+#endif
 	if (self->irq_handler)
 		self->irq_handler(self->irq_priv);
+#ifdef ATBM_SDIO_TXRX_ENHANCE
+	atbm_sdio_lock(self);
+#if (ATBM_WIFI_PLATFORM == PLATFORM_XUNWEI)
+		/*Disable interrupt*/
+		/*NOTE :lock already held*/
+		//hw_priv->sbus_ops->lock(hw_priv->sbus_priv);
+		__atbm_irq_enable(self->core,1);
+		//hw_priv->sbus_ops->unlock(hw_priv->sbus_priv);
+#endif
+
+//	sdio_claim_host(func);
+#endif
 }
 #endif
-#ifdef CONFIG_SSTAR_APOLLO_USE_GPIO_IRQ
+#ifdef CONFIG_ATBM_APOLLO_USE_GPIO_IRQ
 
-irqreturn_t Sstar_gpio_hardirq(int irq, void *dev_id)
+irqreturn_t atbm_gpio_hardirq(int irq, void *dev_id)
 {
 	return IRQ_WAKE_THREAD;
 }
-void Sstar_oob_intr_set(struct sbus_priv *self, bool enable)
+void atbm_oob_intr_set(struct sbus_priv *self, bool enable)
 {
 	unsigned long flags;
 
@@ -332,30 +208,32 @@ void Sstar_oob_intr_set(struct sbus_priv *self, bool enable)
 	spin_lock_irqsave(&self->lock, flags);
 	if (self->oob_irq_enabled != enable) {
 		if (enable)
-			enable_irq(self->Sstar_bgf_irq);
+			enable_irq(self->atbm_bgf_irq);
 		else
-			disable_irq_nosync(self->Sstar_bgf_irq);
+			disable_irq_nosync(self->atbm_bgf_irq);
 		self->oob_irq_enabled = enable;
 	}
 	spin_unlock_irqrestore(&self->lock, flags);
 }
 
-irqreturn_t Sstar_gpio_irq(int irq, void *dev_id)
+irqreturn_t atbm_gpio_irq(int irq, void *dev_id)
 {
 	struct sbus_priv *self = dev_id;
 
 	if (self) {
-		Sstar_oob_intr_set(self, 0);
+		atbm_oob_intr_set(self, 0);
+		//atbm_sdio_lock(self);
 		self->irq_handler(self->irq_priv);
-		if(!in_interrupt())
-			Sstar_oob_intr_set(self, 1);
+#ifdef ATBM_SDIO_TXRX_ENHANCE
+		atbm_oob_intr_set(self, 1);
+#endif
 		return IRQ_HANDLED;
 	} else {
 		return IRQ_NONE;
 	}
 }
 
-static int Sstar_request_irq(struct sbus_priv *self)
+static int atbm_request_irq(struct sbus_priv *self)
 {
 	int ret = 0;
 	int func_num;
@@ -383,7 +261,7 @@ static int Sstar_request_irq(struct sbus_priv *self)
 	/* back to	Fuction-1 */
 	self->func->num = func_num;
 
-	ret = Sstar_plat_request_gpio_irq(self->pdata,self,&self->Sstar_bgf_irq);
+	ret = atbm_plat_request_gpio_irq(self->pdata,self,&self->atbm_bgf_irq);
 	//printk("========================bgf_irq=%d\n",bgf_irq);
 
 	if (WARN_ON(ret))
@@ -393,12 +271,12 @@ static int Sstar_request_irq(struct sbus_priv *self)
 	return 0;
 
 err:
-	Sstar_plat_free_gpio_irq(self->pdata,self,self->Sstar_bgf_irq);
-	Sstar_printk_bus("[%s]  fail exiting sw_gpio_irq_request..   :%d\n",__func__, ret);
+	atbm_plat_free_gpio_irq(self->pdata,self,self->atbm_bgf_irq);
+	printk("[%s]  fail exiting sw_gpio_irq_request..   :%d\n",__func__, ret);
 	return ret;
 }
 #endif
-static int Sstar_sdio_irq_subscribe(struct sbus_priv *self,
+static int atbm_sdio_irq_subscribe(struct sbus_priv *self,
 				     sbus_irq_handler handler,
 				     void *priv)
 {
@@ -413,24 +291,24 @@ static int Sstar_sdio_irq_subscribe(struct sbus_priv *self,
 	self->irq_handler = handler;
 	spin_unlock_irqrestore(&self->lock, flags);
 
-	Sstar_printk_bus("[SSTAR_WIFI]SW IRQ subscribe\n");
+	printk(KERN_DEBUG "[ATBM_WIFI]SW IRQ subscribe\n");
 	sdio_claim_host(self->func);
-#ifndef CONFIG_SSTAR_APOLLO_USE_GPIO_IRQ
-	#pragma message("Sstar wifi SDIO_IRQ")
-	Sstar_printk_bus("[SSTAR_WIFI] used SDIO Irq \n");
-	ret = sdio_claim_irq(self->func, Sstar_sdio_irq_handler);
+#ifndef CONFIG_ATBM_APOLLO_USE_GPIO_IRQ
+	#pragma message("atbm wifi SDIO_IRQ")
+	printk("[ATBM_WIFI] used SDIO Irq \n");
+	ret = sdio_claim_irq(self->func, atbm_sdio_irq_handler);
 	if (ret)
-		Sstar_printk_err("Failed to claim sdio Irq :%d\n",ret);
+		printk("Failed to claim sdio Irq :%d\n",ret);
 #else
-	#pragma message("Sstar wifi GPIO_IRQ")
-	Sstar_printk_bus("[SSTAR_WIFI] used GPIO Irq \n");
-	ret = Sstar_request_irq(self);
+	#pragma message("atbm wifi GPIO_IRQ")
+	printk("[ATBM_WIFI] used GPIO Irq \n");
+	ret = atbm_request_irq(self);
 #endif
 	sdio_release_host(self->func);
 	return ret;
 }
 
-static int Sstar_sdio_irq_unsubscribe(struct sbus_priv *self)
+static int atbm_sdio_irq_unsubscribe(struct sbus_priv *self)
 {
 	int ret = 0;
 	unsigned long flags;
@@ -440,17 +318,17 @@ static int Sstar_sdio_irq_unsubscribe(struct sbus_priv *self)
 	if (!self->irq_handler)
 		return 0;
 
-	Sstar_printk_bus("[SSTAR_WIFI]:SW IRQ unsubscribe\n");
+	printk("[ATBM_WIFI]:SW IRQ unsubscribe\n");
 
-#ifndef CONFIG_SSTAR_APOLLO_USE_GPIO_IRQ
+#ifndef CONFIG_ATBM_APOLLO_USE_GPIO_IRQ
 	sdio_claim_host(self->func);
 	ret = sdio_release_irq(self->func);
 	sdio_release_host(self->func);
 #else
-    Sstar_plat_free_gpio_irq(self->pdata,self,self->Sstar_bgf_irq);
-	//free_irq(self->Sstar_bgf_irq,self);
+    atbm_plat_free_gpio_irq(self->pdata,self,self->atbm_bgf_irq);
+	//free_irq(self->atbm_bgf_irq,self);
 	//gpio_free(self->pdata->irq_gpio);
-#endif  //CONFIG_SSTAR_APOLLO_USE_GPIO_IRQ
+#endif  //CONFIG_ATBM_APOLLO_USE_GPIO_IRQ
 
 	spin_lock_irqsave(&self->lock, flags);
 	self->irq_priv = NULL;
@@ -461,9 +339,9 @@ static int Sstar_sdio_irq_unsubscribe(struct sbus_priv *self)
 }
 
 
-#if ((SSTAR_WIFI_PLATFORM != 10) && (SSTAR_WIFI_PLATFORM != PLATFORM_AMLOGIC_S805) \
-	&& (SSTAR_WIFI_PLATFORM != PLATFORM_AMLOGIC_905))
-static int Sstar_detect_card(const struct Sstar_platform_data *pdata)
+#if ((ATBM_WIFI_PLATFORM != 10) && (ATBM_WIFI_PLATFORM != PLATFORM_AMLOGIC_S805) \
+	&& (ATBM_WIFI_PLATFORM != PLATFORM_AMLOGIC_905))
+static int atbm_detect_card(const struct atbm_platform_data *pdata)
 {
 	/* HACK!!!
 	 * Rely on mmc->class_dev.class set in mmc_alloc_host
@@ -475,40 +353,24 @@ static int Sstar_detect_card(const struct Sstar_platform_data *pdata)
 	struct mmc_host *mmc = NULL;
 	struct class_dev_iter iter;
 	struct device *dev;
-	static struct platform_device *sdio_platform_dev = NULL;
-	int status = 0;
-	
-	sdio_platform_dev = platform_device_alloc("Sstarsdiowifi",0);
-	if(sdio_platform_dev == NULL){
-		status = -ENOMEM;
-		goto platform_dev_err;
-	}
 
-	if(platform_device_add(sdio_platform_dev) != 0){
-		status = -ENOMEM;
-		goto platform_dev_err;
-	}
-	
-	mmc = mmc_alloc_host(0, &sdio_platform_dev->dev);
-	
-	if (!mmc){
-		status = -ENOMEM;
-		goto exit;
-	}
+	mmc = mmc_alloc_host(0, NULL);
+	if (!mmc)
+		return -ENOMEM;
 
 	BUG_ON(!mmc->class_dev.class);
 	class_dev_iter_init(&iter, mmc->class_dev.class, NULL, NULL);
 	for (;;) {
 		dev = class_dev_iter_next(&iter);
 		if (!dev) {
-			Sstar_printk_err( "Sstar: %s is not found.\n",
+			printk(KERN_ERR "atbm: %s is not found.\n",
 				pdata->mmc_id);
 			break;
 		} else {
 			struct mmc_host *host = container_of(dev,
 				struct mmc_host, class_dev);
 
-			Sstar_printk_bus("apollo:  found. %s\n",
+			printk(KERN_ERR "apollo:  found. %s\n",
 				dev_name(&host->class_dev));
 
 			if (dev_name(&host->class_dev) &&
@@ -516,26 +378,16 @@ static int Sstar_detect_card(const struct Sstar_platform_data *pdata)
 					pdata->mmc_id))
 				continue;
 
-			if(host->card == NULL)
-				mmc_detect_change(host, 10);
-			else
-				Sstar_printk_err("%s:%s has been attached\n",__func__,pdata->mmc_id);
+			mmc_detect_change(host, 10);
 			break;
 		}
 	}
 	mmc_free_host(mmc);
-exit:
-	if(sdio_platform_dev)
-		platform_device_unregister(sdio_platform_dev);
-	return status;
-platform_dev_err:
-	if(sdio_platform_dev)
-		platform_device_put(sdio_platform_dev);
-	return status;
+	return 0;
 }
 #endif //PLATFORM_AMLOGIC_S805
 
-static int Sstar_sdio_off(const struct Sstar_platform_data *pdata)
+static int atbm_sdio_off(const struct atbm_platform_data *pdata)
 {
 	int ret = 0;
 
@@ -543,21 +395,21 @@ static int Sstar_sdio_off(const struct Sstar_platform_data *pdata)
 		ret = pdata->insert_ctrl(pdata, false);
 	return ret;
 }
-#if ((SSTAR_WIFI_PLATFORM != 10) && (SSTAR_WIFI_PLATFORM != PLATFORM_AMLOGIC_S805) \
-	&& (SSTAR_WIFI_PLATFORM != PLATFORM_AMLOGIC_905))
+#if ((ATBM_WIFI_PLATFORM != 10) && (ATBM_WIFI_PLATFORM != PLATFORM_AMLOGIC_S805) \
+	&& (ATBM_WIFI_PLATFORM != PLATFORM_AMLOGIC_905))
 
-static int Sstar_sdio_on(const struct Sstar_platform_data *pdata)
+static int atbm_sdio_on(const struct atbm_platform_data *pdata)
 {
 	int ret = 0;
     if (pdata->insert_ctrl)
 		ret = pdata->insert_ctrl(pdata, true);
 	msleep(200);
-	Sstar_detect_card(pdata);
+	atbm_detect_card(pdata);
 	return ret;
 }
-#endif //#if ((SSTAR_WIFI_PLATFORM != 10) && (SSTAR_WIFI_PLATFORM != PLATFORM_AMLOGIC_S805))
+#endif //#if ((ATBM_WIFI_PLATFORM != 10) && (ATBM_WIFI_PLATFORM != PLATFORM_AMLOGIC_S805))
 
-static int Sstar_cmd52_abort(struct sbus_priv *self)
+static int atbm_cmd52_abort(struct sbus_priv *self)
 {
 	int ret;
 	int regdata;
@@ -565,26 +417,26 @@ static int Sstar_cmd52_abort(struct sbus_priv *self)
 
 	/* SDIO Simplified Specification V2.0, 4.4 Reset for SDIO */
 	regdata = sdio_f0_readb(self->func, SDIO_CCCR_ABORT, &ret);
-	Sstar_printk_err("%s,%d ret %d\n",__func__,__LINE__,ret);
+	printk("%s,%d ret %d\n",__func__,__LINE__,ret);
 	if (ret)
 		regdata = 0x08;
 	else
 		regdata |= 0x01;
 	sdio_f0_writeb(self->func, regdata, SDIO_CCCR_ABORT, &ret);
 //	msleep(1500);
-	Sstar_printk_err("%s,%d ret %d\n",__func__,__LINE__,ret);
+	printk("%s,%d ret %d\n",__func__,__LINE__,ret);
 	sdio_release_host(self->func);
 	return ret;
 }
 
-static int Sstar_sdio_reset(struct sbus_priv *self)
+static int atbm_sdio_reset(struct sbus_priv *self)
 {
 	int ret;
 	int regdata;
 	int func_num;
 
 	return 0;
-	Sstar_printk_bus("Sstar_sdio_reset++\n");
+	printk("atbm_sdio_reset++\n");
 	sdio_claim_host(self->func);
 	/* Hack to access Fuction-0 */
 	func_num = self->func->num;
@@ -592,7 +444,7 @@ static int Sstar_sdio_reset(struct sbus_priv *self)
 	self->func->num = 0;
 
 	/**********************/
-	Sstar_printk_bus("SDIO_RESET++\n");
+	printk("SDIO_RESET++\n");
 	/* SDIO Simplified Specification V2.0, 4.4 Reset for SDIO */
 	regdata = sdio_readb(self->func, SDIO_CCCR_ABORT, &ret);
 	if (ret)
@@ -604,10 +456,10 @@ static int Sstar_sdio_reset(struct sbus_priv *self)
 		goto set_func0_err;
 	msleep(1500);
 	regdata = sdio_readb(self->func, SDIO_CCCR_ABORT, &ret);
-	Sstar_printk_bus("SDIO_RESET-- 0x%x\n",regdata);
+	printk("SDIO_RESET-- 0x%x\n",regdata);
 
 	/**********************/
-	Sstar_printk_bus("SDIO_SPEED_EHS++\n");
+	printk("SDIO_SPEED_EHS++\n");
 	regdata = sdio_readb(self->func, SDIO_CCCR_SPEED, &ret);
 	if (WARN_ON(ret))
 		goto set_func0_err;
@@ -618,10 +470,10 @@ static int Sstar_sdio_reset(struct sbus_priv *self)
 		goto set_func0_err;
 
 	regdata = sdio_readb(self->func, SDIO_CCCR_SPEED, &ret);
-	Sstar_printk_bus("SDIO_SPEED_EHS -- 0x%x:0x%x\n",regdata,SDIO_SPEED_EHS);
+	printk("SDIO_SPEED_EHS -- 0x%x:0x%x\n",regdata,SDIO_SPEED_EHS);
 
 	/**********************/
-	Sstar_printk_bus("SDIO_BUS_WIDTH_4BIT++\n");
+	printk("SDIO_BUS_WIDTH_4BIT++\n");
 	regdata = sdio_readb(self->func, SDIO_CCCR_IF, &ret);
 	if (WARN_ON(ret))
 		goto set_func0_err;
@@ -632,19 +484,19 @@ static int Sstar_sdio_reset(struct sbus_priv *self)
 	if (WARN_ON(ret))
 		goto set_func0_err;
 	regdata = sdio_readb(self->func, SDIO_CCCR_IF, &ret);
-	Sstar_printk_bus("SDIO_BUS_WIDTH_4BIT -- 0x%x:0x%x\n",regdata,SDIO_BUS_WIDTH_4BIT);
+	printk("SDIO_BUS_WIDTH_4BIT -- 0x%x:0x%x\n",regdata,SDIO_BUS_WIDTH_4BIT);
 	/**********************/
-	Sstar_printk_bus("SDIO_BUS_ENABLE_FUNC++\n");
+	printk("SDIO_BUS_ENABLE_FUNC++\n");
 	regdata = sdio_readb(self->func, SDIO_CCCR_IOEx, &ret);
 	if (WARN_ON(ret))
 		goto set_func0_err;
 	regdata |= BIT(func_num);
-	Sstar_printk_bus("SDIO_BUS_ENABLE_FUNC regdata %x\n",regdata);
+	printk("SDIO_BUS_ENABLE_FUNC regdata %x\n",regdata);
 	sdio_writeb(self->func, regdata, SDIO_CCCR_IOEx, &ret);
 	if (WARN_ON(ret))
 		goto set_func0_err;
 	regdata = sdio_readb(self->func, SDIO_CCCR_IOEx, &ret);
-	Sstar_printk_bus("SDIO_BUS_ENABLE_FUNC -- 0x%x\n",regdata);
+	printk("SDIO_BUS_ENABLE_FUNC -- 0x%x\n",regdata);
 	/**********************/
 
 set_func0_err:
@@ -656,77 +508,129 @@ set_func0_err:
 	return 0;
 }
 
-static u32 Sstar_sdio_align_size(struct sbus_priv *self, u32 size)
+static u32 atbm_sdio_align_size(struct sbus_priv *self, u32 size)
 {
 	u32 aligned = sdio_align_size(self->func, size);
 	return aligned;
 }
 
-int Sstar_sdio_set_block_size(struct sbus_priv *self, u32 size)
+int atbm_sdio_set_block_size(struct sbus_priv *self, u32 size)
 {
 	return sdio_set_block_size(self->func, size);
 }
 
-static int Sstar_sdio_pm(struct sbus_priv *self, bool  suspend)
+static int atbm_sdio_pm(struct sbus_priv *self, bool  suspend)
 {
 	int ret = 0;
 	return ret;
 }
-int Sstar_wtd_term(struct Sstar_common *hw_priv)
+int atbm_wtd_term(struct atbm_common *hw_priv)
 {
 	return atomic_read(&hw_priv->sbus_priv->wtd->wtd_term);
 }
-void Sstar_wtd_wakeup( struct sbus_priv *self)
+void atbm_wtd_wakeup( struct sbus_priv *self)
 {
-#ifdef CONFIG_SSTARWIFI_WDT
+#ifdef CONFIG_ATBMWIFI_WDT
 	if(atomic_read(&self->wtd->wtd_term))
 		return;
 	atomic_set(&g_wtd.wtd_run, 1);
-	Sstar_printk_err("[Sstar_wtd] wakeup.\n");
+	printk( "[atbm_wtd] wakeup.\n");
 	wake_up(&self->wtd->wtd_evt_wq);
-#endif //CONFIG_SSTARWIFI_WDT
+#endif //CONFIG_ATBMWIFI_WDT
 }
-static int Sstar_wtd_process(void *arg)
+#ifdef RESET_CHANGE
+extern struct atbm_common *g_hw_priv;
+extern int atbm_reset_driver(struct atbm_common *hw_priv);
+#endif
+static int atbm_wtd_process(void *arg)
 {
-#ifdef CONFIG_SSTARWIFI_WDT
+#ifdef CONFIG_ATBMWIFI_WDT
 	int status=0;
 	int term=0;
 	int wtd_run=0;
+#ifndef RESET_CHANGE
+	int waittime = 20;
+	int wtd_probe=0;
+#endif
+#ifdef RESET_CHANGE
+	int err;
+#endif
 	while(1){
 		status = wait_event_interruptible(g_wtd.wtd_evt_wq, ({
 				term = atomic_read(&g_wtd.wtd_term);
 				wtd_run = atomic_read(&g_wtd.wtd_run);
 				(term || wtd_run);}));
 		if (status < 0 || term ){
-			Sstar_printk_exit("[Sstar_wtd]:1 thread break %d %d\n",status,term);
+			printk("[atbm_wtd]:1 thread break %d %d\n",status,term);
 			goto __stop;
 		}
 		atomic_set(&g_wtd.wtd_run, 0);
-		
+#ifndef RESET_CHANGE
+		printk("[atbm_wtd]:atbm_sdio_exit++\n");
+		atbm_sdio_exit();
+		msleep(2000);
+		printk("[atbm_wtd]:atbm_sdio_init++\n");
+		atbm_sdio_init();
+		printk("[atbm_wtd]:atbm_sdio_init--\n");
+		//wait 10s for sdio init ok,
+		while(waittime-- >0){
+			msleep(500);
+			term = atomic_read(&g_wtd.wtd_term);
+			if(term) {
+				printk("[atbm_wtd]:2 thread break %d %d\n",status,term);
+				goto __stop;
+			}
+			wtd_probe = atomic_read(&g_wtd.wtd_probe);
+			if(wtd_probe != 0){
+				printk("[atbm_wtd]:wtd_probe(%d) have done\n",wtd_probe);
+				break;
+			}
+		}
+		waittime = 10;
+		//check if sdio init ok?
+		wtd_probe = atomic_read(&g_wtd.wtd_probe);
+		//if sdio init have probem, need call wtd again
+		if(wtd_probe != 1){
+			atomic_set(&g_wtd.wtd_run, 1);
+			printk("[atbm_wtd]:wtd_run again\n");
+		}
+#else
+	do
+	{
+		/*
+		*must make sure that g_hw_priv->bh_error is 0 when hmac is
+		*in reset state,but........
+		*/
+		atbm_hw_priv_dereference()->bh_error = 0;
+		err = atbm_reset_driver(atbm_hw_priv_dereference());
+		mdelay(5);
+	}
+	while(err == -1);
+#endif
 	}
 __stop:
 	while(term){
 		
-		Sstar_printk_exit("[Sstar_wtd]:kthread_should_stop\n");
+		printk("[atbm_wtd]:kthread_should_stop\n");
 		if(kthread_should_stop()){
 			break;
 		}
 		schedule_timeout_uninterruptible(msecs_to_jiffies(100));
 	}
-#endif //CONFIG_SSTARWIFI_WDT
+#endif //CONFIG_ATBMWIFI_WDT
 	return 0;
 }
-static void Sstar_wtd_init(void)
+static void atbm_wtd_init(void)
 {
-#ifdef CONFIG_SSTARWIFI_WDT
+#ifdef CONFIG_ATBMWIFI_WDT
 	int err = 0;
 	struct sched_param param = { .sched_priority = 1 };
 	if(g_wtd.wtd_init)
 		return;
-	Sstar_printk_exit( "[wtd] register.\n");
+	printk( "[wtd] register.\n");
 	init_waitqueue_head(&g_wtd.wtd_evt_wq);
 	atomic_set(&g_wtd.wtd_term, 0);
-	g_wtd.wtd_thread = kthread_create(&Sstar_wtd_process, &g_wtd, "Sstar_wtd");
+	g_wtd.wtd_thread = kthread_create(&atbm_wtd_process, &g_wtd, "atbm_wtd");
 	if (IS_ERR(g_wtd.wtd_thread)) {
 		err = PTR_ERR(g_wtd.wtd_thread);
 		g_wtd.wtd_thread = NULL;
@@ -739,18 +643,18 @@ static void Sstar_wtd_init(void)
 		wake_up_process(g_wtd.wtd_thread);
 	}
 	g_wtd.wtd_init = 1;
-#endif //CONFIG_SSTARWIFI_WDT
+#endif //CONFIG_ATBMWIFI_WDT
 }
-static void Sstar_wtd_exit(void)
+static void atbm_wtd_exit(void)
 {
-#ifdef CONFIG_SSTARWIFI_WDT
+#ifdef CONFIG_ATBMWIFI_WDT
 	struct task_struct *thread = g_wtd.wtd_thread;
 	if (WARN_ON(!thread))
 		return;
 	if(atomic_read(&g_wtd.wtd_term)==0)
 		return;
 	g_wtd.wtd_thread = NULL;
-	Sstar_printk_exit( "[wtd] unregister.\n");
+	printk( "[wtd] unregister.\n");
 	atomic_add(1, &g_wtd.wtd_term);
 	wake_up(&g_wtd.wtd_evt_wq);
 	kthread_stop(thread);
@@ -758,56 +662,49 @@ static void Sstar_wtd_exit(void)
 	put_task_struct(thread);
 #endif
 	g_wtd.wtd_init = 0;
-#endif //CONFIG_SSTARWIFI_WDT
+#endif //CONFIG_ATBMWIFI_WDT
 }
-static struct sbus_ops Sstar_sdio_sbus_ops = {
-	.sbus_memcpy_fromio	= Sstar_sdio_memcpy_fromio,
-	.sbus_memcpy_toio	= Sstar_sdio_memcpy_toio,
-	.sbus_read_sync 	= Sstar_sdio_memcpy_fromio,
-	.sbus_write_sync	= Sstar_sdio_memcpy_toio,
-	.lock				= Sstar_sdio_lock,
-	.unlock				= Sstar_sdio_unlock,
-	.irq_subscribe		= Sstar_sdio_irq_subscribe,
-	.irq_unsubscribe	= Sstar_sdio_irq_unsubscribe,
-	.reset				= Sstar_sdio_reset,
-	.align_size			= Sstar_sdio_align_size,
-	.power_mgmt			= Sstar_sdio_pm,
-	.set_block_size		= Sstar_sdio_set_block_size,
-	.wtd_wakeup			= Sstar_wtd_wakeup,
-	.sbus_reset_chip    = Sstar_sdio_reset_chip,
-	.abort				= Sstar_cmd52_abort,
-	//.sbus_cmd52_fromio =Sstar_cmd52_fromio,
-	//.sbus_cmd52_toio =Sstar_cmd52_toio,
-	.sbus_xmit_func_init   = Sstar_sdio_xmit_init,
-	.sbus_xmit_func_deinit  = Sstar_sdio_xmit_deinit,
-	.sbus_rev_func_init    = Sstar_sdio_rev_init,
-	.sbus_rev_func_deinit  = Sstar_sdio_rev_deinit,
-	.sbus_xmit_schedule    = Sstar_sdio_xmit_schedule,
-	.sbus_rev_schedule     = Sstar_sdio_rev_schedule,
-	.sbus_rev_giveback	   = Sstar_sdio_rev_giveback,
+static struct sbus_ops atbm_sdio_sbus_ops = {
+	.sbus_memcpy_fromio	= atbm_sdio_memcpy_fromio,
+	.sbus_memcpy_toio	= atbm_sdio_memcpy_toio,
+	.sbus_read_sync 	= atbm_sdio_memcpy_fromio,
+	.sbus_write_sync	= atbm_sdio_memcpy_toio,
+	.lock				= atbm_sdio_lock,
+	.unlock				= atbm_sdio_unlock,
+	.irq_subscribe		= atbm_sdio_irq_subscribe,
+	.irq_unsubscribe	= atbm_sdio_irq_unsubscribe,
+	.reset				= atbm_sdio_reset,
+	.align_size			= atbm_sdio_align_size,
+	.power_mgmt			= atbm_sdio_pm,
+	.set_block_size		= atbm_sdio_set_block_size,
+	.wtd_wakeup			= atbm_wtd_wakeup,
+	.sbus_reset_chip    = atbm_sdio_reset_chip,
+	.abort				= atbm_cmd52_abort,
+	//.sbus_cmd52_fromio =atbm_cmd52_fromio,
+	//.sbus_cmd52_toio =atbm_cmd52_toio,
 };
 
 /* Probe Function to be called by SDIO stack when device is discovered */
-static int Sstar_sdio_probe(struct sdio_func *func,
+static int atbm_sdio_probe(struct sdio_func *func,
 			      const struct sdio_device_id *id)
 {
 	struct sbus_priv *self;
 	int status;
 
-	Sstar_dbg(SSTAR_APOLLO_DBG_INIT, "Probe called\n");
+	atbm_dbg(ATBM_APOLLO_DBG_INIT, "Probe called\n");
 	
 	atomic_set(&g_wtd.wtd_probe, 0);
 	func->card->quirks|=MMC_QUIRK_LENIENT_FN0;
 	func->card->quirks |= MMC_QUIRK_BLKSZ_FOR_BYTE_MODE;
 
-	self = Sstar_kzalloc(sizeof(*self), GFP_KERNEL);
+	self = atbm_kzalloc(sizeof(*self), GFP_KERNEL);
 	if (!self) {
-		Sstar_dbg(SSTAR_APOLLO_DBG_ERROR, "Can't allocate SDIO sbus_priv.");
+		atbm_dbg(ATBM_APOLLO_DBG_ERROR, "Can't allocate SDIO sbus_priv.");
 		return -ENOMEM;
 	}
 
 	spin_lock_init(&self->lock);
-	self->pdata = Sstar_get_platform_data();
+	self->pdata = atbm_get_platform_data();
 	self->func = func;
 	self->wtd = &g_wtd;
 	sdio_set_drvdata(func, self);
@@ -816,52 +713,52 @@ static int Sstar_sdio_probe(struct sdio_func *func,
 	sdio_release_host(func);
 
 	//reset test start
-	//Sstar_sdio_reset(self);
+	//atbm_sdio_reset(self);
 	//reset test end
 
-	Sstar_printk_init("%s:v12\n",__func__);
-	status = Sstar_core_probe(&Sstar_sdio_sbus_ops,
+
+	status = atbm_core_probe(&atbm_sdio_sbus_ops,
 			      self, &func->dev, &self->core);
 	if (status) {
 		sdio_claim_host(func);
 		sdio_disable_func(func);
 		sdio_release_host(func);
 		sdio_set_drvdata(func, NULL);
-		Sstar_kfree(self);
+		atbm_kfree(self);
 		atomic_set(&g_wtd.wtd_probe, -1);
-		//printk("[Sstar_wtd]:set wtd_probe = -1\n");
+		//printk("[atbm_wtd]:set wtd_probe = -1\n");
 	}
 	else {
 		atomic_set(&g_wtd.wtd_probe, 1);
-		Sstar_printk_exit("[Sstar_wtd]:set wtd_probe = 1\n");
+		printk("[atbm_wtd]:set wtd_probe = 1\n");
 	}
 	return status;
 }
 
 /* Disconnect Function to be called by SDIO stack when
  * device is disconnected */
-static int Sstar_sdio_reset_chip(struct sbus_priv *self)
+static int atbm_sdio_reset_chip(struct sbus_priv *self)
 {
-	Sstar_printk_bus("%s\n",__func__);
-	Sstar_reset_lmc_cpu(self->core);
+	printk(KERN_ERR "%s\n",__func__);
+	atbm_reset_lmc_cpu(self->core);
 	return 0;
 }
-static void Sstar_sdio_disconnect(struct sdio_func *func)
+static void atbm_sdio_disconnect(struct sdio_func *func)
 {
 	struct sbus_priv *self = sdio_get_drvdata(func);
-	Sstar_printk_exit("Sstar_sdio_disconnect");
+	printk(KERN_ERR "atbm_sdio_disconnect");
 	if (self) {
 		atomic_set(&g_wtd.wtd_probe, 0);
 		if (self->core) {
 #ifdef RESET_CHIP
-			Sstar_reset_chip((struct Sstar_common *)self->core->hw->priv);
+			atbm_reset_chip((struct atbm_common *)self->core->hw->priv);
 #else
 			/*
-			*should not rest cpu here,we will do it at function Sstar_unregister_common
+			*should not rest cpu here,we will do it at function atbm_unregister_common
 			*/
-//			Sstar_reset_lmc_cpu((struct Sstar_common *)self->core->hw->priv);
+//			atbm_reset_lmc_cpu((struct atbm_common *)self->core->hw->priv);
 #endif
-			Sstar_core_release(self->core);
+			atbm_core_release(self->core);
 			self->core = NULL;
 		}
 		sdio_claim_host(func);
@@ -872,7 +769,7 @@ static void Sstar_sdio_disconnect(struct sdio_func *func)
 			int ret;
 			int regdata;
 			/**********************/
-			Sstar_printk_exit("[%s]:SDIO_RESET++\n",dev_name(&func->card->host->class_dev));
+			printk(KERN_ERR "[%s]:SDIO_RESET++\n",dev_name(&func->card->host->class_dev));
 			/* SDIO Simplified Specification V2.0, 4.4 Reset for SDIO */
 			regdata = sdio_f0_readb(func, SDIO_CCCR_ABORT, &ret);
 			if (ret)
@@ -883,18 +780,18 @@ static void Sstar_sdio_disconnect(struct sdio_func *func)
 			WARN_ON(ret);
 			msleep(50);
 			regdata = sdio_f0_readb(func, SDIO_CCCR_ABORT, &ret);
-			Sstar_printk_exit("[%s]:SDIO_RESET-- 0x%x\n",dev_name(&func->card->host->class_dev),regdata);
+			printk(KERN_ERR "[%s]:SDIO_RESET-- 0x%x\n",dev_name(&func->card->host->class_dev),regdata);
 
 			/**********************/
 		}
 		sdio_disable_func(func);
 		sdio_release_host(func);
 		sdio_set_drvdata(func, NULL);
-		Sstar_kfree(self);
+		atbm_kfree(self);
 	}
 }
 
-static int Sstar_suspend(struct device *dev)
+static int atbm_suspend(struct device *dev)
 {
 	int ret;
 	struct sdio_func *func = dev_to_sdio_func(dev);
@@ -903,68 +800,68 @@ static int Sstar_suspend(struct device *dev)
 	mmc_pm_flag_t flags=sdio_get_host_pm_caps(func);
 	//printk("mmc_pm_flag=%x\n",flags);
 	if(!(flags&MMC_PM_KEEP_POWER)){
-		Sstar_dbg(SSTAR_APOLLO_DBG_ERROR,
+		atbm_dbg(ATBM_APOLLO_DBG_ERROR,
 				"cant remain alive while host is suspended\n");
 		return -ENOSYS;
 	}
 	ret = sdio_set_host_pm_flags(func, MMC_PM_KEEP_POWER);
 	if (ret)
-		Sstar_dbg(SSTAR_APOLLO_DBG_ERROR,
+		atbm_dbg(ATBM_APOLLO_DBG_ERROR,
 			   "set sdio keep pwr flag failed:%d\n", ret);
 	/*sdio irq wakes up host*/
 	if (flags&MMC_PM_WAKE_SDIO_IRQ){
 		ret = sdio_set_host_pm_flags(func, MMC_PM_WAKE_SDIO_IRQ);
 	}
 	if (ret)
-		Sstar_dbg(SSTAR_APOLLO_DBG_ERROR,
+		atbm_dbg(ATBM_APOLLO_DBG_ERROR,
 			   "set sdio wake up irq flag failed:%d\n", ret);
 	return ret;
 }
 
-static int Sstar_resume(struct device *dev)
+static int atbm_resume(struct device *dev)
 {
 	return 0;
 }
 
-static const struct dev_pm_ops Sstar_pm_ops = {
-	.suspend = Sstar_suspend,
-	.resume = Sstar_resume,
+static const struct dev_pm_ops atbm_pm_ops = {
+	.suspend = atbm_suspend,
+	.resume = atbm_resume,
 };
 
 static struct sdio_driver sdio_driver = {
-	.name		= "Sstar_wlan",
-	.id_table	= Sstar_sdio_ids,
-	.probe		= Sstar_sdio_probe,
-	.remove		= Sstar_sdio_disconnect,
+	.name		= "atbm_wlan",
+	.id_table	= atbm_sdio_ids,
+	.probe		= atbm_sdio_probe,
+	.remove		= atbm_sdio_disconnect,
 	.drv = {
-		.pm = &Sstar_pm_ops,
+		.pm = &atbm_pm_ops,
 	}
 };
-static int Sstar_reboot_notifier(struct notifier_block *nb,
+static int atbm_reboot_notifier(struct notifier_block *nb,
 				unsigned long action, void *unused)
 {
-	Sstar_printk_exit("Sstar_reboot_notifier\n");
+	printk(KERN_ERR "atbm_reboot_notifier\n");
 	atomic_set(&g_wtd.wtd_term, 1);
 	atomic_set(&g_wtd.wtd_run, 0);
-	Sstar_sdio_exit();
-	Sstar_ieee80211_exit();
-	Sstar_release_firmware();
+	atbm_sdio_exit();
+	atbm_ieee80211_exit();
+	atbm_release_firmware();
 	return NOTIFY_DONE;
 }
 
 /* Probe Function to be called by USB stack when device is discovered */
-static struct notifier_block Sstar_reboot_nb = {
-	.notifier_call = Sstar_reboot_notifier,
+static struct notifier_block atbm_reboot_nb = {
+	.notifier_call = atbm_reboot_notifier,
 	.priority=1,
 };
 
 
 /* Init Module function -> Called by insmod */
-static int  Sstar_sdio_init(void)
+static int  atbm_sdio_init(void)
 {
-	const struct Sstar_platform_data *pdata;
+	const struct atbm_platform_data *pdata;
 	int ret;
-	pdata = Sstar_get_platform_data();
+	pdata = atbm_get_platform_data();
 
 	ret=driver_build_info();
 	if (pdata->clk_ctrl) {
@@ -975,7 +872,7 @@ static int  Sstar_sdio_init(void)
 /*
 * modify for rockchip platform
 */
-#if (SSTAR_WIFI_PLATFORM == 10)
+#if (ATBM_WIFI_PLATFORM == 10)
 	if (pdata->insert_ctrl&&pdata->power_ctrl)
 	{
 		ret = pdata->insert_ctrl(pdata, false);
@@ -1001,18 +898,18 @@ static int  Sstar_sdio_init(void)
 	ret = sdio_register_driver(&sdio_driver);
 	if (ret)
 		goto err_reg;
-#if ((SSTAR_WIFI_PLATFORM != 10) && (SSTAR_WIFI_PLATFORM != PLATFORM_AMLOGIC_S805)\
-	&& (SSTAR_WIFI_PLATFORM != PLATFORM_AMLOGIC_905))
+#if ((ATBM_WIFI_PLATFORM != 10) && (ATBM_WIFI_PLATFORM != PLATFORM_AMLOGIC_S805)\
+	&& (ATBM_WIFI_PLATFORM != PLATFORM_AMLOGIC_905))
 
-	ret = Sstar_sdio_on(pdata);
+	ret = atbm_sdio_on(pdata);
 	if (ret)
 		goto err_on;
 #endif
-	Sstar_wtd_init();
+	atbm_wtd_init();
 	return 0;
 
-#if ((SSTAR_WIFI_PLATFORM != 10) && (SSTAR_WIFI_PLATFORM != PLATFORM_AMLOGIC_S805)\
-	&& (SSTAR_WIFI_PLATFORM != PLATFORM_AMLOGIC_905))
+#if ((ATBM_WIFI_PLATFORM != 10) && (ATBM_WIFI_PLATFORM != PLATFORM_AMLOGIC_S805)\
+	&& (ATBM_WIFI_PLATFORM != PLATFORM_AMLOGIC_905))
 
 err_on:
 	if (pdata->power_ctrl)
@@ -1028,13 +925,13 @@ err_reg:
 }
 
 /* Called at Driver Unloading */
-static void  Sstar_sdio_exit(void)
+static void  atbm_sdio_exit(void)
 {
-	const struct Sstar_platform_data *pdata;
-	pdata = Sstar_get_platform_data();
-	Sstar_wtd_exit();
+	const struct atbm_platform_data *pdata;
+	pdata = atbm_get_platform_data();
+	atbm_wtd_exit();
 	sdio_unregister_driver(&sdio_driver);
-	Sstar_sdio_off(pdata);
+	atbm_sdio_off(pdata);
 	if (pdata->power_ctrl)
 		pdata->power_ctrl(pdata, false);
 	if (pdata->clk_ctrl)
@@ -1044,23 +941,23 @@ static void  Sstar_sdio_exit(void)
 
 static int __init apollo_sdio_module_init(void)
 {
-	ieee80211_Sstar_mem_int();
-	ieee80211_Sstar_skb_int();
-	register_reboot_notifier(&Sstar_reboot_nb);
-	Sstar_init_firmware();
-	Sstar_ieee80211_init();
-	return Sstar_sdio_init();
+	ieee80211_atbm_mem_int();
+	ieee80211_atbm_skb_int();
+	register_reboot_notifier(&atbm_reboot_nb);
+	atbm_init_firmware();
+	atbm_ieee80211_init();
+	return atbm_sdio_init();
 }
 static void  apollo_sdio_module_exit(void)
 {	
 	atomic_set(&g_wtd.wtd_term, 1);
 	atomic_set(&g_wtd.wtd_run, 0);
-	Sstar_sdio_exit();
-	Sstar_ieee80211_exit();
-	Sstar_release_firmware();
-	unregister_reboot_notifier(&Sstar_reboot_nb);
-	ieee80211_Sstar_mem_exit();
-	ieee80211_Sstar_skb_exit();
+	atbm_sdio_exit();
+	atbm_ieee80211_exit();
+	atbm_release_firmware();
+	unregister_reboot_notifier(&atbm_reboot_nb);
+	ieee80211_atbm_mem_exit();
+	ieee80211_atbm_skb_exit();
 }
 
 

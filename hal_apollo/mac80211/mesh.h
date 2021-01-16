@@ -197,7 +197,7 @@ int ieee80211_new_mesh_header(struct ieee80211s_hdr *meshhdr,
 		char *addr6);
 int mesh_rmc_check(u8 *addr, struct ieee80211s_hdr *mesh_hdr,
 		struct ieee80211_sub_if_data *sdata);
-bool mesh_matches_local(struct ieee802_Sstar_11_elems *ie,
+bool mesh_matches_local(struct ieee802_atbm_11_elems *ie,
 		struct ieee80211_sub_if_data *sdata);
 void mesh_ids_set_default(struct ieee80211_if_mesh *mesh);
 void mesh_mgmt_ies_add(struct sk_buff *skb,
@@ -237,7 +237,7 @@ struct mesh_path *mesh_path_lookup_by_idx(int idx,
 void mesh_path_fix_nexthop(struct mesh_path *mpath, struct sta_info *next_hop);
 void mesh_path_expire(struct ieee80211_sub_if_data *sdata);
 void mesh_rx_path_sel_frame(struct ieee80211_sub_if_data *sdata,
-		struct Sstar_ieee80211_mgmt *mgmt, size_t len);
+		struct atbm_ieee80211_mgmt *mgmt, size_t len);
 int mesh_path_add(u8 *dst, struct ieee80211_sub_if_data *sdata);
 
 int mesh_path_add_gate(struct mesh_path *mpath);
@@ -246,15 +246,15 @@ int mesh_gate_num(struct ieee80211_sub_if_data *sdata);
 /* Mesh plinks */
 void mesh_neighbour_update(u8 *hw_addr, u32 rates,
 		struct ieee80211_sub_if_data *sdata,
-		struct ieee802_Sstar_11_elems *ie);
-bool mesh_peer_accepts_plinks(struct ieee802_Sstar_11_elems *ie);
+		struct ieee802_atbm_11_elems *ie);
+bool mesh_peer_accepts_plinks(struct ieee802_atbm_11_elems *ie);
 void mesh_accept_plinks_update(struct ieee80211_sub_if_data *sdata);
 void mesh_plink_broken(struct sta_info *sta);
 void mesh_plink_deactivate(struct sta_info *sta);
 int mesh_plink_open(struct sta_info *sta);
 void mesh_plink_block(struct sta_info *sta);
 void mesh_rx_plink_frame(struct ieee80211_sub_if_data *sdata,
-			 struct Sstar_ieee80211_mgmt *mgmt, size_t len,
+			 struct atbm_ieee80211_mgmt *mgmt, size_t len,
 			 struct ieee80211_rx_status *rx_status);
 
 /* Private interfaces */
@@ -279,10 +279,10 @@ void mesh_path_quiesce(struct ieee80211_sub_if_data *sdata);
 void mesh_path_restart(struct ieee80211_sub_if_data *sdata);
 void mesh_path_tx_root_frame(struct ieee80211_sub_if_data *sdata);
 
-bool mesh_action_is_path_sel(struct Sstar_ieee80211_mgmt *mgmt);
+bool mesh_action_is_path_sel(struct atbm_ieee80211_mgmt *mgmt);
 extern int mesh_paths_generation;
 
-#ifdef CONFIG_MAC80211_SSTAR_MESH
+#ifdef CONFIG_MAC80211_ATBM_MESH
 extern int mesh_allocated;
 
 static inline int mesh_plink_free_count(struct ieee80211_sub_if_data *sdata)

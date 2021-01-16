@@ -51,7 +51,7 @@
 #include <linux/ieee80211.h>
 #include <linux/slab.h>
 #include <linux/export.h>
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include "rc80211_minstrel.h"
 
 int
@@ -62,7 +62,7 @@ minstrel_stats_open(struct inode *inode, struct file *file)
 	unsigned int i, tp, prob, eprob;
 	char *p;
 
-	ms = Sstar_kmalloc(sizeof(*ms) + 4096, GFP_KERNEL);
+	ms = atbm_kmalloc(sizeof(*ms) + 4096, GFP_KERNEL);
 	if (!ms)
 		return -ENOMEM;
 
@@ -114,7 +114,7 @@ minstrel_stats_read(struct file *file, char __user *buf, size_t len, loff_t *ppo
 int
 minstrel_stats_release(struct inode *inode, struct file *file)
 {
-	Sstar_kfree(file->private_data);
+	atbm_kfree(file->private_data);
 	return 0;
 }
 

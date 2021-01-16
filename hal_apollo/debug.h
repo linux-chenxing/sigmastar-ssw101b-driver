@@ -1,7 +1,7 @@
 /*
- * DebugFS code for sigmastar APOLLO mac80211 driver
+ * DebugFS code for altobeam APOLLO mac80211 driver
  * *
- * Copyright (c) 2016, sigmastar
+ * Copyright (c) 2016, altobeam
  * Author:
  *
  * Based on apollo code
@@ -13,29 +13,29 @@
  * published by the Free Software Foundation.
  */
 
-#ifndef SSTAR_APOLLO_DEBUG_H_INCLUDED
-#define SSTAR_APOLLO_DEBUG_H_INCLUDED
+#ifndef ATBM_APOLLO_DEBUG_H_INCLUDED
+#define ATBM_APOLLO_DEBUG_H_INCLUDED
 
 
-struct cw200_common;
+//struct cw200_common;
+struct atbm_vif;
 
-
-#define SSTAR_APOLLO_DBG_MSG		0x00000001
-#define SSTAR_APOLLO_DBG_NIY		0x00000002
-#define SSTAR_APOLLO_DBG_SBUS		0x00000004
-#define SSTAR_APOLLO_DBG_INIT		0x00000008
-#define SSTAR_APOLLO_DBG_ERROR	0x00000010
-#define SSTAR_APOLLO_DBG_DCXO_DPLL  0x00000020
-#define SSTAR_APOLLO_DBG_LEVEL	(SSTAR_APOLLO_DBG_INIT|SSTAR_APOLLO_DBG_NIY|SSTAR_APOLLO_DBG_ERROR)
+#define ATBM_APOLLO_DBG_MSG		0x00000001
+#define ATBM_APOLLO_DBG_NIY		0x00000002
+#define ATBM_APOLLO_DBG_SBUS		0x00000004
+#define ATBM_APOLLO_DBG_INIT		0x00000008
+#define ATBM_APOLLO_DBG_ERROR	0x00000010
+#define ATBM_APOLLO_DBG_DCXO_DPLL  0x00000020
+#define ATBM_APOLLO_DBG_LEVEL	(ATBM_APOLLO_DBG_INIT|ATBM_APOLLO_DBG_NIY|ATBM_APOLLO_DBG_ERROR)
 
 
 #define FUNC_ENTER() //printk("%s %d++\n",__func__,__LINE__)
 #define FUNC_EXIT() //printk("%s %d--\n",__func__,__LINE__)
 
 
-#define Sstar_dbg(level, ...)				\
- if ((level) & SSTAR_APOLLO_DBG_LEVEL)		\
-		Sstar_printk_init(__VA_ARGS__);	\
+#define atbm_dbg(level, ...)				\
+ if ((level) & ATBM_APOLLO_DBG_LEVEL)		\
+		printk(KERN_ERR __VA_ARGS__);	\
 
 
  /* TODO It should be removed before official delivery */
@@ -43,99 +43,140 @@ struct cw200_common;
  {
 	 int i;
 
-	Sstar_printk_always("%s hexdump:\n", prefix);
+	 printk("%s hexdump:\n", prefix);
 	 for (i = 0; i < len; i++) {
 	 	if((i % 16)==0)
-			Sstar_printk_always("\n");
-		Sstar_printk_always("%02x ", data[i]);
+			printk("\n");
+		printk("%02x ", data[i]);
 
 	 }
-	Sstar_printk_always("\n");
+	 printk("\n");
  }
-void SSTARWIFI_DBG_PRINT2(const char * func,const int line,unsigned int data);
-void SSTARWIFI_DBG_PRINT(const char * func,const int line);
+void ATBMWIFI_DBG_PRINT2(const char * func,const int line,unsigned int data);
+void ATBMWIFI_DBG_PRINT(const char * func,const int line);
 
-struct Sstar_debug_param{
+struct atbm_debug_param{
 	void *private;
 	char *buff;
 	int size;
 	int cout;
 };
 
-#ifdef CONFIG_SSTAR_APOLLO_DEBUGFS
+#ifdef CONFIG_ATBM_APOLLO_DEBUGFS
 typedef struct seq_file *P_VDEBUG_SEQFILE;
-#define VDEBUG_SEQFILE         struct seq_file 
 #define VDEBUG_PRINTF(...)  	seq_printf(__VA_ARGS__)
 #define VDEBUG_PUTS(a,b)		seq_puts(a,b)
 #define VDEBUG_PRIV(seq)		((seq)->private)
 #else
 
-typedef struct Sstar_debug_param *P_VDEBUG_SEQFILE;
-#define VDEBUG_SEQFILE         struct Sstar_debug_param
+typedef struct atbm_debug_param *P_VDEBUG_SEQFILE;
+#define VDEBUG_SEQFILE         struct atbm_debug_param
 #define VDEBUG_PRINTF(a,...)  	a->cout += snprintf(a->buff + a->cout, a->size - a->cout, __VA_ARGS__)
 #define VDEBUG_PUTS(a,b)		a->cout += snprintf(a->buff + a->cout, a->size - a->cout, b)
 #define VDEBUG_PRIV(seq)		((seq)->private)
 #endif
-#ifdef CONFIG_SSTAR_APOLLO_DEBUG
-int Sstar_debug_init_common(struct Sstar_common *hw_priv);
-int Sstar_debug_init_priv(struct Sstar_common *hw_priv,
-			   struct Sstar_vif *priv);
-void Sstar_debug_release_common(struct Sstar_common *hw_priv);
-void Sstar_debug_release_priv(struct Sstar_vif *priv);
+#ifdef CONFIG_ATBM_APOLLO_DEBUG
+/*
+struct atbm_debug_common {
+#ifdef CONFIG_ATBM_APOLLO_DEBUGFS
+	struct dentry *debugfs_phy;
+#endif
+	int tx_cache_miss;
+	int tx_burst;
+	int rx_burst;
+	int ba_cnt;
+	int ba_acc;
+	int ba_cnt_rx;
+	int ba_acc_rx;
+};
+*/
+struct atbm_debug_priv {
+#ifdef CONFIG_ATBM_APOLLO_DEBUGFS
+	struct dentry *debugfs_phy;
+#endif
+	int tx;
+	int tx_agg;
+	int rx;
+	int rx_agg;
+	int tx_multi;
+	int tx_multi_frames;
+	int tx_align;
+	int tx_ttl;
+};
 
-static inline void Sstar_debug_txed(struct Sstar_vif *priv)
+struct atbm_debug_common {
+#ifdef CONFIG_ATBM_APOLLO_DEBUGFS
+        struct dentry *debugfs_phy;
+#endif
+        int tx_cache_miss;
+        int tx_burst;
+        int rx_burst;
+        int ba_cnt;
+        int ba_acc;
+        int ba_cnt_rx;
+        int ba_acc_rx;
+	struct atbm_debug_priv priv_debug[ATBM_WIFI_MAX_VIFS];
+};
+
+int atbm_debug_init_common(struct atbm_common *hw_priv);
+int atbm_debug_init_priv(struct atbm_common *hw_priv,
+			   struct atbm_vif *priv);
+void atbm_debug_release_common(struct atbm_common *hw_priv);
+void atbm_debug_release_priv(struct atbm_vif *priv);
+
+static inline void atbm_debug_txed(struct atbm_vif *priv)
 {
-	++priv->debug.tx;
+	++priv->debug->tx;
 }
 
-static inline void Sstar_debug_txed_agg(struct Sstar_vif *priv)
+static inline void atbm_debug_txed_agg(struct atbm_vif *priv)
 {
-	++priv->debug.tx_agg;
+	++priv->debug->tx_agg;
 }
 
-static inline void Sstar_debug_txed_multi(struct Sstar_vif *priv,
+static inline void atbm_debug_txed_multi(struct atbm_vif *priv,
 					   int count)
 {
-	++priv->debug.tx_multi;
-	priv->debug.tx_multi_frames += count;
+	++priv->debug->tx_multi;
+	priv->debug->tx_multi_frames += count;
 }
 
-static inline void Sstar_debug_rxed(struct Sstar_vif *priv)
+static inline void atbm_debug_rxed(struct atbm_vif *priv)
 {
-	++priv->debug.rx;
+	++priv->debug->rx;
 }
 
-static inline void Sstar_debug_rxed_agg(struct Sstar_vif *priv)
+static inline void atbm_debug_rxed_agg(struct atbm_vif *priv)
 {
-	++priv->debug.rx_agg;
+	++priv->debug->rx_agg;
 }
 
-static inline void Sstar_debug_tx_cache_miss(struct Sstar_common *common)
+static inline void atbm_debug_tx_cache_miss(struct atbm_common *common)
 {
 	++common->debug->tx_cache_miss;
 }
 
-static inline void Sstar_debug_tx_align(struct Sstar_vif *priv)
+static inline void atbm_debug_tx_align(struct atbm_vif *priv)
 {
-	++priv->debug.tx_align;
+	++priv->debug->tx_align;
 }
 
-static inline void Sstar_debug_tx_ttl(struct Sstar_vif *priv)
+static inline void atbm_debug_tx_ttl(struct atbm_vif *priv)
 {
-	++priv->debug.tx_ttl;
+	++priv->debug->tx_ttl;
 }
 
-static inline void Sstar_debug_tx_burst(struct Sstar_common *hw_priv)
+static inline void atbm_debug_tx_burst(struct atbm_common *hw_priv)
 {
 	++hw_priv->debug->tx_burst;
 }
 
-static inline void Sstar_debug_rx_burst(struct Sstar_common *hw_priv)
+static inline void atbm_debug_rx_burst(struct atbm_common *hw_priv)
 {
 	++hw_priv->debug->rx_burst;
 }
 
-static inline void Sstar_debug_ba(struct Sstar_common *hw_priv,
+static inline void atbm_debug_ba(struct atbm_common *hw_priv,
 				   int ba_cnt, int ba_acc, int ba_cnt_rx,
 				   int ba_acc_rx)
 {
@@ -145,119 +186,111 @@ static inline void Sstar_debug_ba(struct Sstar_common *hw_priv,
 	hw_priv->debug->ba_acc_rx = ba_acc_rx;
 }
 
-int Sstar_print_fw_version(struct Sstar_common *hw_priv, u8* buf, size_t len);
-int Sstar_status_show_priv(VDEBUG_SEQFILE * seq, void *v);
-int Sstar_ht_show_info(VDEBUG_SEQFILE * seq, void *v);
-int Sstar_wifi_show_status(VDEBUG_SEQFILE * seq, void *v);
-int Sstar_status_show_common(VDEBUG_SEQFILE * seq, void *v);
-int Sstar_counters_show(VDEBUG_SEQFILE * seq, void *v);
-int Sstar_statistics_show(P_VDEBUG_SEQFILE seq, void *v);
-int Sstar_pkt_show(P_VDEBUG_SEQFILE seq, void *v);
+int atbm_print_fw_version(struct atbm_common *hw_priv, u8* buf, size_t len);
+int atbm_status_show_priv(VDEBUG_SEQFILE * seq, void *v);
+int atbm_status_show_common(VDEBUG_SEQFILE * seq, void *v);
+int atbm_counters_show(VDEBUG_SEQFILE * seq, void *v);
+int atbm_statistics_show(P_VDEBUG_SEQFILE seq, void *v);
+int atbm_pkt_show(P_VDEBUG_SEQFILE seq, void *v);
 
 
-#else /* CONFIG_SSTAR_APOLLO_DEBUGFS */
+#else /* CONFIG_ATBM_APOLLO_DEBUGFS */
 
-static inline int Sstar_debug_init_common(struct Sstar_common *hw_priv)
+static inline int atbm_debug_init_common(struct atbm_common *hw_priv)
 {
 	return 0;
 }
 
-static inline int Sstar_debug_init_priv(struct Sstar_common *hw_priv,
-			   struct Sstar_vif *priv)
+static inline int atbm_debug_init_priv(struct atbm_common *hw_priv,
+			   struct atbm_vif *priv)
 {
 	return 0;
 }
 
-static inline void Sstar_debug_release_common(struct Sstar_common *hw_priv)
+static inline void atbm_debug_release_common(struct atbm_common *hw_priv)
 {
 }
 
-static inline void Sstar_debug_release_priv(struct Sstar_vif *priv)
+static inline void atbm_debug_release_priv(struct atbm_vif *priv)
 {
 }
 
-static inline void Sstar_debug_txed(struct Sstar_vif *priv)
+static inline void atbm_debug_txed(struct atbm_vif *priv)
 {
 }
 
-static inline void Sstar_debug_txed_agg(struct Sstar_vif *priv)
+static inline void atbm_debug_txed_agg(struct atbm_vif *priv)
 {
 }
 
-static inline void Sstar_debug_txed_multi(struct Sstar_vif *priv,
+static inline void atbm_debug_txed_multi(struct atbm_vif *priv,
 					   int count)
 {
 }
 
-static inline void Sstar_debug_rxed(struct Sstar_vif *priv)
+static inline void atbm_debug_rxed(struct atbm_vif *priv)
 {
 }
 
-static inline void Sstar_debug_rxed_agg(struct Sstar_vif *priv)
+static inline void atbm_debug_rxed_agg(struct atbm_vif *priv)
 {
 }
 
-static inline void Sstar_debug_tx_cache_miss(struct Sstar_common *priv)
+static inline void atbm_debug_tx_cache_miss(struct atbm_common *priv)
 {
 }
 
-static inline void Sstar_debug_tx_align(struct Sstar_vif *priv)
+static inline void atbm_debug_tx_align(struct atbm_vif *priv)
 {
 }
 
-static inline void Sstar_debug_tx_ttl(struct Sstar_vif *priv)
+static inline void atbm_debug_tx_ttl(struct atbm_vif *priv)
 {
 }
 
-static inline void Sstar_debug_tx_burst(struct Sstar_common *priv)
+static inline void atbm_debug_tx_burst(struct atbm_common *priv)
 {
 }
 
-static inline void Sstar_debug_rx_burst(struct Sstar_common *priv)
+static inline void atbm_debug_rx_burst(struct atbm_common *priv)
 {
 }
 
-static inline void Sstar_debug_ba(struct Sstar_common *hw_priv,
+static inline void atbm_debug_ba(struct atbm_common *hw_priv,
 				   int ba_cnt, int ba_acc, int ba_cnt_rx,
 				   int ba_acc_rx)
 {
 }
 
 
-static inline int Sstar_status_show_priv(VDEBUG_SEQFILE * seq, void *v)
+static inline int atbm_status_show_common(P_VDEBUG_SEQFILE seq, void *v)
+{
+	return 0;
+ 
+}
+static inline	int atbm_counters_show(P_VDEBUG_SEQFILE seq, void *v)
 {
 	return 0;
 }
-static inline int Sstar_ht_show_info(VDEBUG_SEQFILE * seq, void *v)
+static inline 	int atbm_pkt_show(P_VDEBUG_SEQFILE seq, void *v)
 {
 	return 0;
 }
-static inline int Sstar_wifi_show_status(VDEBUG_SEQFILE * seq, void *v)
-{
-	return 0;
-}
-
-static inline int Sstar_status_show_common(VDEBUG_SEQFILE * seq, void *v)
-{
-	return 0;
-}
-static inline int Sstar_counters_show(VDEBUG_SEQFILE * seq, void *v)
-{
-	return 0;
-}
-static inline int Sstar_statistics_show(P_VDEBUG_SEQFILE seq, void *v)
-{
-	return 0;
-}
-static inline int Sstar_pkt_show(P_VDEBUG_SEQFILE seq, void *v)
+static inline	int atbm_status_show_priv(P_VDEBUG_SEQFILE seq, void *v)
 {
 	return 0;
 }
 
-//int Sstar_print_fw_version(struct Sstar_vif *priv, u8* buf, size_t len)
+static inline	int atbm_statistics_show(P_VDEBUG_SEQFILE seq, void *v)
+{
+	return 0;
+}
+
+
+//int atbm_print_fw_version(struct atbm_vif *priv, u8* buf, size_t len)
 //{
 //}
 
-#endif /* CONFIG_SSTAR_APOLLO_DEBUGFS */
+#endif /* CONFIG_ATBM_APOLLO_DEBUGFS */
 
-#endif /* SSTAR_APOLLO_DEBUG_H_INCLUDED */
+#endif /* ATBM_APOLLO_DEBUG_H_INCLUDED */

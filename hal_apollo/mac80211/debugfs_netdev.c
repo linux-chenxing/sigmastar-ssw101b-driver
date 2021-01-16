@@ -15,7 +15,7 @@
 #include <linux/rtnetlink.h>
 #include <linux/slab.h>
 #include <linux/notifier.h>
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include <net/cfg80211.h>
 #include "ieee80211_i.h"
 #include "rate.h"
@@ -52,7 +52,7 @@ static ssize_t ieee80211_if_write(
 	u8 *buf;
 	ssize_t ret;
 
-	buf = Sstar_kmalloc(count, GFP_KERNEL);
+	buf = atbm_kmalloc(count, GFP_KERNEL);
 	if (!buf)
 		return -ENOMEM;
 
@@ -67,7 +67,7 @@ static ssize_t ieee80211_if_write(
 	rtnl_unlock();
 
 freebuf:
-	Sstar_kfree(buf);
+	atbm_kfree(buf);
 	return ret;
 }
 
@@ -273,12 +273,12 @@ static ssize_t ieee80211_if_parse_tkip_mic_test(
 	if (!ieee80211_sdata_running(sdata))
 		return -ENOTCONN;
 
-	skb = Sstar_dev_alloc_skb(local->hw.extra_tx_headroom + 24 + 100);
+	skb = atbm_dev_alloc_skb(local->hw.extra_tx_headroom + 24 + 100);
 	if (!skb)
 		return -ENOMEM;
-	Sstar_skb_reserve(skb, local->hw.extra_tx_headroom);
+	atbm_skb_reserve(skb, local->hw.extra_tx_headroom);
 
-	hdr = (struct ieee80211_hdr *) Sstar_skb_put(skb, 24);
+	hdr = (struct ieee80211_hdr *) atbm_skb_put(skb, 24);
 	memset(hdr, 0, 24);
 	fc = cpu_to_le16(IEEE80211_FTYPE_DATA | IEEE80211_STYPE_DATA);
 
@@ -294,7 +294,7 @@ static ssize_t ieee80211_if_parse_tkip_mic_test(
 		fc |= cpu_to_le16(IEEE80211_FCTL_TODS);
 		/* BSSID SA DA */
 		if (sdata->vif.bss_conf.bssid == NULL) {
-			Sstar_dev_kfree_skb(skb);
+			atbm_dev_kfree_skb(skb);
 			return -ENOTCONN;
 		}
 		memcpy(hdr->addr1, sdata->vif.bss_conf.bssid, ETH_ALEN);
@@ -302,7 +302,7 @@ static ssize_t ieee80211_if_parse_tkip_mic_test(
 		memcpy(hdr->addr3, addr, ETH_ALEN);
 		break;
 	default:
-		Sstar_dev_kfree_skb(skb);
+		atbm_dev_kfree_skb(skb);
 		return -EOPNOTSUPP;
 	}
 	hdr->frame_control = fc;
@@ -312,7 +312,7 @@ static ssize_t ieee80211_if_parse_tkip_mic_test(
 	 * The exact contents does not matter since the recipient is required
 	 * to drop this because of the Michael MIC failure.
 	 */
-	memset(Sstar_skb_put(skb, 50), 0, 50);
+	memset(atbm_skb_put(skb, 50), 0, 50);
 
 	IEEE80211_SKB_CB(skb)->flags |= IEEE80211_TX_INTFL_TKIP_MIC_FAILURE;
 
@@ -331,7 +331,7 @@ static ssize_t ieee80211_if_fmt_num_buffered_multicast(
 	const struct ieee80211_sub_if_data *sdata, char *buf, int buflen)
 {
 	return scnprintf(buf, buflen, "%u\n",
-			 Sstar_skb_queue_len(&sdata->u.ap.ps_bc_buf));
+			 atbm_skb_queue_len(&sdata->u.ap.ps_bc_buf));
 }
 __IEEE80211_IF_FILE(num_buffered_multicast, NULL);
 
@@ -378,7 +378,7 @@ __IEEE80211_IF_FILE_W(tsf);
 /* WDS attributes */
 IEEE80211_IF_FILE(peer, u.wds.remote_addr, MAC);
 
-#ifdef CONFIG_MAC80211_SSTAR_MESH
+#ifdef CONFIG_MAC80211_ATBM_MESH
 /* Mesh stats attributes */
 IEEE80211_IF_FILE(fwded_mcast, u.mesh.mshstats.fwded_mcast, DEC);
 IEEE80211_IF_FILE(fwded_unicast, u.mesh.mshstats.fwded_unicast, DEC);
@@ -514,7 +514,7 @@ static void add_monitor_files(struct ieee80211_sub_if_data *sdata)
 	DEBUGFS_ADD(retry_short);
 }
 
-#ifdef CONFIG_MAC80211_SSTAR_MESH
+#ifdef CONFIG_MAC80211_ATBM_MESH
 
 static void add_mesh_stats(struct ieee80211_sub_if_data *sdata)
 {
@@ -570,7 +570,7 @@ static void add_files(struct ieee80211_sub_if_data *sdata)
 
 	switch (sdata->vif.type) {
 	case NL80211_IFTYPE_MESH_POINT:
-#ifdef CONFIG_MAC80211_SSTAR_MESH
+#ifdef CONFIG_MAC80211_ATBM_MESH
 		add_mesh_stats(sdata);
 		add_mesh_config(sdata);
 #endif
@@ -632,6 +632,6 @@ void ieee80211_debugfs_rename_netdev(struct ieee80211_sub_if_data *sdata)
 
 	sprintf(buf, "netdev:%s", sdata->name);
 	if (!debugfs_rename(dir->d_parent, dir, dir->d_parent, buf))
-		Sstar_printk_err( "mac80211: debugfs: failed to rename debugfs "
+		printk(KERN_ERR "mac80211: debugfs: failed to rename debugfs "
 		       "dir to %s\n", buf);
 }

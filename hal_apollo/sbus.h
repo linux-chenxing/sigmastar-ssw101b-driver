@@ -1,7 +1,7 @@
 /*
  * Common sbus abstraction layer interface for apollo wireless driver
  * *
- * Copyright (c) 2016, sigmastar
+ * Copyright (c) 2016, altobeam
  * Author:
  *
  * Based on apollo code
@@ -13,8 +13,8 @@
  * published by the Free Software Foundation.
  */
 
-#ifndef SSTAR_APOLLO_SBUS_H
-#define SSTAR_APOLLO_SBUS_H
+#ifndef ATBM_APOLLO_SBUS_H
+#define ATBM_APOLLO_SBUS_H
 #include "apollo_plat.h"
 /*
  * sbus priv forward definition.
@@ -44,28 +44,14 @@ struct sbus_ops {
 	int (*power_mgmt)(struct sbus_priv *self, bool suspend);
 	int (*set_block_size)(struct sbus_priv *self, u32 size);
 	void (*wtd_wakeup)( struct sbus_priv *self);
-	int (*usb_lock_reset)(struct sbus_priv *self);
-#ifdef SSTAR_USB_RESET
+	#ifdef ATBM_USB_RESET
 	int (*usb_reset)(struct sbus_priv *self);
-#endif
-	int (*lmac_restart)(struct sbus_priv *self);
+	#endif
 	int (*bootloader_debug_config)(struct sbus_priv *self,u16 enable);	
 	int (*lmac_start)(struct sbus_priv *self);
 	int (*ep0_cmd)(struct sbus_priv *self);
 	int (*sbus_reset_chip)(struct sbus_priv *self);
 	int (*abort)(struct sbus_priv *self);
-	int (*sbus_wsm_write)(struct sbus_priv *self);
-	int (*sbus_data_write)(struct sbus_priv *self);
-	int (*sbus_init)(struct sbus_priv *self);
-	int (*sbus_deinit)(struct sbus_priv *self);
-	int (*sbus_wait_data_xmited)(struct sbus_priv *self);
-	int (*sbus_xmit_func_init)(struct sbus_priv *self);
-	int (*sbus_xmit_func_deinit)(struct sbus_priv *self);
-	int (*sbus_xmit_schedule)(struct sbus_priv *self);
-	int (*sbus_rev_func_init)(struct sbus_priv *self);
-	int (*sbus_rev_func_deinit)(struct sbus_priv *self);
-	int (*sbus_rev_schedule)(struct sbus_priv *self);
-	int (*sbus_rev_giveback)(struct sbus_priv *self,void *giveback);
 #else
 	u32 (*align_size)(struct sbus_priv *self, u32 size);
 	int (*set_block_size)(struct sbus_priv *self, u32 size);
@@ -88,17 +74,6 @@ struct sbus_ops {
 	int (*sbus_shutdown_wlan)(struct sbus_priv *self);
 	int (*sbus_reset_chip)(struct sbus_priv *self);
 	int (*bootloader_debug_config)(struct sbus_priv *self,u16 enable);	
-	int (*sbus_wsm_write)(struct sbus_priv *self);
-	int (*sbus_data_write)(struct sbus_priv *self);
-	int (*sbus_init)(struct sbus_priv *self);
-	int (*sbus_deinit)(struct sbus_priv *self);
-	int (*sbus_xmit_func_init)(struct sbus_priv *self);
-	int (*sbus_xmit_func_deinit)(struct sbus_priv *self);
-	int (*sbus_xmit_schedule)(struct sbus_priv *self);
-	int (*sbus_rev_func_init)(struct sbus_priv *self);
-	int (*sbus_rev_func_deinit)(struct sbus_priv *self);
-	int (*sbus_rev_schedule)(struct sbus_priv *self);
-	int (*sbus_rev_giveback)(struct sbus_priv *self,void *giveback);
 #endif
 };
 
@@ -118,11 +93,11 @@ enum HW_RESET_TYPE{
 #define HW_RESET_REG_SYS   				BIT(18)
 #define HW_RESRT_REG_CHIP  				BIT(19)
 #define HW_RESET_REG_NEED_IRQ_TO_LMAC	BIT(20)
-int Sstar_usb_ep0_hw_reset_cmd(struct sbus_priv *self,enum HW_RESET_TYPE type,bool irq_lmac);
+int atbm_usb_ep0_hw_reset_cmd(struct sbus_priv *self,enum HW_RESET_TYPE type,bool irq_lmac);
 #endif //(PROJ_TYPE>=ARES_B)
-void Sstar_usb_kill_all_rxurb(struct sbus_priv *self);
-void Sstar_usb_kill_all_txurb(struct sbus_priv *self);
-int __Sstar_usb_suspend(struct sbus_priv *self);
-int __Sstar_usb_resume(struct sbus_priv *self);
+void atbm_usb_kill_all_rxurb(struct sbus_priv *self);
+void atbm_usb_kill_all_txurb(struct sbus_priv *self);
+int __atbm_usb_suspend(struct sbus_priv *self);
+int __atbm_usb_resume(struct sbus_priv *self);
 
-#endif /* SSTAR_APOLLO_SBUS_H */
+#endif /* ATBM_APOLLO_SBUS_H */

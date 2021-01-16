@@ -11,7 +11,7 @@
 #include <linux/debugfs.h>
 #include <linux/random.h>
 #include <linux/ieee80211.h>
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include "rate.h"
 #include "rc80211_minstrel.h"
 #include "rc80211_minstrel_ht.h"
@@ -624,7 +624,7 @@ minstrel_ht_get_rate(void *priv, struct ieee80211_sta *sta, void *priv_sta,
 	else
 		sample_idx = minstrel_get_sample_rate(mp, mi);
 
-#ifdef CONFIG_MAC80211_SSTAR_DEBUGFS
+#ifdef CONFIG_MAC80211_ATBM_DEBUGFS
 	/* use fixed index if set */
 	if (mp->fixed_rate_idx != -1)
 		sample_idx = mp->fixed_rate_idx;
@@ -736,7 +736,7 @@ minstrel_ht_update_caps(void *priv, struct ieee80211_supported_band *sband,
 	if (oper_chan_type != NL80211_CHAN_HT40MINUS &&
 	    oper_chan_type != NL80211_CHAN_HT40PLUS)
 	{
-		Sstar_printk_debug("%s,%d:IEEE80211_HT_CAP_SUP_WIDTH_20_40\n",__func__,__LINE__);
+		printk("%s,%d:IEEE80211_HT_CAP_SUP_WIDTH_20_40\n",__func__,__LINE__);
 		sta_cap &= ~IEEE80211_HT_CAP_SUP_WIDTH_20_40;
 	}
 
@@ -812,24 +812,24 @@ minstrel_ht_alloc_sta(void *priv, struct ieee80211_sta *sta, gfp_t gfp)
 			max_rates = sband->n_bitrates;
 	}
 
-	msp = Sstar_kzalloc(sizeof(struct minstrel_ht_sta), gfp);
+	msp = atbm_kzalloc(sizeof(struct minstrel_ht_sta), gfp);
 	if (!msp)
 		return NULL;
 
-	msp->ratelist = Sstar_kzalloc(sizeof(struct minstrel_rate) * max_rates, gfp);
+	msp->ratelist = atbm_kzalloc(sizeof(struct minstrel_rate) * max_rates, gfp);
 	if (!msp->ratelist)
 		goto error;
 
-	msp->sample_table = Sstar_kmalloc(SAMPLE_COLUMNS * max_rates, gfp);
+	msp->sample_table = atbm_kmalloc(SAMPLE_COLUMNS * max_rates, gfp);
 	if (!msp->sample_table)
 		goto error1;
 
 	return msp;
 
 error1:
-	Sstar_kfree(msp->ratelist);
+	atbm_kfree(msp->ratelist);
 error:
-	Sstar_kfree(msp);
+	atbm_kfree(msp);
 	return NULL;
 }
 
@@ -838,9 +838,9 @@ minstrel_ht_free_sta(void *priv, struct ieee80211_sta *sta, void *priv_sta)
 {
 	struct minstrel_ht_sta_priv *msp = priv_sta;
 
-	Sstar_kfree(msp->sample_table);
-	Sstar_kfree(msp->ratelist);
-	Sstar_kfree(msp);
+	atbm_kfree(msp->sample_table);
+	atbm_kfree(msp->ratelist);
+	atbm_kfree(msp);
 }
 
 static void *
@@ -865,7 +865,7 @@ static struct rate_control_ops mac80211_minstrel_ht = {
 	.free_sta = minstrel_ht_free_sta,
 	.alloc = minstrel_ht_alloc,
 	.free = minstrel_ht_free,
-#ifdef CONFIG_MAC80211_SSTAR_DEBUGFS
+#ifdef CONFIG_MAC80211_ATBM_DEBUGFS
 	.add_sta_debugfs = minstrel_ht_add_sta_debugfs,
 	.remove_sta_debugfs = minstrel_ht_remove_sta_debugfs,
 #endif
@@ -907,12 +907,13 @@ int
 rc80211_minstrel_ht_init(void)
 {
 	init_sample_table();
-    Sstar_printk_init("xxxx minstrel ht init\n");
-	return ieee80211_rate_control_register(&mac80211_minstrel_ht);
+        printk("xxxx minstrel ht init\n");
+	 printk(KERN_ERR "xxxx minstrel ht init\n");
+return ieee80211_rate_control_register(&mac80211_minstrel_ht);
 }
 
 void
-Sstar_rc80211_minstrel_ht_exit(void)
+atbm_rc80211_minstrel_ht_exit(void)
 {
 	ieee80211_rate_control_unregister(&mac80211_minstrel_ht);
 }

@@ -10,8 +10,8 @@
  * published by the Free Software Foundation.
  */
 
-#ifndef SSTAR_MAC80211_H
-#define SSTAR_MAC80211_H
+#ifndef MAC80211_H
+#define MAC80211_H
 
 #include <linux/kernel.h>
 #include <linux/if_ether.h>
@@ -20,15 +20,13 @@
 #include <linux/ieee80211.h>
 #include <net/cfg80211.h>
 #include <asm/unaligned.h>
-#include <linux/hash.h>
-#include <linux/module.h>
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0))
 #define IEEE80211_BAND_2GHZ NL80211_BAND_2GHZ
 #define IEEE80211_BAND_5GHZ NL80211_BAND_5GHZ
 #define IEEE80211_NUM_BANDS (NL80211_BAND_5GHZ+1)
 #define ieee80211_band nl80211_band 
-#define Sstar_notify_scan_done(__local,__scan_request,__abort) \
+#define atbm_notify_scan_done(__local,__scan_request,__abort) \
 do	{			\
 	__local->scan_info.aborted = __abort;		\
 	cfg80211_scan_done(__scan_request,&__local->scan_info);		\
@@ -37,7 +35,7 @@ do	{			\
 struct cfg80211_scan_info{
 	bool aborted;
 };
-#define Sstar_notify_scan_done(__local,__scan_request,__abort) \
+#define atbm_notify_scan_done(__local,__scan_request,__abort) \
 do {			\
 	BUG_ON(__local==NULL);			\
 	cfg80211_scan_done(__scan_request,__abort);				\
@@ -76,15 +74,15 @@ do {			\
 #ifndef ERP_INFO_BYTE_OFFSET
 #define ERP_INFO_BYTE_OFFSET 2
 #endif
-int Sstar_ieee80211_init(void);
-void Sstar_ieee80211_exit(void);
+int atbm_ieee80211_init(void);
+void atbm_ieee80211_exit(void);
 void ieee80211_module_init(void);
 void ieee80211_module_exit(void);
 
 extern int cfg80211_altmtest_reply(struct wiphy *wiphy,
 				const void *data, int len);
-#define DBUG_AUTHEN(fc)		if(ieee80211_is_auth(fc)) Sstar_printk_mgmt("%s:%d,fc(%x)\n",__func__,__LINE__,fc);
-static inline unsigned Sstar_compare_ether_addr(const u8 *addr1, const u8 *addr2)
+#define DBUG_AUTHEN(fc)		if(ieee80211_is_auth(fc)) printk("%s:%d,fc(%x)\n",__func__,__LINE__,fc);
+static inline unsigned atbm_compare_ether_addr(const u8 *addr1, const u8 *addr2)
 {
 	const u16 *a = (const u16 *) addr1;
 	const u16 *b = (const u16 *) addr2;
@@ -93,107 +91,109 @@ static inline unsigned Sstar_compare_ether_addr(const u8 *addr1, const u8 *addr2
 	return ((a[0] ^ b[0]) | (a[1] ^ b[1]) | (a[2] ^ b[2])) != 0;
 }
 /* Information Element IDs */
-enum Sstar_ieee80211_eid {
-	SSTAR_WLAN_EID_SSID = 0,
-	SSTAR_WLAN_EID_SUPP_RATES = 1,
-	SSTAR_WLAN_EID_FH_PARAMS = 2,
-	SSTAR_WLAN_EID_DS_PARAMS = 3,
-	SSTAR_WLAN_EID_CF_PARAMS = 4,
-	SSTAR_WLAN_EID_TIM = 5,
-	SSTAR_WLAN_EID_IBSS_PARAMS = 6,
-	SSTAR_WLAN_EID_CHALLENGE = 16,
+enum atbm_ieee80211_eid {
+	ATBM_WLAN_EID_SSID = 0,
+	ATBM_WLAN_EID_SUPP_RATES = 1,
+	ATBM_WLAN_EID_FH_PARAMS = 2,
+	ATBM_WLAN_EID_DS_PARAMS = 3,
+	ATBM_WLAN_EID_CF_PARAMS = 4,
+	ATBM_WLAN_EID_TIM = 5,
+	ATBM_WLAN_EID_IBSS_PARAMS = 6,
+	ATBM_WLAN_EID_CHALLENGE = 16,
 
-	SSTAR_WLAN_EID_COUNTRY = 7,
-	SSTAR_WLAN_EID_HP_PARAMS = 8,
-	SSTAR_WLAN_EID_HP_TABLE = 9,
-	SSTAR_WLAN_EID_REQUEST = 10,
+	ATBM_WLAN_EID_COUNTRY = 7,
+	ATBM_WLAN_EID_HP_PARAMS = 8,
+	ATBM_WLAN_EID_HP_TABLE = 9,
+	ATBM_WLAN_EID_REQUEST = 10,
 
-	SSTAR_WLAN_EID_QBSS_LOAD = 11,
-	SSTAR_WLAN_EID_EDCA_PARAM_SET = 12,
-	SSTAR_WLAN_EID_TSPEC = 13,
-	SSTAR_WLAN_EID_TCLAS = 14,
-	SSTAR_WLAN_EID_SCHEDULE = 15,
-	SSTAR_WLAN_EID_TS_DELAY = 43,
-	SSTAR_WLAN_EID_TCLAS_PROCESSING = 44,
-	SSTAR_WLAN_EID_QOS_CAPA = 46,
+	ATBM_WLAN_EID_QBSS_LOAD = 11,
+	ATBM_WLAN_EID_EDCA_PARAM_SET = 12,
+	ATBM_WLAN_EID_TSPEC = 13,
+	ATBM_WLAN_EID_TCLAS = 14,
+	ATBM_WLAN_EID_SCHEDULE = 15,
+	ATBM_WLAN_EID_TS_DELAY = 43,
+	ATBM_WLAN_EID_TCLAS_PROCESSING = 44,
+	ATBM_WLAN_EID_QOS_CAPA = 46,
 	/* 802.11z */
-	SSTAR_WLAN_EID_LINK_ID = 101,
+	ATBM_WLAN_EID_LINK_ID = 101,
 	/* 802.11s */
-	SSTAR_WLAN_EID_MESH_CONFIG = 113,
-	SSTAR_WLAN_EID_MESH_ID = 114,
-	SSTAR_WLAN_EID_LINK_METRIC_REPORT = 115,
-	SSTAR_WLAN_EID_CONGESTION_NOTIFICATION = 116,
-	SSTAR_WLAN_EID_PEER_MGMT = 117,
-	SSTAR_WLAN_EID_CHAN_SWITCH_PARAM = 118,
-	SSTAR_WLAN_EID_MESH_AWAKE_WINDOW = 119,
-	SSTAR_WLAN_EID_BEACON_TIMING = 120,
-	SSTAR_WLAN_EID_MCCAOP_SETUP_REQ = 121,
-	SSTAR_WLAN_EID_MCCAOP_SETUP_RESP = 122,
-	SSTAR_WLAN_EID_MCCAOP_ADVERT = 123,
-	SSTAR_WLAN_EID_MCCAOP_TEARDOWN = 124,
-	SSTAR_WLAN_EID_GANN = 125,
-	SSTAR_WLAN_EID_RANN = 126,
-	SSTAR_WLAN_EID_PREQ = 130,
-	SSTAR_WLAN_EID_PREP = 131,
-	SSTAR_WLAN_EID_PERR = 132,
-	SSTAR_WLAN_EID_PXU = 137,
-	SSTAR_WLAN_EID_PXUC = 138,
-	SSTAR_WLAN_EID_AUTH_MESH_PEER_EXCH = 139,
-	SSTAR_WLAN_EID_MIC = 140,
+	ATBM_WLAN_EID_MESH_CONFIG = 113,
+	ATBM_WLAN_EID_MESH_ID = 114,
+	ATBM_WLAN_EID_LINK_METRIC_REPORT = 115,
+	ATBM_WLAN_EID_CONGESTION_NOTIFICATION = 116,
+	ATBM_WLAN_EID_PEER_MGMT = 117,
+	ATBM_WLAN_EID_CHAN_SWITCH_PARAM = 118,
+	ATBM_WLAN_EID_MESH_AWAKE_WINDOW = 119,
+	ATBM_WLAN_EID_BEACON_TIMING = 120,
+	ATBM_WLAN_EID_MCCAOP_SETUP_REQ = 121,
+	ATBM_WLAN_EID_MCCAOP_SETUP_RESP = 122,
+	ATBM_WLAN_EID_MCCAOP_ADVERT = 123,
+	ATBM_WLAN_EID_MCCAOP_TEARDOWN = 124,
+	ATBM_WLAN_EID_GANN = 125,
+	ATBM_WLAN_EID_RANN = 126,
+	ATBM_WLAN_EID_PREQ = 130,
+	ATBM_WLAN_EID_PREP = 131,
+	ATBM_WLAN_EID_PERR = 132,
+	ATBM_WLAN_EID_PXU = 137,
+	ATBM_WLAN_EID_PXUC = 138,
+	ATBM_WLAN_EID_AUTH_MESH_PEER_EXCH = 139,
+	ATBM_WLAN_EID_MIC = 140,
 
-	SSTAR_WLAN_EID_PWR_CONSTRAINT = 32,
-	SSTAR_WLAN_EID_PWR_CAPABILITY = 33,
-	SSTAR_WLAN_EID_TPC_REQUEST = 34,
-	SSTAR_WLAN_EID_TPC_REPORT = 35,
-	SSTAR_WLAN_EID_SUPPORTED_CHANNELS = 36,
-	SSTAR_WLAN_EID_CHANNEL_SWITCH = 37,
-	SSTAR_WLAN_EID_MEASURE_REQUEST = 38,
-	SSTAR_WLAN_EID_MEASURE_REPORT = 39,
-	SSTAR_WLAN_EID_QUIET = 40,
-	SSTAR_WLAN_EID_IBSS_DFS = 41,
+	ATBM_WLAN_EID_PWR_CONSTRAINT = 32,
+	ATBM_WLAN_EID_PWR_CAPABILITY = 33,
+	ATBM_WLAN_EID_TPC_REQUEST = 34,
+	ATBM_WLAN_EID_TPC_REPORT = 35,
+	ATBM_WLAN_EID_SUPPORTED_CHANNELS = 36,
+	ATBM_WLAN_EID_CHANNEL_SWITCH = 37,
+	ATBM_WLAN_EID_MEASURE_REQUEST = 38,
+	ATBM_WLAN_EID_MEASURE_REPORT = 39,
+	ATBM_WLAN_EID_QUIET = 40,
+	ATBM_WLAN_EID_IBSS_DFS = 41,
 
-	SSTAR_WLAN_EID_ERP_INFO = 42,
-	SSTAR_WLAN_EID_EXT_SUPP_RATES = 50,
+	ATBM_WLAN_EID_ERP_INFO = 42,
+	ATBM_WLAN_EID_EXT_SUPP_RATES = 50,
 
-	SSTAR_WLAN_EID_HT_CAPABILITY = 45,
-	SSTAR_WLAN_EID_HT_INFORMATION = 61,
+	ATBM_WLAN_EID_HT_CAPABILITY = 45,
+	ATBM_WLAN_EID_HT_INFORMATION = 61,
 
-	SSTAR_WLAN_EID_RSN = 48,
-	SSTAR_WLAN_EID_MMIE = 76,
-	SSTAR_WLAN_EID_WPA = 221,
-	SSTAR_WLAN_EID_GENERIC = 221,
-	SSTAR_WLAN_EID_VENDOR_SPECIFIC = 221,
-	SSTAR_WLAN_EID_QOS_PARAMETER = 222,
+	ATBM_WLAN_EID_RSN = 48,
+	ATBM_WLAN_EID_MMIE = 76,
+	ATBM_WLAN_EID_WPA = 221,
+	ATBM_WLAN_EID_GENERIC = 221,
+	ATBM_WLAN_EID_VENDOR_SPECIFIC = 221,
+	ATBM_WLAN_EID_QOS_PARAMETER = 222,
 
-	SSTAR_WLAN_EID_AP_CHAN_REPORT = 51,
-	SSTAR_WLAN_EID_NEIGHBOR_REPORT = 52,
-	SSTAR_WLAN_EID_RCPI = 53,
-	SSTAR_WLAN_EID_BSS_AVG_ACCESS_DELAY = 63,
-	SSTAR_WLAN_EID_ANTENNA_INFO = 64,
-	SSTAR_WLAN_EID_RSNI = 65,
-	SSTAR_WLAN_EID_MEASUREMENT_PILOT_TX_INFO = 66,
-	SSTAR_WLAN_EID_BSS_AVAILABLE_CAPACITY = 67,
-	SSTAR_WLAN_EID_BSS_AC_ACCESS_DELAY = 68,
-	SSTAR_WLAN_EID_RRM_ENABLED_CAPABILITIES = 70,
-	SSTAR_WLAN_EID_MULTIPLE_BSSID = 71,
-	SSTAR_WLAN_EID_BSS_COEX_2040 = 72,
-	SSTAR_WLAN_EID_OVERLAP_BSS_SCAN_PARAM = 74,
-	SSTAR_WLAN_EID_EXT_CAPABILITY = 127,
+	ATBM_WLAN_EID_AP_CHAN_REPORT = 51,
+	ATBM_WLAN_EID_NEIGHBOR_REPORT = 52,
+	ATBM_WLAN_EID_RCPI = 53,
+	ATBM_WLAN_EID_BSS_AVG_ACCESS_DELAY = 63,
+	ATBM_WLAN_EID_ANTENNA_INFO = 64,
+	ATBM_WLAN_EID_RSNI = 65,
+	ATBM_WLAN_EID_MEASUREMENT_PILOT_TX_INFO = 66,
+	ATBM_WLAN_EID_BSS_AVAILABLE_CAPACITY = 67,
+	ATBM_WLAN_EID_BSS_AC_ACCESS_DELAY = 68,
+	ATBM_WLAN_EID_RRM_ENABLED_CAPABILITIES = 70,
+	ATBM_WLAN_EID_MULTIPLE_BSSID = 71,
+	ATBM_WLAN_EID_BSS_COEX_2040 = 72,
+	ATBM_WLAN_EID_OVERLAP_BSS_SCAN_PARAM = 74,
+	ATBM_WLAN_EID_EXT_CAPABILITY = 127,
 
-	SSTAR_WLAN_EID_MOBILITY_DOMAIN = 54,
-	SSTAR_WLAN_EID_FAST_BSS_TRANSITION = 55,
-	SSTAR_WLAN_EID_TIMEOUT_INTERVAL = 56,
-	SSTAR_WLAN_EID_RIC_DATA = 57,
-	SSTAR_WLAN_EID_RIC_DESCRIPTOR = 75,
+	ATBM_WLAN_EID_MOBILITY_DOMAIN = 54,
+	ATBM_WLAN_EID_FAST_BSS_TRANSITION = 55,
+	ATBM_WLAN_EID_TIMEOUT_INTERVAL = 56,
+	ATBM_WLAN_EID_RIC_DATA = 57,
+	ATBM_WLAN_EID_RIC_DESCRIPTOR = 75,
 
-	SSTAR_WLAN_EID_DSE_REGISTERED_LOCATION = 58,
-	SSTAR_WLAN_EID_SUPPORTED_REGULATORY_CLASSES = 59,
-	SSTAR_WLAN_EID_EXT_CHANSWITCH_ANN = 60,
-	SSTAR_WLAN_EID_SECONDARY_CH_OFFSET = 62,
-	SSTAR_WLAN_EID_PRIVATE = 233,
+	ATBM_WLAN_EID_DSE_REGISTERED_LOCATION = 58,
+	ATBM_WLAN_EID_SUPPORTED_REGULATORY_CLASSES = 59,
+	ATBM_WLAN_EID_EXT_CHANSWITCH_ANN = 60,
+	ATBM_WLAN_EID_SECONDARY_CH_OFFSET = 62,
+#ifdef ATBM_PRIVATE_IE
+	ATBM_WLAN_EID_PRIVATE = 233,
+#endif
 };
 
-struct Sstar_wpa_ie_data {
+struct atbm_wpa_ie_data {
 	int proto;
 	int pairwise_cipher;
 	int group_cipher;
@@ -204,189 +204,173 @@ struct Sstar_wpa_ie_data {
 	const u8 *pmkid;
 	int mgmt_group_cipher;
 };
-#define SSTAR_WLAN_CAPABILITY_ESS BIT(0)
-#define SSTAR_WLAN_CAPABILITY_IBSS BIT(1)
-#define SSTAR_WLAN_CAPABILITY_CF_POLLABLE BIT(2)
-#define SSTAR_WLAN_CAPABILITY_CF_POLL_REQUEST BIT(3)
-#define SSTAR_WLAN_CAPABILITY_PRIVACY BIT(4)
-#define SSTAR_WLAN_CAPABILITY_SHORT_PREAMBLE BIT(5)
-#define SSTAR_WLAN_CAPABILITY_PBCC BIT(6)
-#define SSTAR_WLAN_CAPABILITY_CHANNEL_AGILITY BIT(7)
-#define SSTAR_WLAN_CAPABILITY_SPECTRUM_MGMT BIT(8)
-#define SSTAR_WLAN_CAPABILITY_SHORT_SLOT_TIME BIT(10)
-#define SSTAR_WLAN_CAPABILITY_DSSS_OFDM BIT(13)
+#define ATBM_WLAN_CAPABILITY_ESS BIT(0)
+#define ATBM_WLAN_CAPABILITY_IBSS BIT(1)
+#define ATBM_WLAN_CAPABILITY_CF_POLLABLE BIT(2)
+#define ATBM_WLAN_CAPABILITY_CF_POLL_REQUEST BIT(3)
+#define ATBM_WLAN_CAPABILITY_PRIVACY BIT(4)
+#define ATBM_WLAN_CAPABILITY_SHORT_PREAMBLE BIT(5)
+#define ATBM_WLAN_CAPABILITY_PBCC BIT(6)
+#define ATBM_WLAN_CAPABILITY_CHANNEL_AGILITY BIT(7)
+#define ATBM_WLAN_CAPABILITY_SPECTRUM_MGMT BIT(8)
+#define ATBM_WLAN_CAPABILITY_SHORT_SLOT_TIME BIT(10)
+#define ATBM_WLAN_CAPABILITY_DSSS_OFDM BIT(13)
 
 /* IEEE 802.11, 7.3.2.25.3 RSN Capabilities */
-#define SSTAR_WPA_CAPABILITY_PREAUTH BIT(0)
-#define SSTAR_WPA_CAPABILITY_NO_PAIRWISE BIT(1)
+#define ATBM_WPA_CAPABILITY_PREAUTH BIT(0)
+#define ATBM_WPA_CAPABILITY_NO_PAIRWISE BIT(1)
 /* B2-B3: PTKSA Replay Counter */
 /* B4-B5: GTKSA Replay Counter */
-#define SSTAR_WPA_CAPABILITY_MFPR BIT(6)
-#define SSTAR_WPA_CAPABILITY_MFPC BIT(7)
+#define ATBM_WPA_CAPABILITY_MFPR BIT(6)
+#define ATBM_WPA_CAPABILITY_MFPC BIT(7)
 /* B8: Reserved */
-#define SSTAR_WPA_CAPABILITY_PEERKEY_ENABLED BIT(9)
-#define SSTAR_WPA_CAPABILITY_SPP_A_MSDU_CAPABLE BIT(10)
-#define SSTAR_WPA_CAPABILITY_SPP_A_MSDU_REQUIRED BIT(11)
-#define SSTAR_WPA_CAPABILITY_PBAC BIT(12)
-#define SSTAR_WPA_CAPABILITY_EXT_KEY_ID_FOR_UNICAST BIT(13)
+#define ATBM_WPA_CAPABILITY_PEERKEY_ENABLED BIT(9)
+#define ATBM_WPA_CAPABILITY_SPP_A_MSDU_CAPABLE BIT(10)
+#define ATBM_WPA_CAPABILITY_SPP_A_MSDU_REQUIRED BIT(11)
+#define ATBM_WPA_CAPABILITY_PBAC BIT(12)
+#define ATBM_WPA_CAPABILITY_EXT_KEY_ID_FOR_UNICAST BIT(13)
 
-#define SSTAR_WPA_PROTO_WPA BIT(0)
-#define SSTAR_WPA_PROTO_RSN BIT(1)
-#define SSTAR_WPA_PROTO_WAPI BIT(2)
+#define ATBM_WPA_PROTO_WPA BIT(0)
+#define ATBM_WPA_PROTO_RSN BIT(1)
+#define ATBM_WPA_PROTO_WAPI BIT(2)
 
-#define SSTAR_WPA_CIPHER_NONE BIT(0)
-#define SSTAR_WPA_CIPHER_WEP40 BIT(1)
-#define SSTAR_WPA_CIPHER_WEP104 BIT(2)
-#define SSTAR_WPA_CIPHER_TKIP BIT(3)
-#define SSTAR_WPA_CIPHER_CCMP BIT(4)
-#define SSTAR_WPA_CIPHER_AES_128_CMAC BIT(5)
-#define SSTAR_WPA_CIPHER_GCMP BIT(6)
-#define SSTAR_WPA_CIPHER_SMS4 BIT(7)
+#define ATBM_WPA_CIPHER_NONE BIT(0)
+#define ATBM_WPA_CIPHER_WEP40 BIT(1)
+#define ATBM_WPA_CIPHER_WEP104 BIT(2)
+#define ATBM_WPA_CIPHER_TKIP BIT(3)
+#define ATBM_WPA_CIPHER_CCMP BIT(4)
+#define ATBM_WPA_CIPHER_AES_128_CMAC BIT(5)
+#define ATBM_WPA_CIPHER_GCMP BIT(6)
+#define ATBM_WPA_CIPHER_SMS4 BIT(7)
 
 
-#define SSTAR_WPA_KEY_MGMT_IEEE8021X BIT(0)
-#define SSTAR_WPA_KEY_MGMT_PSK BIT(1)
-#define SSTAR_WPA_KEY_MGMT_NONE BIT(2)
-#define SSTAR_WPA_KEY_MGMT_IEEE8021X_NO_WPA BIT(3)
-#define SSTAR_WPA_KEY_MGMT_WPA_NONE BIT(4)
-#define SSTAR_WPA_KEY_MGMT_FT_IEEE8021X BIT(5)
-#define SSTAR_WPA_KEY_MGMT_FT_PSK BIT(6)
-#define SSTAR_WPA_KEY_MGMT_IEEE8021X_SHA256 BIT(7)
-#define SSTAR_WPA_KEY_MGMT_PSK_SHA256 BIT(8)
-#define SSTAR_WPA_KEY_MGMT_WPS BIT(9)
-#define SSTAR_WPA_KEY_MGMT_SAE BIT(10)
-#define SSTAR_WPA_KEY_MGMT_FT_SAE BIT(11)
-#define SSTAR_WPA_KEY_MGMT_WAPI_PSK BIT(12)
-#define SSTAR_WPA_KEY_MGMT_WAPI_CERT BIT(13)
-#define SSTAR_WPA_KEY_MGMT_CCKM BIT(14)
+#define ATBM_WPA_KEY_MGMT_IEEE8021X BIT(0)
+#define ATBM_WPA_KEY_MGMT_PSK BIT(1)
+#define ATBM_WPA_KEY_MGMT_NONE BIT(2)
+#define ATBM_WPA_KEY_MGMT_IEEE8021X_NO_WPA BIT(3)
+#define ATBM_WPA_KEY_MGMT_WPA_NONE BIT(4)
+#define ATBM_WPA_KEY_MGMT_FT_IEEE8021X BIT(5)
+#define ATBM_WPA_KEY_MGMT_FT_PSK BIT(6)
+#define ATBM_WPA_KEY_MGMT_IEEE8021X_SHA256 BIT(7)
+#define ATBM_WPA_KEY_MGMT_PSK_SHA256 BIT(8)
+#define ATBM_WPA_KEY_MGMT_WPS BIT(9)
+#define ATBM_WPA_KEY_MGMT_SAE BIT(10)
+#define ATBM_WPA_KEY_MGMT_FT_SAE BIT(11)
+#define ATBM_WPA_KEY_MGMT_WAPI_PSK BIT(12)
+#define ATBM_WPA_KEY_MGMT_WAPI_CERT BIT(13)
+#define ATBM_WPA_KEY_MGMT_CCKM BIT(14)
 
-#define SSTAR_OUI_MICROSOFT 0x0050f2 /* Microsoft (also used in Wi-Fi specs)*/
-#define SSTAR_WMM_OUI_TYPE  2
-#define SSTAR_WMM_OUI_SUBTYPE_INFORMATION_ELEMENT 0
-#define SSTAR_WMM_OUI_SUBTYPE_PARAMETER_ELEMENT 1
-#define SSTAR_WMM_OUI_SUBTYPE_TSPEC_ELEMENT 2
+#define ATBM_OUI_MICROSOFT 0x0050f2 /* Microsoft (also used in Wi-Fi specs)*/
+#define ATBM_WMM_OUI_TYPE  2
+#define ATBM_WMM_OUI_SUBTYPE_INFORMATION_ELEMENT 0
+#define ATBM_WMM_OUI_SUBTYPE_PARAMETER_ELEMENT 1
+#define ATBM_WMM_OUI_SUBTYPE_TSPEC_ELEMENT 2
 
-#define SSTAR_OUI_WFA 0x506f9a
-#define SSTAR_P2P_IE_VENDOR_TYPE 0x506f9a09
-#define SSTAR_WFD_IE_VENDOR_TYPE 0x506f9a0a
-#define SSTAR_WFD_OUI_TYPE 10
-#define SSTAR_HS20_IE_VENDOR_TYPE 0x506f9a10
-#define SSTAR_HS20_INDICATION_OUI_TYPE 16
+#define ATBM_OUI_WFA 0x506f9a
+#define ATBM_P2P_IE_VENDOR_TYPE 0x506f9a09
+#define ATBM_WFD_IE_VENDOR_TYPE 0x506f9a0a
+#define ATBM_WFD_OUI_TYPE 10
+#define ATBM_HS20_IE_VENDOR_TYPE 0x506f9a10
+#define ATBM_HS20_INDICATION_OUI_TYPE 16
 
-#define SSTAR_P2P_OUI_TYPE 9
-#define SSTAR_OUI_BROADCOM 0x00904c /* Broadcom (Epigram) */
+#define ATBM_P2P_OUI_TYPE 9
+#define ATBM_OUI_BROADCOM 0x00904c /* Broadcom (Epigram) */
 
-#define SSTAR_WPA_SELECTOR_LEN 4
-#define SSTAR_WPA_VERSION 1
-#define SSTAR_RSN_SELECTOR_LEN 4
-#define SSTAR_RSN_VERSION 1
+#define ATBM_WPA_SELECTOR_LEN 4
+#define ATBM_WPA_VERSION 1
+#define ATBM_RSN_SELECTOR_LEN 4
+#define ATBM_RSN_VERSION 1
 
-static inline u32 SSTAR_WPA_GET_BE24(const u8 *a)
+static inline u32 ATBM_WPA_GET_BE24(const u8 *a)
 {
 	return (a[0] << 16) | (a[1] << 8) | a[2];
 }
 
-static inline u32 SSTAR_WPA_GET_BE32(const u8 *a)
+static inline u32 ATBM_WPA_GET_BE32(const u8 *a)
 {
 	return (a[0] << 24) | (a[1] << 16) | (a[2] << 8) | a[3];
 }
 
-static inline u16 SSTAR_WPA_GET_LE16(const u8 *a)
+static inline u16 ATBM_WPA_GET_LE16(const u8 *a)
 {
 	return (a[1] << 8) | a[0];
 }
 
-#define SSTAR_RSN_CIPHER_SUITE_NONE 					0x000fac00
-#define SSTAR_RSN_CIPHER_SUITE_WEP40					0x000fac01
-#define SSTAR_RSN_CIPHER_SUITE_TKIP 					0x000fac02
-#define SSTAR_RSN_CIPHER_SUITE_CCMP 					0x000fac04
-#define SSTAR_RSN_CIPHER_SUITE_WEP104 				0x000fac05
-#define SSTAR_RSN_CIPHER_SUITE_AES_128_CMAC 			0x000fac06
-#define SSTAR_RSN_CIPHER_SUITE_NO_GROUP_ADDRESSED 	0x000fac07
-#define SSTAR_RSN_CIPHER_SUITE_GCMP 					0x000fac08
+#define ATBM_RSN_CIPHER_SUITE_NONE 					0x000fac00
+#define ATBM_RSN_CIPHER_SUITE_WEP40					0x000fac01
+#define ATBM_RSN_CIPHER_SUITE_TKIP 					0x000fac02
+#define ATBM_RSN_CIPHER_SUITE_CCMP 					0x000fac04
+#define ATBM_RSN_CIPHER_SUITE_WEP104 				0x000fac05
+#define ATBM_RSN_CIPHER_SUITE_AES_128_CMAC 			0x000fac06
+#define ATBM_RSN_CIPHER_SUITE_NO_GROUP_ADDRESSED 	0x000fac07
+#define ATBM_RSN_CIPHER_SUITE_GCMP 					0x000fac08
 
 
-#define SSTAR_RSN_AUTH_KEY_MGMT_UNSPEC_802_1X 		0x000fac01
-#define SSTAR_RSN_AUTH_KEY_MGMT_PSK_OVER_802_1X 		0x000fac02
-#define SSTAR_RSN_AUTH_KEY_MGMT_FT_802_1X 			0x000fac03
-#define SSTAR_RSN_AUTH_KEY_MGMT_FT_PSK 				0x000fac04
-#define SSTAR_RSN_AUTH_KEY_MGMT_802_1X_SHA256 		0x000fac05
-#define SSTAR_RSN_AUTH_KEY_MGMT_PSK_SHA256 			0x000fac06
-#define SSTAR_RSN_AUTH_KEY_MGMT_TPK_HANDSHAKE 		0x000fac07
-#define SSTAR_RSN_AUTH_KEY_MGMT_SAE 					0x000fac08
-#define SSTAR_RSN_AUTH_KEY_MGMT_FT_SAE				0x000fac09
-#define SSTAR_RSN_AUTH_KEY_MGMT_CCKM 				0x00409600
+#define ATBM_RSN_AUTH_KEY_MGMT_UNSPEC_802_1X 		0x000fac01
+#define ATBM_RSN_AUTH_KEY_MGMT_PSK_OVER_802_1X 		0x000fac02
+#define ATBM_RSN_AUTH_KEY_MGMT_FT_802_1X 			0x000fac03
+#define ATBM_RSN_AUTH_KEY_MGMT_FT_PSK 				0x000fac04
+#define ATBM_RSN_AUTH_KEY_MGMT_802_1X_SHA256 		0x000fac05
+#define ATBM_RSN_AUTH_KEY_MGMT_PSK_SHA256 			0x000fac06
+#define ATBM_RSN_AUTH_KEY_MGMT_TPK_HANDSHAKE 		0x000fac07
+#define ATBM_RSN_AUTH_KEY_MGMT_SAE 					0x000fac08
+#define ATBM_RSN_AUTH_KEY_MGMT_FT_SAE				0x000fac09
+#define ATBM_RSN_AUTH_KEY_MGMT_CCKM 				0x00409600
 
-/* AKM suite selectors */
-#define SSTAR_WLAN_AKM_SUITE_8021X					0x000FAC01
-#define SSTAR_WLAN_AKM_SUITE_PSK						0x000FAC02
-#define SSTAR_WLAN_AKM_SUITE_8021X_SHA256			0x000FAC05
-#define SSTAR_WLAN_AKM_SUITE_PSK_SHA256				0x000FAC06
-#define SSTAR_WLAN_AKM_SUITE_TDLS					0x000FAC07
-#define SSTAR_WLAN_AKM_SUITE_SAE						0x000FAC08
-#define SSTAR_WLAN_AKM_SUITE_FT_OVER_SAE				0x000FAC09
-#define SSTAR_WLAN_AKM_SUITE_802_1X_SUITE_B_192 		0x000fac12
-#define SSTAR_WLAN_AKM_SUITE_FILS_SHA256 			0x000fac14
-#define SSTAR_WLAN_AKM_SUITE_FILS_SHA384 			0x000fac15
-#define SSTAR_WLAN_AKM_SUITE_FT_FILS_SHA256 			0x000fac16
-#define SSTAR_WLAN_AKM_SUITE_FT_FILS_SHA384 			0x000fac17
-
-#define SSTAR_PMKID_LEN 16
-#define SSTAR_PMK_LEN 32
-#define SSTAR_WPA_REPLAY_COUNTER_LEN 8
-#define SSTAR_WPA_NONCE_LEN 32
-#define SSTAR_WPA_KEY_RSC_LEN 8
-#define SSTAR_WPA_GMK_LEN 32
-#define SSTAR_WPA_GTK_MAX_LEN 32
+#define ATBM_PMKID_LEN 16
+#define ATBM_PMK_LEN 32
+#define ATBM_WPA_REPLAY_COUNTER_LEN 8
+#define ATBM_WPA_NONCE_LEN 32
+#define ATBM_WPA_KEY_RSC_LEN 8
+#define ATBM_WPA_GMK_LEN 32
+#define ATBM_WPA_GTK_MAX_LEN 32
 
 
-#define SSTAR_WPA_AUTH_KEY_MGMT_NONE 				0x0050f200
-#define SSTAR_WPA_AUTH_KEY_MGMT_UNSPEC_802_1X 		0x0050f201
-#define SSTAR_WPA_AUTH_KEY_MGMT_PSK_OVER_802_1X 		0x0050f202
-#define SSTAR_WPA_AUTH_KEY_MGMT_CCKM 				0x00409600
-#define SSTAR_WPA_CIPHER_SUITE_NONE 					0x0050f200
-#define SSTAR_WPA_CIPHER_SUITE_WEP40 				0x0050f201
-#define SSTAR_WPA_CIPHER_SUITE_TKIP 					0x0050f202
-#define SSTAR_WPA_CIPHER_SUITE_CCMP 					0x0050f204
-#define SSTAR_WPA_CIPHER_SUITE_WEP104 				0x0050f205
-
-#define SSTAR_PRIVATE_OUI							0x4154424D
-enum Sstar_p2p_attr_id {
-	SSTAR_P2P_ATTR_STATUS = 0,
-	SSTAR_P2P_ATTR_MINOR_REASON_CODE = 1,
-	SSTAR_P2P_ATTR_CAPABILITY = 2,
-	SSTAR_P2P_ATTR_DEVICE_ID = 3,
-	SSTAR_P2P_ATTR_GROUP_OWNER_INTENT = 4,
-	SSTAR_P2P_ATTR_CONFIGURATION_TIMEOUT = 5,
-	SSTAR_P2P_ATTR_LISTEN_CHANNEL = 6,
-	SSTAR_P2P_ATTR_GROUP_BSSID = 7,
-	SSTAR_P2P_ATTR_EXT_LISTEN_TIMING = 8,
-	SSTAR_P2P_ATTR_INTENDED_INTERFACE_ADDR = 9,
-	SSTAR_P2P_ATTR_MANAGEABILITY = 10,
-	SSTAR_P2P_ATTR_CHANNEL_LIST = 11,
-	SSTAR_P2P_ATTR_NOTICE_OF_ABSENCE = 12,
-	SSTAR_P2P_ATTR_DEVICE_INFO = 13,
-	SSTAR_P2P_ATTR_GROUP_INFO = 14,
-	SSTAR_P2P_ATTR_GROUP_ID = 15,
-	SSTAR_P2P_ATTR_INTERFACE = 16,
-	SSTAR_P2P_ATTR_OPERATING_CHANNEL = 17,
-	SSTAR_P2P_ATTR_INVITATION_FLAGS = 18,
-	SSTAR_P2P_ATTR_VENDOR_SPECIFIC = 221
+#define ATBM_WPA_AUTH_KEY_MGMT_NONE 				0x0050f200
+#define ATBM_WPA_AUTH_KEY_MGMT_UNSPEC_802_1X 		0x0050f201
+#define ATBM_WPA_AUTH_KEY_MGMT_PSK_OVER_802_1X 		0x0050f202
+#define ATBM_WPA_AUTH_KEY_MGMT_CCKM 				0x00409600
+#define ATBM_WPA_CIPHER_SUITE_NONE 					0x0050f200
+#define ATBM_WPA_CIPHER_SUITE_WEP40 				0x0050f201
+#define ATBM_WPA_CIPHER_SUITE_TKIP 					0x0050f202
+#define ATBM_WPA_CIPHER_SUITE_CCMP 					0x0050f204
+#define ATBM_WPA_CIPHER_SUITE_WEP104 				0x0050f205
+enum atbm_p2p_attr_id {
+	ATBM_P2P_ATTR_STATUS = 0,
+	ATBM_P2P_ATTR_MINOR_REASON_CODE = 1,
+	ATBM_P2P_ATTR_CAPABILITY = 2,
+	ATBM_P2P_ATTR_DEVICE_ID = 3,
+	ATBM_P2P_ATTR_GROUP_OWNER_INTENT = 4,
+	ATBM_P2P_ATTR_CONFIGURATION_TIMEOUT = 5,
+	ATBM_P2P_ATTR_LISTEN_CHANNEL = 6,
+	ATBM_P2P_ATTR_GROUP_BSSID = 7,
+	ATBM_P2P_ATTR_EXT_LISTEN_TIMING = 8,
+	ATBM_P2P_ATTR_INTENDED_INTERFACE_ADDR = 9,
+	ATBM_P2P_ATTR_MANAGEABILITY = 10,
+	ATBM_P2P_ATTR_CHANNEL_LIST = 11,
+	ATBM_P2P_ATTR_NOTICE_OF_ABSENCE = 12,
+	ATBM_P2P_ATTR_DEVICE_INFO = 13,
+	ATBM_P2P_ATTR_GROUP_INFO = 14,
+	ATBM_P2P_ATTR_GROUP_ID = 15,
+	ATBM_P2P_ATTR_INTERFACE = 16,
+	ATBM_P2P_ATTR_OPERATING_CHANNEL = 17,
+	ATBM_P2P_ATTR_INVITATION_FLAGS = 18,
+	ATBM_P2P_ATTR_VENDOR_SPECIFIC = 221
 };
 
 /* P2P public action frames */
-enum Sstar_p2p_action_frame_type {
-	SSTAR_P2P_GO_NEG_REQ = 0,
-	SSTAR_P2P_GO_NEG_RESP = 1,
-	SSTAR_P2P_GO_NEG_CONF = 2,
-	SSTAR_P2P_INVITATION_REQ = 3,
-	SSTAR_P2P_INVITATION_RESP = 4,
-	SSTAR_P2P_DEV_DISC_REQ = 5,
-	SSTAR_P2P_DEV_DISC_RESP = 6,
-	SSTAR_P2P_PROV_DISC_REQ = 7,
-	SSTAR_P2P_PROV_DISC_RESP = 8
+enum atbm_p2p_action_frame_type {
+	ATBM_P2P_GO_NEG_REQ = 0,
+	ATBM_P2P_GO_NEG_RESP = 1,
+	ATBM_P2P_GO_NEG_CONF = 2,
+	ATBM_P2P_INVITATION_REQ = 3,
+	ATBM_P2P_INVITATION_RESP = 4,
+	ATBM_P2P_DEV_DISC_REQ = 5,
+	ATBM_P2P_DEV_DISC_RESP = 6,
+	ATBM_P2P_PROV_DISC_REQ = 7,
+	ATBM_P2P_PROV_DISC_RESP = 8
 };
-struct Sstar_p2p_message {
+struct atbm_p2p_message {
 	u8 dialog_token;
 
 	u8 *capability;
@@ -411,7 +395,7 @@ struct Sstar_p2p_message {
 	u8 *intended_addr;
 };
 
-struct Sstar_ieee80211_vendor_ie {
+struct atbm_ieee80211_vendor_ie {
 	u8 element_id;
 	u8 len;
 	u8 oui[3];
@@ -439,40 +423,40 @@ struct beacon_parameters {
 };
 #endif
 
-#ifdef SSTAR_SUPPORT_WIDTH_40M
+#ifdef ATBM_SUPPORT_WIDTH_40M
 
 /**
  *
  *
  *
  */
-struct Sstar_ieee80211_ext_chansw_ie{
+struct atbm_ieee80211_ext_chansw_ie{
 	u8 mode;
 	u8 new_operaring_class;
 	u8 new_ch_num;
 	u8 count;
 } __attribute__ ((packed));
 
-struct Sstar_ieee80211_sec_chan_offs_ie {
+struct atbm_ieee80211_sec_chan_offs_ie {
 	u8 sec_chan_offs;
 } __attribute__ ((packed));
 
 
-struct Sstar_ieee80211_channel_sw_packed_ie{
+struct atbm_ieee80211_channel_sw_packed_ie{
 	struct ieee80211_channel_sw_ie *chan_sw_ie;
-	struct Sstar_ieee80211_ext_chansw_ie *ex_chan_sw_ie;
-	struct Sstar_ieee80211_sec_chan_offs_ie *sec_chan_offs_ie;
+	struct atbm_ieee80211_ext_chansw_ie *ex_chan_sw_ie;
+	struct atbm_ieee80211_sec_chan_offs_ie *sec_chan_offs_ie;
 }__attribute__ ((packed));
 
 
 /* Public action codes */
-enum Sstar_ieee80211_pub_actioncode {
-	SSTAR_WLAN_PUB_ACTION_EX_CHL_SW_ANNOUNCE = 4,
+enum atbm_ieee80211_pub_actioncode {
+	ATBM_WLAN_PUB_ACTION_EX_CHL_SW_ANNOUNCE = 4,
 };
 
 #endif
 
-struct Sstar_ieee80211_mgmt {
+struct atbm_ieee80211_mgmt {
 	__le16 frame_control;
 	__le16 duration;
 	u8 da[6];
@@ -554,10 +538,10 @@ struct Sstar_ieee80211_mgmt {
 					u8 length;
 					struct ieee80211_channel_sw_ie sw_elem;
 				} __attribute__((packed)) chan_switch;
-				#ifdef SSTAR_SUPPORT_WIDTH_40M
+				#ifdef ATBM_SUPPORT_WIDTH_40M
 				struct{
 					u8	action_code;
-					struct Sstar_ieee80211_ext_chansw_ie ext_sw_elem;
+					struct atbm_ieee80211_ext_chansw_ie ext_sw_elem;
 					u8 variable[0];
 				}__attribute__((packed)) ext_chan_switch;
 				struct{
@@ -690,7 +674,7 @@ enum ieee80211_self_protected_actioncode {
 static inline bool ieee80211_is_public_action(struct ieee80211_hdr *hdr,
 					      size_t len)
 {
-	struct Sstar_ieee80211_mgmt *mgmt = (void *)hdr;
+	struct atbm_ieee80211_mgmt *mgmt = (void *)hdr;
 
 	if (len < IEEE80211_MIN_ACTION_SIZE)
 		return false;
@@ -881,7 +865,7 @@ enum ieee80211_bss_change {
 #ifdef IPV6_FILTERING
 	BSS_CHANGED_NDP_FILTER		= 1<<20,
 #endif /*IPV6_FILTERING*/
-	BSS_CHANGED_STA_RESTART		= 1<<21,
+
 	/* when adding here, make sure to change ieee80211_reconfig */
 };
 
@@ -1089,8 +1073,8 @@ struct ieee80211_bss_conf {
 	u8 ndp_addr_cnt;
 	bool ndp_filter_enabled;
 #endif /*IPV6_FILTERING*/
-#ifdef SSTAR_AP_SME
-	struct Sstar_wpa_ie_data wpa_ap_data;
+#ifdef ATBM_AP_SME
+	struct atbm_wpa_ie_data wpa_ap_data;
 	u16 aid_map;
 #endif
 	bool privacy;
@@ -1207,7 +1191,7 @@ enum mac80211_tx_control_flags {
 	IEEE80211_TX_CTL_POLL_RESPONSE		= BIT(17),
 	IEEE80211_TX_CTL_MORE_FRAMES		= BIT(18),
 	IEEE80211_TX_INTFL_RETRANSMISSION	= BIT(19),
-	IEEE80211_TX_HANDSHAKE			    = BIT(20),
+
 	/* hole at 20, use later */
 	IEEE80211_TX_INTFL_NL80211_FRAME_TX	= BIT(21),
 	IEEE80211_TX_CTL_LDPC			= BIT(22),
@@ -1347,8 +1331,7 @@ struct ieee80211_tx_info {
 
 	u8 hw_queue;
 	/* 2 byte hole */
-	//u8 pad[1];
-	u8 sg_tailneed;
+	u8 pad[1];
 
 	union {
 		struct {
@@ -1484,8 +1467,6 @@ enum mac80211_rx_flags {
 	RX_FLAG_40MHZ		= 1<<10,
 	RX_FLAG_SHORT_GI	= 1<<11,
 	RX_FLAG_HW_CHKSUM_ERROR = 1<<12,
-	RX_FLAG_STA_LISTEN  = 1<<13,
-	RX_FLAG_UNKOWN_STA_FRAME = 1<<14,
 };
 
 /**
@@ -1676,7 +1657,7 @@ struct ieee80211_vif {
 
 static inline bool ieee80211_vif_is_mesh(struct ieee80211_vif *vif)
 {
-#ifdef CONFIG_MAC80211_SSTAR_MESH
+#ifdef CONFIG_MAC80211_ATBM_MESH
 	return vif->type == NL80211_IFTYPE_MESH_POINT;
 #endif
 	return false;
@@ -1785,7 +1766,7 @@ struct ieee80211_sta {
 	bool wme;
 	u8 uapsd_queues;
 	u8 max_sp;
-	struct Sstar_wpa_ie_data wpa_sta_data;
+	struct atbm_wpa_ie_data wpa_sta_data;
 	/* must be last */
 	u8 drv_priv[0] __attribute__((__aligned__(sizeof(void *))));
 };
@@ -1974,8 +1955,6 @@ enum ieee80211_hw_flags {
 	IEEE80211_HW_SUPPORTS_P2P_PS			= 1<<26,
 	IEEE80211_HW_SUPPORTS_MULTI_CHANNEL		= 1<<27,
 	IEEE80211_HW_QUEUE_CONTROL			= 1<<28,
-	IEEE80211_HW_MONITOR_NEED_PRISM_HEADER		= 1<<29,
-	IEEE80211_HW_SCHEDULE_TASKLET		= 1<<30,
 };
 
 /**
@@ -2073,19 +2052,6 @@ struct ieee80211_hw {
 	u8 offchannel_tx_hw_queue;
 	u8 vendcmd_nl80211;
 	struct response vendreturn;
-};
-#define IEEE80211_SSTAR_MAX_SCAN_CHANNEL_INDEX		64
-enum ieee80211_scan_req_wrap_flags{
-	IEEE80211_SCAN_REQ_CCA             = 1<<0,
-	IEEE80211_SCAN_REQ_INTERNAL        = 1<<1, 
-	IEEE80211_SCAN_REQ_RESULTS_HANDLE  = 1<<2, 
-	IEEE80211_SCAN_REQ_PASSIVE_SCAN    = 1<<3,
-	IEEE80211_SCAN_REQ_RESULTS_SKB     = 1<<4,
-};
-struct ieee80211_scan_req_wrap{
-	struct cfg80211_scan_request *req;
-	u32 flags;
-	u8  cca_val[IEEE80211_SSTAR_MAX_SCAN_CHANNEL_INDEX];
 };
 
 /**
@@ -3044,7 +3010,7 @@ struct ieee80211_ops {
 			       struct cfg80211_gtk_rekey_data *data);
 #endif
 	int (*hw_scan)(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
-		       struct ieee80211_scan_req_wrap *req);
+		       struct cfg80211_scan_request *req);
 	void (*cancel_hw_scan)(struct ieee80211_hw *hw,
 			       struct ieee80211_vif *vif);
 	int (*sched_scan_start)(struct ieee80211_hw *hw,
@@ -3134,8 +3100,6 @@ struct ieee80211_ops {
 				void *data,
 				int len);
 	int (*set_mac_addr2efuse)(struct ieee80211_hw *hw, u8 *macAddr);
-	int (*sta_triger_listen)(struct ieee80211_hw *hw,struct ieee80211_vif *vif,struct ieee80211_channel *chan);
-	int (*sta_stop_listen)(struct ieee80211_hw *hw,struct ieee80211_vif *vif);
 };
 
 /**
@@ -3188,7 +3152,7 @@ enum ieee80211_tpt_led_trigger_flags {
 	IEEE80211_TPT_LEDTRIG_FL_CONNECTED	= BIT(2),
 };
 
-#ifdef CONFIG_MAC80211_SSTAR_LEDS
+#ifdef CONFIG_MAC80211_ATBM_LEDS
 extern char *__ieee80211_get_tx_led_name(struct ieee80211_hw *hw);
 extern char *__ieee80211_get_rx_led_name(struct ieee80211_hw *hw);
 extern char *__ieee80211_get_assoc_led_name(struct ieee80211_hw *hw);
@@ -3210,7 +3174,7 @@ extern char *__ieee80211_create_tpt_led_trigger(
  */
 static inline char *ieee80211_get_tx_led_name(struct ieee80211_hw *hw)
 {
-#ifdef CONFIG_MAC80211_SSTAR_LEDS
+#ifdef CONFIG_MAC80211_ATBM_LEDS
 	return __ieee80211_get_tx_led_name(hw);
 #else
 	return NULL;
@@ -3229,7 +3193,7 @@ static inline char *ieee80211_get_tx_led_name(struct ieee80211_hw *hw)
  */
 static inline char *ieee80211_get_rx_led_name(struct ieee80211_hw *hw)
 {
-#ifdef CONFIG_MAC80211_SSTAR_LEDS
+#ifdef CONFIG_MAC80211_ATBM_LEDS
 	return __ieee80211_get_rx_led_name(hw);
 #else
 	return NULL;
@@ -3248,7 +3212,7 @@ static inline char *ieee80211_get_rx_led_name(struct ieee80211_hw *hw)
  */
 static inline char *ieee80211_get_assoc_led_name(struct ieee80211_hw *hw)
 {
-#ifdef CONFIG_MAC80211_SSTAR_LEDS
+#ifdef CONFIG_MAC80211_ATBM_LEDS
 	return __ieee80211_get_assoc_led_name(hw);
 #else
 	return NULL;
@@ -3267,7 +3231,7 @@ static inline char *ieee80211_get_assoc_led_name(struct ieee80211_hw *hw)
  */
 static inline char *ieee80211_get_radio_led_name(struct ieee80211_hw *hw)
 {
-#ifdef CONFIG_MAC80211_SSTAR_LEDS
+#ifdef CONFIG_MAC80211_ATBM_LEDS
 	return __ieee80211_get_radio_led_name(hw);
 #else
 	return NULL;
@@ -3290,7 +3254,7 @@ ieee80211_create_tpt_led_trigger(struct ieee80211_hw *hw, unsigned int flags,
 				 const struct ieee80211_tpt_blink *blink_table,
 				 unsigned int blink_table_len)
 {
-#ifdef CONFIG_MAC80211_SSTAR_LEDS
+#ifdef CONFIG_MAC80211_ATBM_LEDS
 	return __ieee80211_create_tpt_led_trigger(hw, flags, blink_table,
 						  blink_table_len);
 #else
@@ -3332,9 +3296,6 @@ void ieee80211_free_hw(struct ieee80211_hw *hw);
  * @hw: the hardware to restart
  */
 void ieee80211_restart_hw(struct ieee80211_hw *hw);
-int  ieee80211_restart_hw_sync(struct ieee80211_hw *hw);
-int  ieee80211_pre_restart_hw_sync(struct ieee80211_hw *hw);
-
 #ifdef IEEE80211_SUPPORT_NAPI
 /** ieee80211_napi_schedule - schedule NAPI poll
  *
@@ -3536,10 +3497,8 @@ static inline void ieee80211_tx_status_ni(struct ieee80211_hw *hw,
  * @hw: the hardware the frame was transmitted by
  * @skb: the frame that was transmitted, owned by mac80211 after this call
  */
- #if 0
 void ieee80211_tx_status_irqsafe(struct ieee80211_hw *hw,
 				 struct sk_buff *skb);
- #endif
 
 /**
  * ieee80211_report_low_ack - report non-responding station
@@ -3594,7 +3553,7 @@ static inline struct sk_buff *ieee80211_beacon_get(struct ieee80211_hw *hw,
 	return ieee80211_beacon_get_tim(hw, vif, NULL, NULL);
 }
 
-#ifdef SSTAR_PROBE_RESP_EXTRA_IE
+#ifdef ATBM_PROBE_RESP_EXTRA_IE
 /**
  * ieee80211_proberesp_get - probe response generation function
  * @hw: pointer obtained from ieee80211_alloc_hw().
@@ -4654,14 +4613,14 @@ ieee80211_vif_type_p2p(struct ieee80211_vif *vif)
 {
 	return ieee80211_iftype_p2p(vif->type, vif->p2p);
 }
-static inline void Sstar_wdev_lock(struct wireless_dev *wdev)
+static inline void atbm_wdev_lock(struct wireless_dev *wdev)
 	__acquires(wdev)
 {
 	mutex_lock(&wdev->mtx);
 	__acquire(wdev->mtx);
 }
 
-static inline void Sstar_wdev_unlock(struct wireless_dev *wdev)
+static inline void atbm_wdev_unlock(struct wireless_dev *wdev)
 	__releases(wdev)
 {
 	__release(wdev->mtx);
@@ -4679,12 +4638,12 @@ int ieee80211_add_srates_ie(struct ieee80211_vif *vif, struct sk_buff *skb);
 int ieee80211_add_ext_srates_ie(struct ieee80211_vif *vif,
 				struct sk_buff *skb);
 
-struct Sstar_ewma {
+struct atbm_ewma {
 	unsigned long internal;
 	unsigned long factor;
 	unsigned long weight;
 };
-static inline int Sstar_ilog2(unsigned long v)
+static inline int atbm_ilog2(unsigned long v)
 {
 	int l = 0;
 	while ((1UL << l) < v)
@@ -4692,11 +4651,11 @@ static inline int Sstar_ilog2(unsigned long v)
 	return l;
 }
 
-static inline void Sstar_ewma_init(struct Sstar_ewma *avg, unsigned long factor, unsigned long weight)
+static inline void atbm_ewma_init(struct atbm_ewma *avg, unsigned long factor, unsigned long weight)
 {
 
-	avg->weight = Sstar_ilog2(weight);
-	avg->factor = Sstar_ilog2(factor);
+	avg->weight = atbm_ilog2(weight);
+	avg->factor = atbm_ilog2(factor);
 	avg->internal = 0;
 }
 /**
@@ -4706,7 +4665,7 @@ static inline void Sstar_ewma_init(struct Sstar_ewma *avg, unsigned long factor,
  *
  * Add a sample to the average.
  */
-static inline struct Sstar_ewma *Sstar_ewma_add(struct Sstar_ewma *avg, unsigned long val)
+static inline struct atbm_ewma *atbm_ewma_add(struct atbm_ewma *avg, unsigned long val)
 {
 	avg->internal = avg->internal  ?
 		(((avg->internal << avg->weight) - avg->internal) +
@@ -4714,18 +4673,18 @@ static inline struct Sstar_ewma *Sstar_ewma_add(struct Sstar_ewma *avg, unsigned
 		(val << avg->factor);
 	return avg;
 }
-#define SSTAR_DIV_ROUND_CLOSEST(x, divisor)(			\
+#define ATBM_DIV_ROUND_CLOSEST(x, divisor)(			\
 {							\
 	typeof(divisor) __divisor = divisor;		\
 	(((x) + ((__divisor) / 2)) / (__divisor));	\
 }							\
 )
 
-static inline unsigned long Sstar_ewma_read(const struct Sstar_ewma *avg)
+static inline unsigned long atbm_ewma_read(const struct atbm_ewma *avg)
 {
-	return avg->internal >> avg->factor;
+	return ATBM_DIV_ROUND_CLOSEST(avg->internal, avg->factor);
 }
-static inline const u8 *Sstar_ieee80211_find_ie(u8 eid, const u8 *ies, int len)
+static inline const u8 *atbm_ieee80211_find_ie(u8 eid, const u8 *ies, int len)
 {
 	while (len > 2 && ies[0] != eid) {
 		len -= ies[1] + 2;
@@ -4738,23 +4697,23 @@ static inline const u8 *Sstar_ieee80211_find_ie(u8 eid, const u8 *ies, int len)
 	return ies;
 }
 
-static inline const u8 *Sstar_ieee80211_find_vendor_ie(unsigned int oui, u8 oui_type,
+static inline const u8 *atbm_ieee80211_find_vendor_ie(unsigned int oui, u8 oui_type,
 				  const u8 *ies, int len)
 {
-	struct Sstar_ieee80211_vendor_ie *ie;
+	struct atbm_ieee80211_vendor_ie *ie;
 	const u8 *pos = ies, *end = ies + len;
 	int ie_oui;
 
 	while (pos < end) {
-		pos = Sstar_ieee80211_find_ie(SSTAR_WLAN_EID_VENDOR_SPECIFIC, pos,
+		pos = atbm_ieee80211_find_ie(ATBM_WLAN_EID_VENDOR_SPECIFIC, pos,
 				       end - pos);
 		if (!pos)
 			return NULL;
 
-		ie = (struct Sstar_ieee80211_vendor_ie *)pos;
+		ie = (struct atbm_ieee80211_vendor_ie *)pos;
 
 		/* make sure we can access ie->len */
-		BUILD_BUG_ON(offsetof(struct Sstar_ieee80211_vendor_ie, len) != 1);
+		BUILD_BUG_ON(offsetof(struct atbm_ieee80211_vendor_ie, len) != 1);
 
 		if (ie->len < sizeof(*ie))
 			goto cont;
@@ -4768,26 +4727,26 @@ cont:
 	return NULL;
 }
 
-static inline u8* Sstar_ieee80211_find_p2p_ie(const u8 *ie_start,size_t ie_len)
+static inline u8* atbm_ieee80211_find_p2p_ie(const u8 *ie_start,size_t ie_len)
 {
 	if((ie_start == NULL)||(ie_len == 0))
 		return NULL;
-	return (u8*)Sstar_ieee80211_find_vendor_ie(SSTAR_OUI_WFA,SSTAR_P2P_OUI_TYPE,ie_start,ie_len);
+	return (u8*)atbm_ieee80211_find_vendor_ie(ATBM_OUI_WFA,ATBM_P2P_OUI_TYPE,ie_start,ie_len);
 }
 
-static inline u8* Sstar_ieee80211_find_p2p_attr(u8* attr_start,ssize_t attr_len,u8 attr_id)
+static inline u8* atbm_ieee80211_find_p2p_attr(u8* attr_start,ssize_t attr_len,u8 attr_id)
 {
 	if((attr_start == NULL)||(attr_len == 0))
 		return NULL;
 	// 3 = 1(Attribute ID) + 2(Length)
 	while (attr_len > 2 && attr_start[0] != attr_id) {
-		attr_len -= SSTAR_WPA_GET_LE16((const u8*)(&attr_start[1])) + 3;
-		attr_start += SSTAR_WPA_GET_LE16((const u8*)(&attr_start[1])) + 3;
+		attr_len -= ATBM_WPA_GET_LE16((const u8*)(&attr_start[1])) + 3;
+		attr_start += ATBM_WPA_GET_LE16((const u8*)(&attr_start[1])) + 3;
 	}
 
 	if(attr_len<3)
 		return NULL;
-	if (attr_len < 3 + SSTAR_WPA_GET_LE16((const u8*)(&attr_start[1])))
+	if (attr_len < 3 + ATBM_WPA_GET_LE16((const u8*)(&attr_start[1])))
 		return NULL;
 
 	return attr_start;
@@ -4812,7 +4771,7 @@ static inline int ieee80211_p2p_action_check(u8* data,ssize_t data_len)
 
 	oui_wfa = (p2p_data[0] << 16) | (p2p_data[1] << 8) | p2p_data[2];
 
-	if(oui_wfa != SSTAR_OUI_WFA)
+	if(oui_wfa != ATBM_OUI_WFA)
 		RETURN_ERR;
 
 	p2p_data += 3;
@@ -4820,7 +4779,7 @@ static inline int ieee80211_p2p_action_check(u8* data,ssize_t data_len)
 	if (p2p_data_len < 1)
 		RETURN_ERR;
 
-	if(p2p_data[0] != SSTAR_P2P_OUI_TYPE)
+	if(p2p_data[0] != ATBM_P2P_OUI_TYPE)
 		RETURN_ERR;
 
 	p2p_data++;
@@ -4835,322 +4794,35 @@ action_check_end:
 }
 
 
-#ifdef SSTAR_PRIVATE_IE
+#ifdef ATBM_PRIVATE_IE
 
-#define SSTAR_USER_DATA_LEN 256
-struct Sstar_private_ie{
+#define ATBM_USER_DATA_LEN 256
+struct atbm_private_ie{
 	u8 ElementId;
 	u8 Length;
 	u8 Oui[4];
-	u8 UserData[0];
+	u8 UserData[ATBM_USER_DATA_LEN];
 }__packed;
-struct sk_buff * Sstar_mgmt_add_private_ie(struct sk_buff *skb);
+struct sk_buff * atbm_mgmt_add_private_ie(struct sk_buff *skb);
 #endif
 
-extern 	int Sstar_mac80211_iface_exit;
-static inline int Sstar_ieee80211_module_exit(void)
+extern 	int atbm_mac80211_iface_exit;
+static inline int atbm_ieee80211_module_exit(void)
 {	
-	return /*Sstar_mac80211_iface_exit*/0;
+	return /*atbm_mac80211_iface_exit*/0;
 }
 #ifndef do_posix_clock_monotonic_gettime
 #define do_posix_clock_monotonic_gettime(ts) ktime_get_ts(ts)
 #endif
-extern struct cfg80211_bss *ieee80211_Sstar_get_bss(struct wiphy *wiphy,
+extern struct cfg80211_bss *ieee80211_atbm_get_bss(struct wiphy *wiphy,
 				      struct ieee80211_channel *channel,
 				      const u8 *bssid,
 				      const u8 *ssid, size_t ssid_len,
 				      u16 capa_mask, u16 capa_val);
-extern void ieee80211_Sstar_put_authen_bss(struct ieee80211_vif *vif,struct cfg80211_bss *bss);
-extern void __ieee80211_Sstar_put_authen_bss(struct ieee80211_vif *vif,struct cfg80211_bss *bss);
+extern void ieee80211_atbm_put_bss(struct wiphy *wiphy, struct cfg80211_bss *pub);
 
-extern void ieee80211_Sstar_put_bss(struct wiphy *wiphy, struct cfg80211_bss *pub);
-extern int ieee80211_Sstar_handle_bss(struct wiphy *wiphy, struct cfg80211_bss *pub);
-extern void ieee80211_Sstar_release_bss(struct wiphy *wiphy, struct cfg80211_bss *pub);
-extern struct cfg80211_bss *ieee80211_Sstar_get_authen_bss(struct ieee80211_vif *vif,
-					  struct ieee80211_channel *channel,
-				      const u8 *bssid,
-				      const u8 *ssid, size_t ssid_len);
-extern struct cfg80211_bss *__ieee80211_Sstar_get_authen_bss(struct ieee80211_vif *vif,
-					  struct ieee80211_channel *channel,
-				      const u8 *bssid,
-				      const u8 *ssid, size_t ssid_len);
-extern char *ieee80211_alloc_name(struct ieee80211_hw *hw,const char *name);
-
-#define IEEE80211_CHANNLE_SPECIAL_FREQ_FLAG				BIT(15)
-#define IEEE80211_CHANNLE_CCA_RUNNING_FLAG				BIT(14)
-
-#define IEEE80211_CHANNLE_HW_VALUE_MASK (IEEE80211_CHANNLE_SPECIAL_FREQ_FLAG|IEEE80211_CHANNLE_CCA_RUNNING_FLAG)
-
-static inline u16 channel_hw_value(struct ieee80211_channel *channel)
-{
-	return (channel->hw_value)&(~IEEE80211_CHANNLE_HW_VALUE_MASK);
-}
-
-static inline void channel_mask_special(struct ieee80211_channel *channel)
-{
-	channel->hw_value |= IEEE80211_CHANNLE_SPECIAL_FREQ_FLAG;
-}
-static inline void channel_mask_cca(struct ieee80211_channel *channel)
-{
-	channel->hw_value |= IEEE80211_CHANNLE_CCA_RUNNING_FLAG;
-}
-static inline void channel_clear_special(struct ieee80211_channel *channel)
-{
-	channel->hw_value &= ~IEEE80211_CHANNLE_SPECIAL_FREQ_FLAG;
-}
-static inline void channel_clear_cca(struct ieee80211_channel *channel)
-{
-	channel->hw_value &= ~IEEE80211_CHANNLE_CCA_RUNNING_FLAG;
-}
-static inline int channel_center_freq(struct ieee80211_channel *channel)
-{
-	return channel->center_freq;
-}
-static inline bool channel_in_special(struct ieee80211_channel *channel)
-{
-	return (channel->hw_value&IEEE80211_CHANNLE_SPECIAL_FREQ_FLAG) ? true:false;
-}
-static inline bool channel_in_cca(struct ieee80211_channel *channel)
-{
-	return (channel->hw_value&IEEE80211_CHANNLE_CCA_RUNNING_FLAG) ? true:false;
-}
-static inline bool Sstar_accsii_to_hex(char pos,char *res)
-{
-	if((pos>='0')&&(pos<='9')){
-		*res = pos-'0';
-		return true;
-	}else if((pos>='a')&&(pos<='f')){
-		*res = pos - 'a'+0x0a;
-		return true;
-	}else if((pos>='A')&&(pos<='F')){
-		*res = pos - 'A'+0x0a;
-		return true;
-	}
-
-	return false;
-}
-
-static inline bool Sstar_accsii_to_int(const char *pos,int len,int *res)
-{
-	int res_val = 0;
-	int index = 0;
-	bool neg = false;
-	const char *accsii = pos;
-
-	if((len == 0) || (len>10) || (len<0))
-		return false;
-	
-	neg   = pos[0] == '-'  ? true:false;
-	index = neg    == true ? 1:0;
-
-	if((neg==true)&&(len == 1))
-		return false;
-	
-	for(;index<len;index++){
-		
-		if((accsii[index] < '0') || (accsii[index] > '9')){
-			return false;
-		}
-
-		res_val = res_val*10;
-
-		res_val += accsii[index]-'0';
-	}
-
-	res_val = neg == true?0-res_val:res_val;
-
-	*res = res_val;
-
-	return true;
-}
-static inline void Sstar_common_hash_list_init(struct hlist_head *hlist,size_t size)
-{
-	size_t index = 0;
-	
-	for(index = 0;index<size;index++){
-		INIT_HLIST_HEAD(&hlist[index]);
-	}
-}
-
-static inline unsigned int Sstar_hash_index(const char *string,unsigned int len,unsigned int hash_bit)
-{
-	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 8, 0))
-	unsigned int hash = full_name_hash(NULL,string,len);
-	#else
-	unsigned int hash = full_name_hash(string,len);
-	#endif
-
-	return hash_32(hash, hash_bit);
-}
-
-static inline struct hlist_head *Sstar_hash_list(const char *string,unsigned int len,struct hlist_head *hlist_table,unsigned int hash_bit)
-{
-	unsigned int hash = Sstar_hash_index(string,len,hash_bit);
-
-	return &hlist_table[hash];
-}
-static inline bool ieee8011_channel_valid(struct ieee80211_hw *hw,int channel)
-{
-	int freq;
-	struct ieee80211_channel *ch;
-	if(channel<=0)
-		return false;
-
-	if(channel<14){
-		freq = 2412+(channel-1)*5;
-	}else if(channel == 14){
-		freq = 2484;
-	}else{
-		freq = 5000 + 5 * channel;
-	}
-
-	ch = ieee80211_get_channel(hw->wiphy,freq);
-
-	return ch == NULL ? false:true;
-}
-
-static inline struct ieee80211_channel *ieee8011_chnum_to_channel(struct ieee80211_hw *hw,int channel)
-{
-	int freq;
-	if(channel<=0)
-		return NULL;
-
-	if(channel<14){
-		freq = 2412+(channel-1)*5;
-	}else if(channel == 14){
-		freq = 2484;
-	}else{
-		freq = 5000 + 5 * channel;
-	}
-
-	return ieee80211_get_channel(hw->wiphy,freq);
-}
-static inline u8 ieee80211_rssi_weight(s8 signal)
-{
-	u8 weight = 0;
-
-	if(signal <= -75)
-		weight = 0;
-	else if((signal>-75)&&(signal<= -65))
-		weight = 1;
-	else if((signal>-65)&&(signal<= -50))
-		weight = 2;
-	else if(signal > -50)
-		weight = 4;
-	else 
-		weight = 0;
-
-	return weight;
-}
-#define SSTAR_SPACE	' '
-#define SSTAR_LINEF	'\n'
-#define SSTAR_ENTER	'\r'
-#define SSTAR_TAIL	'\0'
-#define SSTAR_EQUAL	'='
-#define SSTAR_UNUSED	'#'
-#define SSTAR_SOH	1
-#define SSTAR_EOT	4
-#define SSTAR_STX	2
-#define SSTAR_ETX	3
-#define SSTAR_SPACE_STR	" "
-#define SSTAR_LINEF_STR	"\n"
-
-#define SSTAR_COMMON_HASHBITS    4
-#define SSTAR_COMMON_HASHENTRIES (1 << SSTAR_COMMON_HASHBITS)
-
-#define SSTAR_MAX_SCAN_IE							1
-#define SSTAR_MAX_SCAN_SSID							2
-#define SSTAR_MAX_SCAN_MAC_FILTER					8
-#define SSTAR_MAX_SCAN_PRIVATE_IE_LEN				(255-4)
-#define SSTAR_MAX_SCAN_CHANNEL						(14+4)
-
-extern u32 Sstar_printk_mask;
-#define SSTAR_PRINTK_MASK_ERR			BIT(0)
-#define SSTAR_PRINTK_MASK_WARN			BIT(1)
-#define SSTAR_PRINTK_MASK_INIT			BIT(2)
-#define SSTAR_PRINTK_MASK_EXIT			BIT(3)
-#define SSTAR_PRINTK_MASK_BUS			BIT(4)
-#define SSTAR_PRINTK_MASK_SCAN			BIT(5)
-#define SSTAR_PRINTK_MASK_P2P			BIT(6)
-#define SSTAR_PRINTK_MASK_MGMT			BIT(7)
-#define SSTAR_PRINTK_MASK_LMAC			BIT(8)
-#define SSTAR_PRINTK_MASK_AGG			BIT(9)
-#define SSTAR_PRINTK_MASK_AP				BIT(10)
-#define SSTAR_PRINTK_MASK_STA			BIT(11)
-#define SSTAR_PRINTK_MASK_SMARTCONFIG	BIT(12)
-#define SSTAR_PRINTK_MASK_WEXT			BIT(13)
-#define SSTAR_PRINTK_MASK_TX				BIT(14)
-#define SSTAR_PRINTK_MASK_RX				BIT(15)
-#define SSTAR_PRINTK_MASK_PM				BIT(16)
-#define SSTAR_PRINTK_MASK_PLATFROM		BIT(17)
-#define SSTAR_PRINTK_MASK_BH				BIT(18)
-#define SSTAR_PRINTK_MASK_CFG80211		BIT(19)
-#define SSTAR_PRINTK_MASK_DEBUG			BIT(20)
-
-#define SSTAR_PRINTK_DEFAULT_MASK	(SSTAR_PRINTK_MASK_ERR|SSTAR_PRINTK_MASK_WARN|SSTAR_PRINTK_MASK_INIT| \
-									SSTAR_PRINTK_MASK_EXIT|SSTAR_PRINTK_MASK_SCAN|SSTAR_PRINTK_MASK_LMAC|SSTAR_PRINTK_MASK_PM)
-#define SSTAR_PRINTK_ALL ((u32)(-1))
-#define SSTAR_PRINTK_CLEAR		(0)
-#define SSTAR_TAG "[Sstar_log]:"
-#define Sstar_printk(_level,fmt,arg...) 	do {if(Sstar_printk_mask&(_level)) printk(KERN_ERR SSTAR_TAG fmt,##arg);}while(0)
-
-
-/*
-*Sstar printk
-*/
-#define Sstar_printk_err(...) 		Sstar_printk(SSTAR_PRINTK_MASK_ERR,__VA_ARGS__)
-#define Sstar_printk_warn(...)		Sstar_printk(SSTAR_PRINTK_MASK_WARN,__VA_ARGS__)
-#define Sstar_printk_init(...)		Sstar_printk(SSTAR_PRINTK_MASK_INIT,__VA_ARGS__)
-#define Sstar_printk_exit(...)		Sstar_printk(SSTAR_PRINTK_MASK_EXIT,__VA_ARGS__)
-#define Sstar_printk_bus(...)		Sstar_printk(SSTAR_PRINTK_MASK_BUS,__VA_ARGS__)
-#define Sstar_printk_scan(...)		Sstar_printk(SSTAR_PRINTK_MASK_SCAN,__VA_ARGS__)
-#define Sstar_printk_p2p(...)		Sstar_printk(SSTAR_PRINTK_MASK_P2P,__VA_ARGS__)
-#define Sstar_printk_mgmt(...)		Sstar_printk(SSTAR_PRINTK_MASK_MGMT,__VA_ARGS__)
-#define Sstar_printk_lmac(...)		Sstar_printk(SSTAR_PRINTK_MASK_LMAC,__VA_ARGS__)
-#define Sstar_printk_agg(...)		Sstar_printk(SSTAR_PRINTK_MASK_AGG,__VA_ARGS__)
-#define Sstar_printk_ap(...)			Sstar_printk(SSTAR_PRINTK_MASK_AP,__VA_ARGS__)
-#define Sstar_printk_sta(...)		Sstar_printk(SSTAR_PRINTK_MASK_STA,__VA_ARGS__)
-#define Sstar_printk_smt(...)		Sstar_printk(SSTAR_PRINTK_MASK_SMARTCONFIG,__VA_ARGS__)
-#define Sstar_printk_wext(...)		Sstar_printk(SSTAR_PRINTK_MASK_WEXT,__VA_ARGS__)
-#define Sstar_printk_tx(...)			Sstar_printk(SSTAR_PRINTK_MASK_TX,__VA_ARGS__)
-#define Sstar_printk_rx(...)			Sstar_printk(SSTAR_PRINTK_MASK_RX,__VA_ARGS__)
-#define Sstar_printk_pm(...)			Sstar_printk(SSTAR_PRINTK_MASK_PM,__VA_ARGS__)
-#define Sstar_printk_platform(...)	Sstar_printk(SSTAR_PRINTK_MASK_PLATFROM,__VA_ARGS__)
-#define Sstar_printk_bh(...)			Sstar_printk(SSTAR_PRINTK_MASK_BH,__VA_ARGS__)
-#define Sstar_printk_cfg(...)		Sstar_printk(SSTAR_PRINTK_MASK_CFG80211,__VA_ARGS__)
-#define Sstar_printk_debug(...)		Sstar_printk(SSTAR_PRINTK_MASK_DEBUG,__VA_ARGS__)
-#define Sstar_printk_always(fmt,arg...)		printk(KERN_ERR SSTAR_TAG fmt,##arg)
-
-
-#define SSTAR_MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
-#define SSTAR_MACSTR "%02x:%02x:%02x:%02x:%02x:%02x"
-static inline const char* Sstar_skip_space(const char *target,ssize_t len)
-{
-	const char* pos_end = target+len;
-
-	if((len <= 0)||(target == NULL)){
-		return NULL;
-	}
-	while((*target == SSTAR_SPACE)||(*target == SSTAR_LINEF)||(*target == SSTAR_ENTER)){
-		target++;
-		if(target == pos_end){
-			break;
-		}
-	}
-	return (target == pos_end? NULL:target);
-}
-
-#define ieee80211_chw_is_ht40(chtype) (((chtype) == NL80211_CHAN_HT40PLUS) || ((chtype) == NL80211_CHAN_HT40MINUS))
 #define LIGHT	"\e[1m"
 #define NORMAL	"\e[0m"
-#define ENTER	"\n"
 #define highlight_debug(fmt,arg...)			\
-	printk(KERN_ERR LIGHT fmt NORMAL ENTER,##arg)
-
-#ifdef MODULE
-#define Sstar_module_parent			(&THIS_MODULE->mkobj.kobj)
-#else
-#define Sstar_module_parent			(NULL)
-#endif
-
+	printk(KERN_ERR LIGHT fmt NORMAL,##arg)
 #endif /* MAC80211_H */

@@ -2,10 +2,10 @@
 #define __MAC80211_DRIVER_TRACE
 
 #include <linux/tracepoint.h>
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include "ieee80211_i.h"
 
-#if !defined(CONFIG_MAC80211_SSTAR_DRIVER_API_TRACER) || defined(__CHECKER__)
+#if !defined(CONFIG_MAC80211_ATBM_DRIVER_API_TRACER) || defined(__CHECKER__)
 #undef TRACE_EVENT
 #define TRACE_EVENT(name, proto, ...) \
 static inline void trace_ ## name(proto) {}
@@ -252,7 +252,7 @@ TRACE_EVENT(drv_config,
 		__entry->power_level = local->hw.conf.power_level;
 		__entry->long_frame_max_tx_count = local->hw.conf.long_frame_max_tx_count;
 		__entry->short_frame_max_tx_count = local->hw.conf.short_frame_max_tx_count;
-		__entry->center_freq = channel_center_freq(local->chan_state.conf.channel);
+		__entry->center_freq = local->chan_state.conf.channel->center_freq;
 		__entry->channel_type = local->chan_state.conf.channel_type;
 		__entry->smps = local->hw.conf.smps_mode;
 	),
@@ -903,7 +903,7 @@ TRACE_EVENT(drv_channel_switch,
 		LOCAL_ASSIGN;
 		__entry->timestamp = ch_switch->timestamp;
 		__entry->block_tx = ch_switch->block_tx;
-		__entry->freq = channel_center_freq(ch_switch->channel);
+		__entry->freq = ch_switch->channel->center_freq;
 		__entry->count = ch_switch->count;
 	),
 
@@ -978,7 +978,7 @@ TRACE_EVENT(drv_remain_on_channel,
 
 	TP_fast_assign(
 		LOCAL_ASSIGN;
-		__entry->center_freq = channel_center_freq(chan);
+		__entry->center_freq = chan->center_freq;
 		__entry->channel_type = chantype;
 		__entry->duration = duration;
 	),
@@ -1011,7 +1011,7 @@ TRACE_EVENT(drv_offchannel_tx,
 
 	TP_fast_assign(
 		LOCAL_ASSIGN;
-		__entry->center_freq = channel_center_freq(chan);
+		__entry->center_freq = chan->center_freq;
 		__entry->channel_type = channel_type;
 		__entry->wait = wait;
 	),
