@@ -69,7 +69,7 @@ enum sock_shutdown_cmd {
  * is exactly as it is on newer kernels.
  *
  * For older kernels we use the an internal mac80211 hack.
- * For details see changes to include/net/Sstar_mac80211.h through
+ * For details see changes to include/net/atbm_mac80211.h through
  * compat.diff and compat/mq_compat.h */
 static inline u16 skb_get_queue_mapping(struct sk_buff *skb)
 {

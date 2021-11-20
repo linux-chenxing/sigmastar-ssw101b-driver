@@ -13,8 +13,8 @@
 #include "rate.h"
 #include "mesh.h"
 
-#ifdef CONFIG_MAC80211_SSTAR_VERBOSE_MPL_DEBUG
-#define mpl_dbg(fmt, args...)	Sstar_printk_always(fmt, ##args)
+#ifdef CONFIG_MAC80211_ATBM_VERBOSE_MPL_DEBUG
+#define mpl_dbg(fmt, args...)	atbm_printk_always(fmt, ##args)
 #else
 #define mpl_dbg(fmt, args...)	do { (void)(0); } while (0)
 #endif
@@ -154,9 +154,9 @@ static int mesh_plink_frame_tx(struct ieee80211_sub_if_data *sdata,
 		enum ieee80211_self_protected_actioncode action,
 		u8 *da, __le16 llid, __le16 plid, __le16 reason) {
 	struct ieee80211_local *local = sdata->local;
-	struct sk_buff *skb = Sstar_dev_alloc_skb(local->hw.extra_tx_headroom + 400 +
+	struct sk_buff *skb = atbm_dev_alloc_skb(local->hw.extra_tx_headroom + 400 +
 			sdata->u.mesh.ie_len);
-	struct Sstar_ieee80211_mgmt *mgmt;
+	struct atbm_ieee80211_mgmt *mgmt;
 	bool include_plid = false;
 	int ie_len = 4;
 	u16 peering_proto = 0;
@@ -164,12 +164,12 @@ static int mesh_plink_frame_tx(struct ieee80211_sub_if_data *sdata,
 
 	if (!skb)
 		return -1;
-	Sstar_skb_reserve(skb, local->hw.extra_tx_headroom);
+	atbm_skb_reserve(skb, local->hw.extra_tx_headroom);
 	/* 25 is the size of the common mgmt part (24) plus the size of the
 	 * common action part (1)
 	 */
-	mgmt = (struct Sstar_ieee80211_mgmt *)
-		Sstar_skb_put(skb, 25 + sizeof(mgmt->u.action.u.self_prot));
+	mgmt = (struct atbm_ieee80211_mgmt *)
+		atbm_skb_put(skb, 25 + sizeof(mgmt->u.action.u.self_prot));
 	memset(mgmt, 0, 25 + sizeof(mgmt->u.action.u.self_prot));
 	mgmt->frame_control = cpu_to_le16(IEEE80211_FTYPE_MGMT |
 					  IEEE80211_STYPE_ACTION);
@@ -181,11 +181,11 @@ static int mesh_plink_frame_tx(struct ieee80211_sub_if_data *sdata,
 
 	if (action != WLAN_SP_MESH_PEERING_CLOSE) {
 		/* capability info */
-		pos = Sstar_skb_put(skb, 2);
+		pos = atbm_skb_put(skb, 2);
 		memset(pos, 0, 2);
 		if (action == WLAN_SP_MESH_PEERING_CONFIRM) {
 			/* AID */
-			pos = Sstar_skb_put(skb, 2);
+			pos = atbm_skb_put(skb, 2);
 			memcpy(pos + 2, &plid, 2);
 		}
 		if (ieee80211_add_srates_ie(&sdata->vif, skb) ||
@@ -218,11 +218,11 @@ static int mesh_plink_frame_tx(struct ieee80211_sub_if_data *sdata,
 		return -EINVAL;
 	}
 
-	if (WARN_ON(Sstar_skb_tailroom(skb) < 2 + ie_len))
+	if (WARN_ON(atbm_skb_tailroom(skb) < 2 + ie_len))
 		return -ENOMEM;
 
-	pos = Sstar_skb_put(skb, 2 + ie_len);
-	*pos++ = SSTAR_WLAN_EID_PEER_MGMT;
+	pos = atbm_skb_put(skb, 2 + ie_len);
+	*pos++ = ATBM_WLAN_EID_PEER_MGMT;
 	*pos++ = ie_len;
 	memcpy(pos, &peering_proto, 2);
 	pos += 2;
@@ -245,7 +245,7 @@ static int mesh_plink_frame_tx(struct ieee80211_sub_if_data *sdata,
 
 void mesh_neighbour_update(u8 *hw_addr, u32 rates,
 		struct ieee80211_sub_if_data *sdata,
-		struct ieee802_Sstar_11_elems *elems)
+		struct ieee802_atbm_11_elems *elems)
 {
 	struct ieee80211_local *local = sdata->local;
 	struct ieee80211_channel_state *chan_state = ieee80211_get_channel_state(local, sdata);
@@ -422,11 +422,11 @@ void mesh_plink_block(struct sta_info *sta)
 }
 
 
-void mesh_rx_plink_frame(struct ieee80211_sub_if_data *sdata, struct Sstar_ieee80211_mgmt *mgmt,
+void mesh_rx_plink_frame(struct ieee80211_sub_if_data *sdata, struct atbm_ieee80211_mgmt *mgmt,
 			 size_t len, struct ieee80211_rx_status *rx_status)
 {
 	struct ieee80211_local *local = sdata->local;
-	struct ieee802_Sstar_11_elems elems;
+	struct ieee802_atbm_11_elems elems;
 	struct sta_info *sta;
 	enum plink_event event;
 	enum ieee80211_self_protected_actioncode ftype;
@@ -435,7 +435,7 @@ void mesh_rx_plink_frame(struct ieee80211_sub_if_data *sdata, struct Sstar_ieee8
 	u8 ie_len;
 	u8 *baseaddr;
 	__le16 plid, llid, reason;
-#ifdef CONFIG_MAC80211_SSTAR_VERBOSE_MPL_DEBUG
+#ifdef CONFIG_MAC80211_ATBM_VERBOSE_MPL_DEBUG
 	static const char *mplstates[] = {
 		[NL80211_PLINK_LISTEN] = "LISTEN",
 		[NL80211_PLINK_OPN_SNT] = "OPN-SNT",

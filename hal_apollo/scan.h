@@ -1,7 +1,7 @@
 /*
- * Scan interface for sigmastar APOLLO mac80211 drivers
+ * Scan interface for altobeam APOLLO mac80211 drivers
  * *
- * Copyright (c) 2016, sigmastar
+ * Copyright (c) 2016, altobeam
  * Author:
  *
  *Based on apollo code
@@ -25,7 +25,7 @@
 /* external */ struct ieee80211_hw;
 /* external */ struct work_struct;
 
-struct Sstar_scan {
+struct atbm_scan {
 	struct semaphore lock;
 	struct work_struct work;
 #ifdef ROAM_OFFLOAD
@@ -56,33 +56,33 @@ struct Sstar_scan {
 	u8 passive;
 };
 
-int Sstar_hw_scan(struct ieee80211_hw *hw,
+int atbm_hw_scan(struct ieee80211_hw *hw,
 			struct ieee80211_vif *vif,
 			struct ieee80211_scan_req_wrap *req_wrap);
 #ifdef ROAM_OFFLOAD
-int Sstar_hw_sched_scan_start(struct ieee80211_hw *hw,
+int atbm_hw_sched_scan_start(struct ieee80211_hw *hw,
 			struct ieee80211_vif *vif,
 			struct cfg80211_sched_scan_request *req,
 			struct ieee80211_sched_scan_ies *ies);
-void Sstar_hw_sched_scan_stop(struct Sstar_common *priv);
-void Sstar_sched_scan_work(struct work_struct *work);
+void atbm_hw_sched_scan_stop(struct atbm_common *priv);
+void atbm_sched_scan_work(struct work_struct *work);
 #endif /*ROAM_OFFLOAD*/
-void Sstar_scan_work(struct work_struct *work);
-void Sstar_scan_timeout(struct work_struct *work);
+void atbm_scan_work(struct work_struct *work);
+void atbm_scan_timeout(struct work_struct *work);
 void etf_scan_end_work(struct work_struct *work);
-void Sstar_scan_complete_cb(struct Sstar_common *priv,
+void atbm_scan_complete_cb(struct atbm_common *priv,
 				struct wsm_scan_complete *arg);
 
 /* ******************************************************************** */
 /* Raw probe requests TX workaround					*/
-void Sstar_probe_work(struct work_struct *work);
-void Sstar_scan_listenning_restart_delayed(struct Sstar_vif *priv);
+void atbm_probe_work(struct work_struct *work);
+void atbm_scan_listenning_restart_delayed(struct atbm_vif *priv);
 
-#ifdef CONFIG_SSTAR_APOLLO_TESTMODE
+#ifdef CONFIG_ATBM_APOLLO_TESTMODE
 /* Advance Scan Timer							*/
-void Sstar_advance_scan_timeout(struct work_struct *work);
+void atbm_advance_scan_timeout(struct work_struct *work);
 #endif
-void Sstar_cancel_hw_scan(struct ieee80211_hw *hw,struct ieee80211_vif *vif);
-void Sstar_wait_scan_complete_sync(struct Sstar_common *hw_priv);
+void atbm_cancel_hw_scan(struct ieee80211_hw *hw,struct ieee80211_vif *vif);
+void atbm_wait_scan_complete_sync(struct atbm_common *hw_priv);
 
 #endif

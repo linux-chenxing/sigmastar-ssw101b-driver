@@ -51,7 +51,7 @@
 #include <linux/random.h>
 #include <linux/ieee80211.h>
 #include <linux/slab.h>
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include "rate.h"
 #include "rc80211_minstrel.h"
 #define SAMPLE_COLUMNS	10
@@ -254,7 +254,7 @@ minstrel_update_stats_per_s(struct minstrel_priv *mp, struct minstrel_sta_info *
 		}
 		mr->success_prob1 = success_prob;
 #ifdef MINSTREL_PHY_DEBUG_PRINT 
-		Sstar_printk_always("Rate:%d success_hist1:%llu, att_hist1:%llu, success_prob:%u, cur_tp:%u, prob:%u\n", mr->bitrate/2, mr->succ_hist1, mr->att_hist1, success_prob,mr->cur_tp, mr->probability/180);
+		atbm_printk_always("Rate:%d success_hist1:%llu, att_hist1:%llu, success_prob:%u, cur_tp:%u, prob:%u\n", mr->bitrate/2, mr->succ_hist1, mr->att_hist1, success_prob,mr->cur_tp, mr->probability/180);
 #endif		//	mr->succ_hist1 = 0;
 		//	mr->att_hist1 = 0;
 	}    
@@ -263,9 +263,9 @@ minstrel_update_stats_per_s(struct minstrel_priv *mp, struct minstrel_sta_info *
 
 	minstrel_update_stats_calibrate_rate_policy(mp, mi);
 #ifdef MINSTREL_PHY_DEBUG_PRINT 
-	Sstar_printk_always("\n mi->rssi_count:%d,  mi->mean_rssi%d  mi->max_rssi :%d, mi->min_rssi:%d tableflag:%d count:%d\n",
+	atbm_printk_always("\n mi->rssi_count:%d,  mi->mean_rssi%d  mi->max_rssi :%d, mi->min_rssi:%d tableflag:%d count:%d\n",
 			mi->rssi_count, mi->mean_rssi, mi->max_rssi, mi->min_rssi, mi->table_flag, mi->table_count);
-	Sstar_printk_always("high_not_sample_cnt:%d, high_sample_cnt:%d, low_sample_cnt:%d, not_sample_cnt:%d\n", mi->high_not_sample_cnt, mi->high_sample_cnt,
+	atbm_printk_always("high_not_sample_cnt:%d, high_sample_cnt:%d, low_sample_cnt:%d, not_sample_cnt:%d\n", mi->high_not_sample_cnt, mi->high_sample_cnt,
 			mi->low_sample_cnt, mi->not_sample_cnt);
 #endif
 	for (i = 0; i < mi->n_rates; i++) {
@@ -835,14 +835,14 @@ minstrel_update_stats(struct minstrel_priv *mp, struct minstrel_sta_info *mi)
 #endif
 #ifdef MINSTREL_RSSI_USED
 #ifdef MINSTREL_PHY_DEBUG_PRINT 
-			Sstar_printk_always("minstrel sample table:\n");
+			atbm_printk_always("minstrel sample table:\n");
 			for (col = 0; col < SAMPLE_COLUMNS; col++) {
 				for (i = 0; i < n_srates; i++) {
 
-					Sstar_printk_always("%d ", SAMPLE_TBL(mi, i, col));  
+					atbm_printk_always("%d ", SAMPLE_TBL(mi, i, col));  
 
 				}
-				Sstar_printk_always("\n");
+				atbm_printk_always("\n");
 			}
 #endif
 #endif
@@ -864,7 +864,7 @@ minstrel_update_stats(struct minstrel_priv *mp, struct minstrel_sta_info *mi)
 					ctl_rate->bitrate,
 					!!(ctl_rate->flags & IEEE80211_RATE_ERP_G), 1);
 #ifdef MINSTREL_PHY_DEBUG_PRINT
-			Sstar_printk_always("\n retry count: ");
+			atbm_printk_always("\n retry count: ");
 #endif
 				for (i = 0; i < sband->n_bitrates; i++) {
 					struct minstrel_rate *mr = &mi->r[n];
@@ -909,14 +909,14 @@ minstrel_update_stats(struct minstrel_priv *mp, struct minstrel_sta_info *mi)
 							(++mr->retry_count < mp->max_retry));
 					mr->adjusted_retry_count = mr->retry_count;
 #ifdef MINSTREL_PHY_DEBUG_PRINT
-					Sstar_printk_always("%d, ", mr->retry_count);
+					atbm_printk_always("%d, ", mr->retry_count);
 					mr->retry_count = 4;
 					mr->adjusted_retry_count = 4;
 					//printk("%d, ",mr->retry_count);
 #endif
 				}
 #ifdef MINSTREL_PHY_DEBUG_PRINT
-			Sstar_printk_always("\n");
+			atbm_printk_always("\n");
 #endif
 
 				for (i = n; i < sband->n_bitrates; i++) {
@@ -942,7 +942,7 @@ minstrel_update_stats(struct minstrel_priv *mp, struct minstrel_sta_info *mi)
 			int max_rates = 0;
 			int i;
 
-			mi = Sstar_kzalloc(sizeof(struct minstrel_sta_info), gfp);
+			mi = atbm_kzalloc(sizeof(struct minstrel_sta_info), gfp);
 			if (!mi)
 				return NULL;
 
@@ -952,11 +952,11 @@ minstrel_update_stats(struct minstrel_priv *mp, struct minstrel_sta_info *mi)
 					max_rates = sband->n_bitrates;
 			}
 
-			mi->r = Sstar_kzalloc(sizeof(struct minstrel_rate) * max_rates, gfp);
+			mi->r = atbm_kzalloc(sizeof(struct minstrel_rate) * max_rates, gfp);
 			if (!mi->r)
 				goto error;
 
-			mi->sample_table = Sstar_kmalloc(SAMPLE_COLUMNS * max_rates, gfp);
+			mi->sample_table = atbm_kmalloc(SAMPLE_COLUMNS * max_rates, gfp);
 			if (!mi->sample_table)
 				goto error1;
 
@@ -975,9 +975,9 @@ minstrel_update_stats(struct minstrel_priv *mp, struct minstrel_sta_info *mi)
 			return mi;
 
 error1:
-			Sstar_kfree(mi->r);
+			atbm_kfree(mi->r);
 error:
-			Sstar_kfree(mi);
+			atbm_kfree(mi);
 			return NULL;
 		}
 
@@ -986,9 +986,9 @@ error:
 		{
 			struct minstrel_sta_info *mi = priv_sta;
 
-			Sstar_kfree(mi->sample_table);
-			Sstar_kfree(mi->r);
-			Sstar_kfree(mi);
+			atbm_kfree(mi->sample_table);
+			atbm_kfree(mi->r);
+			atbm_kfree(mi);
 		}
 
 	static void *
@@ -996,7 +996,7 @@ error:
 		{
 			struct minstrel_priv *mp;
 
-			mp = Sstar_kzalloc(sizeof(struct minstrel_priv), GFP_ATOMIC);
+			mp = atbm_kzalloc(sizeof(struct minstrel_priv), GFP_ATOMIC);
 			if (!mp)
 				return NULL;
 
@@ -1032,7 +1032,7 @@ error:
 #ifdef MINSTREL_RSSI_USED
 			mp->update_interval = 300;
 #endif
-#ifdef CONFIG_MAC80211_SSTAR_DEBUGFS
+#ifdef CONFIG_MAC80211_ATBM_DEBUGFS
 			mp->fixed_rate_idx = (u32) -1;
 			mp->dbg_fixed_rate = debugfs_create_u32("fixed_rate_idx",
 					S_IRUGO | S_IWUGO, debugfsdir, &mp->fixed_rate_idx);
@@ -1044,10 +1044,10 @@ error:
 	static void
 		minstrel_free(void *priv)
 		{
-#ifdef CONFIG_MAC80211_SSTAR_DEBUGFS
+#ifdef CONFIG_MAC80211_ATBM_DEBUGFS
 			debugfs_remove(((struct minstrel_priv *)priv)->dbg_fixed_rate);
 #endif
-			Sstar_kfree(priv);
+			atbm_kfree(priv);
 		}
 
 	struct rate_control_ops mac80211_minstrel = {
@@ -1059,7 +1059,7 @@ error:
 		.free = minstrel_free,
 		.alloc_sta = minstrel_alloc_sta,
 		.free_sta = minstrel_free_sta,
-#ifdef CONFIG_MAC80211_SSTAR_DEBUGFS
+#ifdef CONFIG_MAC80211_ATBM_DEBUGFS
 		.add_sta_debugfs = minstrel_add_sta_debugfs,
 		.remove_sta_debugfs = minstrel_remove_sta_debugfs,
 #endif

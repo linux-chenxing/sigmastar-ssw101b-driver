@@ -1,4 +1,4 @@
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include <net/rtnetlink.h>
 
 #include "ieee80211_i.h"
@@ -90,7 +90,7 @@ int __ieee80211_suspend(struct ieee80211_hw *hw, struct cfg80211_wowlan *wowlan)
 
 		if(local->pending_scan_sdata&&(local->pending_scan_sdata == sdata))
 		{
-			Sstar_printk_pm("cancle pendding scan request\n");
+			atbm_printk_pm("cancle pendding scan request\n");
 			local->scan_sdata = local->pending_scan_sdata;
 			local->scan_req = local->pending_scan_req;
 			local->pending_scan_sdata = NULL;
@@ -100,7 +100,7 @@ int __ieee80211_suspend(struct ieee80211_hw *hw, struct cfg80211_wowlan *wowlan)
 		
 		ieee80211_work_purge(sdata);
 		ieee80211_roc_purge(sdata);
-		#ifdef SSTAR_SUPPORT_WOW
+		#ifdef ATBM_SUPPORT_WOW
 		if(wowlan == NULL)
 		#endif
 		{
@@ -143,8 +143,8 @@ int __ieee80211_suspend(struct ieee80211_hw *hw, struct cfg80211_wowlan *wowlan)
 	}
 
 	local->wowlan = wowlan && local->open_count;
-	Sstar_printk_pm( "%s:wowlan(%d)\n",__func__,local->wowlan);
-#ifndef SSTAR_SUPPORT_WOW
+	atbm_printk_pm( "%s:wowlan(%d)\n",__func__,local->wowlan);
+#ifndef ATBM_SUPPORT_WOW
 	local->wowlan = 0;
 #endif
 	if (local->wowlan) {
@@ -169,7 +169,7 @@ int __ieee80211_suspend(struct ieee80211_hw *hw, struct cfg80211_wowlan *wowlan)
 		}
 		goto suspend;
 	}
-#ifdef SSTAR_SUSPEND_REMOVE_INTERFACE
+#ifdef ATBM_SUSPEND_REMOVE_INTERFACE
 	/* disable keys */
 	#pragma message("Suspend Remove Interface")
 	list_for_each_entry(sdata, &local->interfaces, list)

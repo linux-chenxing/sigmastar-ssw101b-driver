@@ -23,14 +23,14 @@
 int mesh_allocated;
 static struct kmem_cache *rm_cache;
 
-#ifdef CONFIG_MAC80211_SSTAR_MESH
-bool mesh_action_is_path_sel(struct Sstar_ieee80211_mgmt *mgmt)
+#ifdef CONFIG_MAC80211_ATBM_MESH
+bool mesh_action_is_path_sel(struct atbm_ieee80211_mgmt *mgmt)
 {
 	return (mgmt->u.action.u.mesh_action.action_code ==
 			WLAN_MESH_ACTION_HWMP_PATH_SELECTION);
 }
 #else
-bool mesh_action_is_path_sel(struct Sstar_ieee80211_mgmt *mgmt)
+bool mesh_action_is_path_sel(struct atbm_ieee80211_mgmt *mgmt)
 { return false; }
 #endif
 
@@ -73,7 +73,7 @@ static void ieee80211_mesh_housekeeping_timer(unsigned long data)
  * This function checks if the mesh configuration of a mesh point matches the
  * local mesh configuration, i.e. if both nodes belong to the same mesh network.
  */
-bool mesh_matches_local(struct ieee802_Sstar_11_elems *ie, struct ieee80211_sub_if_data *sdata)
+bool mesh_matches_local(struct ieee802_atbm_11_elems *ie, struct ieee80211_sub_if_data *sdata)
 {
 	struct ieee80211_if_mesh *ifmsh = &sdata->u.mesh;
 
@@ -104,7 +104,7 @@ bool mesh_matches_local(struct ieee802_Sstar_11_elems *ie, struct ieee80211_sub_
  *
  * @ie: information elements of a management frame from the mesh peer
  */
-bool mesh_peer_accepts_plinks(struct ieee802_Sstar_11_elems *ie)
+bool mesh_peer_accepts_plinks(struct ieee802_atbm_11_elems *ie)
 {
 	return (ie->mesh_config->meshconf_cap &
 	    MESHCONF_CAPAB_ACCEPT_PLINKS) != 0;
@@ -135,7 +135,7 @@ int mesh_rmc_init(struct ieee80211_sub_if_data *sdata)
 {
 	int i;
 
-	sdata->u.mesh.rmc = Sstar_kmalloc(sizeof(struct mesh_rmc), GFP_KERNEL);
+	sdata->u.mesh.rmc = atbm_kmalloc(sizeof(struct mesh_rmc), GFP_KERNEL);
 	if (!sdata->u.mesh.rmc)
 		return -ENOMEM;
 	sdata->u.mesh.rmc->idx_mask = RMC_BUCKETS - 1;
@@ -159,7 +159,7 @@ void mesh_rmc_free(struct ieee80211_sub_if_data *sdata)
 			kmem_cache_free(rm_cache, p);
 		}
 
-	Sstar_kfree(rmc);
+	atbm_kfree(rmc);
 	sdata->u.mesh.rmc = NULL;
 }
 
@@ -217,11 +217,11 @@ mesh_add_meshconf_ie(struct sk_buff *skb, struct ieee80211_sub_if_data *sdata)
 	u8 *pos, neighbors;
 	u8 meshconf_len = sizeof(struct ieee80211_meshconf_ie);
 
-	if (Sstar_skb_tailroom(skb) < 2 + meshconf_len)
+	if (atbm_skb_tailroom(skb) < 2 + meshconf_len)
 		return -ENOMEM;
 
-	pos = Sstar_skb_put(skb, 2 + meshconf_len);
-	*pos++ = SSTAR_WLAN_EID_MESH_CONFIG;
+	pos = atbm_skb_put(skb, 2 + meshconf_len);
+	*pos++ = ATBM_WLAN_EID_MESH_CONFIG;
 	*pos++ = meshconf_len;
 
 	/* Active path selection protocol ID */
@@ -255,11 +255,11 @@ mesh_add_meshid_ie(struct sk_buff *skb, struct ieee80211_sub_if_data *sdata)
 	struct ieee80211_if_mesh *ifmsh = &sdata->u.mesh;
 	u8 *pos;
 
-	if (Sstar_skb_tailroom(skb) < 2 + ifmsh->mesh_id_len)
+	if (atbm_skb_tailroom(skb) < 2 + ifmsh->mesh_id_len)
 		return -ENOMEM;
 
-	pos = Sstar_skb_put(skb, 2 + ifmsh->mesh_id_len);
-	*pos++ = SSTAR_WLAN_EID_MESH_ID;
+	pos = atbm_skb_put(skb, 2 + ifmsh->mesh_id_len);
+	*pos++ = ATBM_WLAN_EID_MESH_ID;
 	*pos++ = ifmsh->mesh_id_len;
 	if (ifmsh->mesh_id_len)
 		memcpy(pos, ifmsh->mesh_id, ifmsh->mesh_id_len);
@@ -283,9 +283,9 @@ mesh_add_vendor_ies(struct sk_buff *skb, struct ieee80211_sub_if_data *sdata)
 	if (offset) {
 		len = ifmsh->ie_len - offset;
 		data = ifmsh->ie + offset;
-		if (Sstar_skb_tailroom(skb) < len)
+		if (atbm_skb_tailroom(skb) < len)
 			return -ENOMEM;
-		memcpy(Sstar_skb_put(skb, len), data, len);
+		memcpy(atbm_skb_put(skb, len), data, len);
 	}
 
 	return 0;
@@ -304,7 +304,7 @@ mesh_add_rsn_ie(struct sk_buff *skb, struct ieee80211_sub_if_data *sdata)
 	/* find RSN IE */
 	data = ifmsh->ie;
 	while (data < ifmsh->ie + ifmsh->ie_len) {
-		if (*data == SSTAR_WLAN_EID_RSN) {
+		if (*data == ATBM_WLAN_EID_RSN) {
 			len = data[1] + 2;
 			break;
 		}
@@ -312,9 +312,9 @@ mesh_add_rsn_ie(struct sk_buff *skb, struct ieee80211_sub_if_data *sdata)
 	}
 
 	if (len) {
-		if (Sstar_skb_tailroom(skb) < len)
+		if (atbm_skb_tailroom(skb) < len)
 			return -ENOMEM;
-		memcpy(Sstar_skb_put(skb, len), data, len);
+		memcpy(atbm_skb_put(skb, len), data, len);
 	}
 
 	return 0;
@@ -328,13 +328,13 @@ int mesh_add_ds_params_ie(struct sk_buff *skb,
 	struct ieee80211_supported_band *sband;
 	u8 *pos;
 
-	if (Sstar_skb_tailroom(skb) < 3)
+	if (atbm_skb_tailroom(skb) < 3)
 		return -ENOMEM;
 
 	sband = local->hw.wiphy->bands[chan_state->conf.channel->band];
 	if (sband->band == IEEE80211_BAND_2GHZ) {
-		pos = Sstar_skb_put(skb, 2 + 1);
-		*pos++ = SSTAR_WLAN_EID_DS_PARAMS;
+		pos = atbm_skb_put(skb, 2 + 1);
+		*pos++ = ATBM_WLAN_EID_DS_PARAMS;
 		*pos++ = 1;
 		*pos++ = ieee80211_frequency_to_channel(channel_center_freq(chan_state->conf.channel));
 	}
@@ -456,8 +456,8 @@ static void ieee80211_mesh_housekeeping(struct ieee80211_sub_if_data *sdata,
 {
 	bool free_plinks;
 
-#ifdef CONFIG_MAC80211_SSTAR_VERBOSE_DEBUG
-	Sstar_printk_debug( "%s: running mesh housekeeping\n",
+#ifdef CONFIG_MAC80211_ATBM_VERBOSE_DEBUG
+	atbm_printk_debug( "%s: running mesh housekeeping\n",
 	       sdata->name);
 #endif
 
@@ -560,12 +560,12 @@ void ieee80211_stop_mesh(struct ieee80211_sub_if_data *sdata)
 
 static void ieee80211_mesh_rx_bcn_presp(struct ieee80211_sub_if_data *sdata,
 					u16 stype,
-					struct Sstar_ieee80211_mgmt *mgmt,
+					struct atbm_ieee80211_mgmt *mgmt,
 					size_t len,
 					struct ieee80211_rx_status *rx_status)
 {
 	struct ieee80211_local *local = sdata->local;
-	struct ieee802_Sstar_11_elems elems;
+	struct ieee802_atbm_11_elems elems;
 	struct ieee80211_channel *channel;
 	u32 supp_rates = 0;
 	size_t baselen;
@@ -574,7 +574,7 @@ static void ieee80211_mesh_rx_bcn_presp(struct ieee80211_sub_if_data *sdata,
 
 	/* ignore ProbeResp to foreign address */
 	if (stype == IEEE80211_STYPE_PROBE_RESP &&
-	    Sstar_compare_ether_addr(mgmt->da, sdata->vif.addr))
+	    atbm_compare_ether_addr(mgmt->da, sdata->vif.addr))
 		return;
 
 	baselen = (u8 *) mgmt->u.probe_resp.variable - (u8 *) mgmt;
@@ -606,7 +606,7 @@ static void ieee80211_mesh_rx_bcn_presp(struct ieee80211_sub_if_data *sdata,
 }
 
 static void ieee80211_mesh_rx_mgmt_action(struct ieee80211_sub_if_data *sdata,
-					  struct Sstar_ieee80211_mgmt *mgmt,
+					  struct atbm_ieee80211_mgmt *mgmt,
 					  size_t len,
 					  struct ieee80211_rx_status *rx_status)
 {
@@ -631,11 +631,11 @@ void ieee80211_mesh_rx_queued_mgmt(struct ieee80211_sub_if_data *sdata,
 				   struct sk_buff *skb)
 {
 	struct ieee80211_rx_status *rx_status;
-	struct Sstar_ieee80211_mgmt *mgmt;
+	struct atbm_ieee80211_mgmt *mgmt;
 	u16 stype;
 
 	rx_status = IEEE80211_SKB_RXCB(skb);
-	mgmt = (struct Sstar_ieee80211_mgmt *) skb->data;
+	mgmt = (struct atbm_ieee80211_mgmt *) skb->data;
 	stype = le16_to_cpu(mgmt->frame_control) & IEEE80211_FCTL_STYPE;
 
 	switch (stype) {

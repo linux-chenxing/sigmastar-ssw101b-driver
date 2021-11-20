@@ -1,7 +1,7 @@
 /*
- * Firmware API for mac80211 sigmastar APOLLO drivers
+ * Firmware API for mac80211 altobeam APOLLO drivers
  * *
- * Copyright (c) 2016, sigmastar
+ * Copyright (c) 2016, altobeam
  * Author:
  *
  * Based on apollo code
@@ -22,8 +22,8 @@
 #define FWIO_H_INCLUDED
 
 #ifndef CONFIG_FW_NAME
-#if ((SSTAR_WIFI_PLATFORM == 13/*PLATFORM_AMLOGIC_S805*/) || (SSTAR_WIFI_PLATFORM == 8))
-#define FIRMWARE_DEFAULT_PATH	"../wifi/Sstar/fw.bin"
+#if ((ATBM_WIFI_PLATFORM == 13/*PLATFORM_AMLOGIC_S805*/) || (ATBM_WIFI_PLATFORM == 8))
+#define FIRMWARE_DEFAULT_PATH	"../wifi/atbm/fw.bin"
 #else // PLATFORM_AMLOGIC_S805
 #define FIRMWARE_DEFAULT_PATH	"fw.bin"
 #endif //PLATFORM_AMLOGIC_S805
@@ -32,17 +32,17 @@
 #endif
 #define SDD_FILE_DEFAULT_PATH	("sdd.bin")
 
-#define SSTAR_APOLLO_REV_1601	(1601)
+#define ATBM_APOLLO_REV_1601	(1601)
 
-struct Sstar_common;
+struct atbm_common;
 
 
-int Sstar_get_hw_type(u32 config_reg_val, int *major_revision);
+int atbm_get_hw_type(u32 config_reg_val, int *major_revision);
 
-int Sstar_load_firmware(struct Sstar_common *hw_priv);
-void Sstar_release_firmware(void);
-int Sstar_init_firmware(void);
+int atbm_load_firmware(struct atbm_common *hw_priv);
+void atbm_release_firmware(void);
+int atbm_init_firmware(void);
 #ifdef CONFIG_PM_SLEEP
-int Sstar_cache_fw_before_suspend(struct device	 *pdev);
+int atbm_cache_fw_before_suspend(struct device	 *pdev);
 #endif
 #endif

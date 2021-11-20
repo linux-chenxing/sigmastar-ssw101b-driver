@@ -282,12 +282,12 @@ struct sta_info {
 	struct ieee80211_sub_if_data *sdata;
 	struct ieee80211_key __rcu *gtk[NUM_DEFAULT_KEYS + NUM_DEFAULT_MGMT_KEYS];
 	struct ieee80211_key __rcu *ptk;
-#ifdef CONFIG_MAC80211_SSTAR_ROAMING_CHANGES
+#ifdef CONFIG_MAC80211_ATBM_ROAMING_CHANGES
 	struct rcu_head rcu;
 #endif
 	struct rate_control_ref *rate_ctrl;
 	void *rate_ctrl_priv;
-	#ifdef SSTAR_AP_SME
+	#ifdef ATBM_AP_SME
 	u8* challenge;
 	u8* associate_ie;
 	size_t associate_ie_len;
@@ -295,7 +295,7 @@ struct sta_info {
 	spinlock_t lock;
 
 	struct work_struct drv_unblock_wk;
-#ifdef CONFIG_MAC80211_SSTAR_ROAMING_CHANGES
+#ifdef CONFIG_MAC80211_ATBM_ROAMING_CHANGES
 	struct work_struct sta_free_wk;
 #endif
 
@@ -327,8 +327,8 @@ struct sta_info {
 	unsigned long rx_dropped;
 	int last_signal;
 	int last_signal2;
-	struct Sstar_ewma avg_signal;
-	struct Sstar_ewma avg_signal2;
+	struct atbm_ewma avg_signal;
+	struct atbm_ewma avg_signal2;
 	/* Plus 1 for non-QoS frames */
 	__le16 last_seq_ctrl[NUM_RX_DATA_QUEUES + 1];
 
@@ -353,7 +353,7 @@ struct sta_info {
 	struct sta_ampdu_mlme ampdu_mlme;
 	u8 timer_to_tid[STA_TID_NUM];
 
-#ifdef CONFIG_MAC80211_SSTAR_MESH
+#ifdef CONFIG_MAC80211_ATBM_MESH
 	/*
 	 * Mesh peer link attributes
 	 * TODO: move to a sub-structure that is referenced with pointer?
@@ -368,10 +368,10 @@ struct sta_info {
 	u32 plink_timeout;
 	struct timer_list plink_timer;
 #endif
-#ifdef SSTAR_AP_SME
+#ifdef ATBM_AP_SME
 	struct timer_list sta_session_timer;
 #endif
-#ifdef CONFIG_MAC80211_SSTAR_DEBUGFS
+#ifdef CONFIG_MAC80211_ATBM_DEBUGFS
 	struct sta_info_debugfsdentries {
 		struct dentry *dir;
 		bool add_has_run;
@@ -390,7 +390,7 @@ struct sta_info {
 
 static inline enum nl80211_plink_state sta_plink_state(struct sta_info *sta)
 {
-#ifdef CONFIG_MAC80211_SSTAR_MESH
+#ifdef CONFIG_MAC80211_ATBM_MESH
 	return sta->plink_state;
 #endif
 	return NL80211_PLINK_LISTEN;
@@ -541,7 +541,7 @@ void ieee80211_sta_expire(struct ieee80211_sub_if_data *sdata,
 void ieee80211_sta_ps_deliver_wakeup(struct sta_info *sta);
 void ieee80211_sta_ps_deliver_poll_response(struct sta_info *sta);
 void ieee80211_sta_ps_deliver_uapsd(struct sta_info *sta);
-#ifdef CONFIG_MAC80211_SSTAR_ROAMING_CHANGES
+#ifdef CONFIG_MAC80211_ATBM_ROAMING_CHANGES
 void sta_info_free_rcu(struct rcu_head *rcu_h);
 #endif
 void sta_info_set_mgmt_suit(struct sta_info *sta,struct cfg80211_crypto_settings *settings);

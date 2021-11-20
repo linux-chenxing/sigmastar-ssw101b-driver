@@ -86,8 +86,8 @@ static ssize_t sta_num_ps_buf_frames_read(struct file *file,
 
 	for (ac = 0; ac < IEEE80211_NUM_ACS; ac++)
 		p += scnprintf(p, sizeof(buf)+buf-p, "AC%d: %d\n", ac,
-			       Sstar_skb_queue_len(&sta->ps_tx_buf[ac]) +
-			       Sstar_skb_queue_len(&sta->tx_filtered[ac]));
+			       atbm_skb_queue_len(&sta->ps_tx_buf[ac]) +
+			       atbm_skb_queue_len(&sta->tx_filtered[ac]));
 	return simple_read_from_buffer(userbuf, count, ppos, buf, p - buf);
 }
 STA_OPS(num_ps_buf_frames);
@@ -171,7 +171,7 @@ static ssize_t sta_agg_status_read(struct file *file, char __user *userbuf,
 		p += scnprintf(p, sizeof(buf) + buf - p, "\t%#.2x",
 				tid_tx ? tid_tx->dialog_token : 0);
 		p += scnprintf(p, sizeof(buf) + buf - p, "\t%03d",
-				tid_tx ? Sstar_skb_queue_len(&tid_tx->pending) : 0);
+				tid_tx ? atbm_skb_queue_len(&tid_tx->pending) : 0);
 		p += scnprintf(p, sizeof(buf) + buf - p, "\n");
 	}
 	rcu_read_unlock();

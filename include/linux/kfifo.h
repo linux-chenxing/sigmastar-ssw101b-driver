@@ -324,7 +324,7 @@ __kfifo_uint_must_check_helper( \
  * kfifo_alloc - dynamically allocates a new fifo buffer
  * @fifo: pointer to the fifo
  * @size: the number of elements in the fifo, this must be a power of 2
- * @gfp_mask: get_free_pages mask, passed to ieee80211_Sstar_kmalloc()
+ * @gfp_mask: get_free_pages mask, passed to ieee80211_atbm_kmalloc()
  *
  * This macro dynamically allocates a new fifo buffer.
  *

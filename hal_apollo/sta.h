@@ -1,7 +1,7 @@
 /*
- * Mac80211 STA interface for sigmastar APOLLO mac80211 drivers
+ * Mac80211 STA interface for altobeam APOLLO mac80211 drivers
  * *
- * Copyright (c) 2016, sigmastar
+ * Copyright (c) 2016, altobeam
  * Author:
  *
  *Based on apollo code
@@ -19,141 +19,141 @@
 /* ******************************************************************** */
 /* mac80211 API								*/
 
-int Sstar_start(struct ieee80211_hw *dev);
-void Sstar_stop(struct ieee80211_hw *dev);
-int Sstar_add_interface(struct ieee80211_hw *dev,
+int atbm_start(struct ieee80211_hw *dev);
+void atbm_stop(struct ieee80211_hw *dev);
+int atbm_add_interface(struct ieee80211_hw *dev,
 			 struct ieee80211_vif *vif);
-void Sstar_remove_interface(struct ieee80211_hw *dev,
+void atbm_remove_interface(struct ieee80211_hw *dev,
 			     struct ieee80211_vif *vif);
-int Sstar_change_interface(struct ieee80211_hw *dev,
+int atbm_change_interface(struct ieee80211_hw *dev,
 				struct ieee80211_vif *vif,
 				enum nl80211_iftype new_type,
 				bool p2p);
 
-int Sstar_config(struct ieee80211_hw *dev, u32 changed);
-int Sstar_change_interface(struct ieee80211_hw *dev,
+int atbm_config(struct ieee80211_hw *dev, u32 changed);
+int atbm_change_interface(struct ieee80211_hw *dev,
                                 struct ieee80211_vif *vif,
                                 enum nl80211_iftype new_type,
                                 bool p2p);
-void Sstar_configure_filter(struct ieee80211_hw *dev,
+void atbm_configure_filter(struct ieee80211_hw *dev,
 			     struct ieee80211_vif *vif,
 			     unsigned int changed_flags,
 			     unsigned int *total_flags,
 			     u64 multicast);
-int Sstar_conf_tx(struct ieee80211_hw *dev, struct ieee80211_vif *vif,
+int atbm_conf_tx(struct ieee80211_hw *dev, struct ieee80211_vif *vif,
 		u16 queue, const struct ieee80211_tx_queue_params *params);
-int Sstar_get_stats(struct ieee80211_hw *dev,
+int atbm_get_stats(struct ieee80211_hw *dev,
 		     struct ieee80211_low_level_stats *stats);
 /* Not more a part of interface?
-int Sstar_get_tx_stats(struct ieee80211_hw *dev,
+int atbm_get_tx_stats(struct ieee80211_hw *dev,
 			struct ieee80211_tx_queue_stats *stats);
 */
-int Sstar_set_key(struct ieee80211_hw *dev, enum set_key_cmd cmd,
+int atbm_set_key(struct ieee80211_hw *dev, enum set_key_cmd cmd,
 		   struct ieee80211_vif *vif, struct ieee80211_sta *sta,
 		   struct ieee80211_key_conf *key);
 
-int Sstar_set_rts_threshold(struct ieee80211_hw *hw,
+int atbm_set_rts_threshold(struct ieee80211_hw *hw,
 		struct ieee80211_vif *vif, u32 value);
 
-void Sstar_flush(struct ieee80211_hw *hw,
+void atbm_flush(struct ieee80211_hw *hw,
 		  struct ieee80211_vif *vif,
 		  bool drop);
 
-int Sstar_remain_on_channel(struct ieee80211_hw *hw,
+int atbm_remain_on_channel(struct ieee80211_hw *hw,
 				struct ieee80211_vif *vif,
 				struct ieee80211_channel *chan,
 				enum nl80211_channel_type channel_type,
 				int duration, u64 cookie);
 
-int Sstar_cancel_remain_on_channel(struct ieee80211_hw *hw);
+int atbm_cancel_remain_on_channel(struct ieee80211_hw *hw);
 
-int Sstar_set_arpreply(struct ieee80211_hw *hw, struct ieee80211_vif *vif);
+int atbm_set_arpreply(struct ieee80211_hw *hw, struct ieee80211_vif *vif);
 
-u64 Sstar_prepare_multicast(struct ieee80211_hw *hw,
+u64 atbm_prepare_multicast(struct ieee80211_hw *hw,
 			     struct ieee80211_vif *vif,
 			     struct netdev_hw_addr_list *mc_list);
 
-int Sstar_set_pm(struct Sstar_vif *priv, const struct wsm_set_pm *arg);
-void Sstar_dhcp_retry_work(struct work_struct *work);
+int atbm_set_pm(struct atbm_vif *priv, const struct wsm_set_pm *arg);
+void atbm_dhcp_retry_work(struct work_struct *work);
 
-void Sstar_set_data_filter(struct ieee80211_hw *hw,
+void atbm_set_data_filter(struct ieee80211_hw *hw,
 			   struct ieee80211_vif *vif,
 			   void *data,
 			   int len);
 /* ******************************************************************** */
 /* WSM callbacks							*/
 
-/* void Sstar_set_pm_complete_cb(struct Sstar_common *hw_priv,
+/* void atbm_set_pm_complete_cb(struct atbm_common *hw_priv,
 	struct wsm_set_pm_complete *arg); */
-void Sstar_channel_switch_cb(struct Sstar_common *hw_priv);
+void atbm_channel_switch_cb(struct atbm_common *hw_priv);
 
 /* ******************************************************************** */
 /* WSM events								*/
 
-void Sstar_free_event_queue(struct Sstar_common *hw_priv);
-void Sstar_event_handler(struct work_struct *work);
-void Sstar_bss_loss_work(struct work_struct *work);
-void Sstar_connection_loss_work(struct work_struct *work);
-void Sstar_keep_alive_work(struct work_struct *work);
-void Sstar_tx_failure_work(struct work_struct *work);
+void atbm_free_event_queue(struct atbm_common *hw_priv);
+void atbm_event_handler(struct work_struct *work);
+void atbm_bss_loss_work(struct work_struct *work);
+void atbm_connection_loss_work(struct work_struct *work);
+void atbm_keep_alive_work(struct work_struct *work);
+void atbm_tx_failure_work(struct work_struct *work);
 
 /* ******************************************************************** */
 /* Internal API								*/
-void Sstar_pending_offchanneltx_work(struct work_struct *work);
-int Sstar_setup_mac(struct Sstar_common *hw_priv);
-void Sstar_join_work(struct work_struct *work);
-void Sstar_restart_join_bss(struct Sstar_vif *priv,struct cfg80211_bss *bss);
-void Sstar_join_timeout(struct work_struct *work);
-void Sstar_unjoin_work(struct work_struct *work);
-void Sstar_offchannel_work(struct work_struct *work);
-void Sstar_wep_key_work(struct work_struct *work);
-void Sstar_update_filtering(struct Sstar_vif *priv);
-void Sstar_update_filtering_work(struct work_struct *work);
-int __Sstar_flush(struct Sstar_common *hw_priv, bool drop, int if_id);
-void Sstar_set_beacon_wakeup_period_work(struct work_struct *work);
-int Sstar_enable_listening(struct Sstar_vif *priv,
+void atbm_pending_offchanneltx_work(struct work_struct *work);
+int atbm_setup_mac(struct atbm_common *hw_priv);
+void atbm_join_work(struct work_struct *work);
+void atbm_restart_join_bss(struct atbm_vif *priv,struct cfg80211_bss *bss);
+void atbm_join_timeout(struct work_struct *work);
+void atbm_unjoin_work(struct work_struct *work);
+void atbm_offchannel_work(struct work_struct *work);
+void atbm_wep_key_work(struct work_struct *work);
+void atbm_update_filtering(struct atbm_vif *priv);
+void atbm_update_filtering_work(struct work_struct *work);
+int __atbm_flush(struct atbm_common *hw_priv, bool drop, int if_id);
+void atbm_set_beacon_wakeup_period_work(struct work_struct *work);
+int atbm_enable_listening(struct atbm_vif *priv,
 			struct ieee80211_channel *chan);
-int Sstar_disable_listening(struct Sstar_vif *priv);
-int Sstar_set_uapsd_param(struct Sstar_vif *priv,
+int atbm_disable_listening(struct atbm_vif *priv);
+int atbm_set_uapsd_param(struct atbm_vif *priv,
 				const struct wsm_edca_params *arg);
-#ifdef CONFIG_SSTAR_BA_STATUS
-void Sstar_ba_work(struct work_struct *work);
-void Sstar_ba_timer(unsigned long arg);
+#ifdef CONFIG_ATBM_BA_STATUS
+void atbm_ba_work(struct work_struct *work);
+void atbm_ba_timer(unsigned long arg);
 #endif
-const u8 *Sstar_get_ie(u8 *start, size_t len, u8 ie);
-int Sstar_vif_setup(struct Sstar_vif *priv);
-void Sstar_vif_setup_params(struct Sstar_vif *priv);
-int Sstar_setup_mac_pvif(struct Sstar_vif *priv);
-void Sstar_iterate_vifs(void *data, u8 *mac,
+const u8 *atbm_get_ie(u8 *start, size_t len, u8 ie);
+int atbm_vif_setup(struct atbm_vif *priv);
+void atbm_vif_setup_params(struct atbm_vif *priv);
+int atbm_setup_mac_pvif(struct atbm_vif *priv);
+void atbm_iterate_vifs(void *data, u8 *mac,
 			 struct ieee80211_vif *vif);
-void Sstar_rem_chan_timeout(struct work_struct *work);
-int Sstar_set_macaddrfilter(struct Sstar_common *hw_priv, struct Sstar_vif *priv, u8 *data);
-#ifdef CONFIG_SSTAR_STA_LISTEN
-int Sstar_sta_triger_listen(struct ieee80211_hw *hw,struct ieee80211_vif *vif,struct ieee80211_channel *chan);
-void Sstar_sta_listen_int(struct Sstar_common *hw_priv);
-int Sstar_sta_stop_listen(struct ieee80211_hw *hw,struct ieee80211_vif *vif);
+void atbm_rem_chan_timeout(struct work_struct *work);
+int atbm_set_macaddrfilter(struct atbm_common *hw_priv, struct atbm_vif *priv, u8 *data);
+#ifdef CONFIG_ATBM_STA_LISTEN
+int atbm_sta_triger_listen(struct ieee80211_hw *hw,struct ieee80211_vif *vif,struct ieee80211_channel *chan);
+void atbm_sta_listen_int(struct atbm_common *hw_priv);
+int atbm_sta_stop_listen(struct ieee80211_hw *hw,struct ieee80211_vif *vif);
 #endif
 
 #ifdef ROAM_OFFLOAD
-int Sstar_testmode_event(struct wiphy *wiphy, const u32 msg_id,
+int atbm_testmode_event(struct wiphy *wiphy, const u32 msg_id,
 				const void *data, int len, gfp_t gfp);
 #endif /*ROAM_OFFLOAD*/
 #ifdef IPV6_FILTERING
-int Sstar_set_na(struct ieee80211_hw *hw,
+int atbm_set_na(struct ieee80211_hw *hw,
 			struct ieee80211_vif *vif);
 #endif /*IPV6_FILTERING*/
 #ifdef CONFIG_NL80211_TESTMODE
 
-int Sstar_altmtest_cmd(struct ieee80211_hw *hw, void *data, int len);
+int atbm_altmtest_cmd(struct ieee80211_hw *hw, void *data, int len);
 #endif
-#ifdef CONFIG_SSTAR_APOLLO_TESTMODE
-void Sstar_device_power_calc(struct Sstar_common *priv,
+#ifdef CONFIG_ATBM_APOLLO_TESTMODE
+void atbm_device_power_calc(struct atbm_common *priv,
 			      s16 max_output_power, s16 fe_cor, u32 band);
-int Sstar_testmode_cmd(struct ieee80211_hw *hw, void *data, int len);
-int Sstar_tesmode_event(struct wiphy *wiphy, const u32 msg_id,
+int atbm_testmode_cmd(struct ieee80211_hw *hw, void *data, int len);
+int atbm_tesmode_event(struct wiphy *wiphy, const u32 msg_id,
 			 const void *data, int len, gfp_t gfp);
-int Sstar_get_tx_power_range(struct ieee80211_hw *hw);
-int Sstar_get_tx_power_level(struct ieee80211_hw *hw);
+int atbm_get_tx_power_range(struct ieee80211_hw *hw);
+int atbm_get_tx_power_level(struct ieee80211_hw *hw);
 
-#endif /* CONFIG_SSTAR_APOLLO_TESTMODE */
+#endif /* CONFIG_ATBM_APOLLO_TESTMODE */
 #endif

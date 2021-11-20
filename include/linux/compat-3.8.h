@@ -18,8 +18,8 @@
  * @user_ptr: user pointers
  */
 #include <net/genetlink.h>
-//#define genl_info Sstar_genl_info
-struct Sstar_genl_info{
+//#define genl_info atbm_genl_info
+struct atbm_genl_info{
 	struct genl_info *info;
         u32                     snd_seq;
         u32                     snd_portid;
@@ -32,7 +32,7 @@ struct Sstar_genl_info{
 #endif
         void *                  user_ptr[2];
 };
-#define genl_info Sstar_genl_info
+#define genl_info atbm_genl_info
 //#include <net/genetlink.h>
 
 #endif

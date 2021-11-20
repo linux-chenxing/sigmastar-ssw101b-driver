@@ -89,7 +89,7 @@ struct minstrel_sta_info {
 	/* sampling table */
 	u8 *sample_table;
 
-#ifdef CONFIG_MAC80211_SSTAR_DEBUGFS
+#ifdef CONFIG_MAC80211_ATBM_DEBUGFS
 	struct dentry *dbg_stats;
 #endif
 };
@@ -106,7 +106,7 @@ struct minstrel_priv {
 	unsigned int lookaround_rate;
 	unsigned int lookaround_rate_mrr;
 
-#ifdef CONFIG_MAC80211_SSTAR_DEBUGFS
+#ifdef CONFIG_MAC80211_ATBM_DEBUGFS
 	/*
 	 * enable fixed rate processing per RC
 	 *   - write static index to debugfs:ieee80211/phyX/rc/fixed_rate_idx

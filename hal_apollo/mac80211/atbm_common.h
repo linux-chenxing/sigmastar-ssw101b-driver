@@ -1,5 +1,5 @@
-#ifndef __SSTAR_COMMON_H__
-#define __SSTAR_COMMON_H__
+#ifndef __ATBM_COMMON_H__
+#define __ATBM_COMMON_H__
 
 
 #define USER_DATE_LEN 255
@@ -31,11 +31,11 @@ typedef struct _Wifi_Send_Info
 	unsigned char User_data[USER_DATE_LEN+1]; //存放要发送的私有数据
 }Wifi_Send_Info_t;	   //发送结构体
 
-typedef struct Sstar_private_data{
+typedef struct atbm_private_data{
 	int set_flag;
 	int data_len;
 	char user_data[USER_DATE_LEN+1];
-}SSTAR_PRIVATE_DATA;
+}ATBM_PRIVATE_DATA;
 
 
 #define AP_SCAN_NUM_MAX 32 //ap number per channel
@@ -47,7 +47,6 @@ typedef struct _best_channel_info_
 	u8 mac_addr[ETH_ALEN];
 	u8 rssi;
 	u8 flag;
-	u8 enc_type;
 }BEST_CHANNEL_INFO;
 typedef struct _best_ch_busy_ratio_
 {

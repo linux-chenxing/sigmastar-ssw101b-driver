@@ -3,11 +3,11 @@
 #define DOWNLOAD_BLOCK_SIZE		(64)
 
 
-#ifndef SSTAR_APOLLO_HWIO_USB_H_INCLUDED
-#define SSTAR_APOLLO_HWIO_USB_H_INCLUDED
+#ifndef ATBM_APOLLO_HWIO_USB_H_INCLUDED
+#define ATBM_APOLLO_HWIO_USB_H_INCLUDED
 #include "apollo_plat.h"
 
-#define SIGMASTAR_WIFI_HDR_FLAG  (0x34353677)
+#define ALTOBEAM_WIFI_HDR_FLAG  (0x34353677)
 #if ((PROJ_TYPE>=ARES_A) || (PROJ_TYPE==ATHENA_LITE_ECO))
 #define DOWNLOAD_ITCM_ADDR		(0x00010000)
 #else
@@ -24,24 +24,24 @@
 #define PAC_SHARED_MEMORY_SILICON	(PAC_BASE_ADDRESS_SILICON)
 
 
-int Sstar_direct_write_reg_32(struct Sstar_common *hw_priv, u32 addr, u32 val);
-int Sstar_direct_read_reg_32(struct Sstar_common *hw_priv, u32 addr, u32 *val);
-int Sstar_fw_write(struct Sstar_common *priv, u32 addr, const void *buf,
+int atbm_direct_write_reg_32(struct atbm_common *hw_priv, u32 addr, u32 val);
+int atbm_direct_read_reg_32(struct atbm_common *hw_priv, u32 addr, u32 *val);
+int atbm_fw_write(struct atbm_common *priv, u32 addr, const void *buf,
                         u32 buf_len);
-int Sstar_ep0_read(struct Sstar_common *hw_priv, u32 addr,
+int atbm_ep0_read(struct atbm_common *hw_priv, u32 addr,
 				void *buf, u32 buf_len);
-int Sstar_ep0_write(struct Sstar_common *hw_priv, u32 addr,
+int atbm_ep0_write(struct atbm_common *hw_priv, u32 addr,
 				const void *buf, u32 buf_len);
 #ifdef USB_CMD_UES_EP0
-int Sstar_ep0_write_cmd(struct Sstar_common *hw_priv, struct wsm_hdr_tx * wsm_h);
+int atbm_ep0_write_cmd(struct atbm_common *hw_priv, struct wsm_hdr_tx * wsm_h);
 #endif
 /*
 *lock for probe dan disconnect
 */
-extern void Sstar_usb_module_muxlock(void);
-extern void Sstar_usb_module_muxunlock(void);
+extern void atbm_usb_module_muxlock(void);
+extern void atbm_usb_module_muxunlock(void);
 
-#define Sstar_module_muxlock()			Sstar_usb_module_muxlock()
-#define Sstar_module_muxunlock()			Sstar_usb_module_muxunlock()		
+#define atbm_module_muxlock()			atbm_usb_module_muxlock()
+#define atbm_module_muxunlock()			atbm_usb_module_muxunlock()		
 	
-#endif //SSTAR_APOLLO_HWIO_USB_H_INCLUDED
+#endif //ATBM_APOLLO_HWIO_USB_H_INCLUDED

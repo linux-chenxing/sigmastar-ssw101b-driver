@@ -1,7 +1,7 @@
 /*
- * mac80211 glue code for mac80211 sigmastar APOLLO drivers
+ * mac80211 glue code for mac80211 altobeam APOLLO drivers
  * *
- * Copyright (c) 2016, sigmastar
+ * Copyright (c) 2016, altobeam
  * Author:
  *
  * Based on apollo code
@@ -33,9 +33,9 @@
 #include <linux/vmalloc.h>
 #include <linux/random.h>
 #include <linux/sched.h>
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include <linux/debugfs.h>
-#ifdef CONFIG_SSTAR_5G_PRETEND_2G
+#ifdef CONFIG_ATBM_5G_PRETEND_2G
 #include <net/regulatory.h>
 #endif
 
@@ -50,20 +50,20 @@
 #include "scan.h"
 #include "debug.h"
 #include "pm.h"
-#ifdef SSTAR_SUPPORT_SMARTCONFIG
+#ifdef ATBM_SUPPORT_SMARTCONFIG
 #include "smartconfig.h"
 #endif
 #include "svn_version.h"
 
-MODULE_AUTHOR("wifi_software <wifi_software@sigmastar.com>");
-MODULE_DESCRIPTION("Softmac sigmastar apollo wifi common code");
+MODULE_AUTHOR("wifi_software <wifi_software@altobeam.com>");
+MODULE_DESCRIPTION("Softmac altobeam apollo wifi common code");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("Sstar_core");
+MODULE_ALIAS("atbm_core");
 
 //1: HIF-Disconect  0: Normal
 static int hif_sta = 0;
 module_param(hif_sta, int, 0644);
-void Sstar_hif_status_set(int status)
+void atbm_hif_status_set(int status)
 {
 	hif_sta = status;
 	return;
@@ -89,12 +89,12 @@ module_param(driver_ver, int, 0644);
 static int fw_ver = 0;
 module_param(fw_ver, int, 0644);
 /* Accept MAC address of the form macaddr=0x00,0x80,0xE1,0x30,0x40,0x50 */
-static u8 Sstar_mac_default[SSTAR_WIFI_MAX_VIFS][ETH_ALEN] = {
+static u8 atbm_mac_default[ATBM_WIFI_MAX_VIFS][ETH_ALEN] = {
 	{0x00, 0x12, 0x34, 0x00, 0x00, 0x00},
 	{0x00, 0x12, 0x34, 0x00, 0x00, 0x01},
 };
-module_param_array_named(macaddr, Sstar_mac_default[0], byte, NULL, S_IRUGO);
-module_param_array_named(macaddr2, Sstar_mac_default[1], byte, NULL, S_IRUGO);
+module_param_array_named(macaddr, atbm_mac_default[0], byte, NULL, S_IRUGO);
+module_param_array_named(macaddr2, atbm_mac_default[1], byte, NULL, S_IRUGO);
 MODULE_PARM_DESC(macaddr, "First MAC address");
 MODULE_PARM_DESC(macaddr2, "Second MAC address");
 #define verson_str(_ver) #_ver
@@ -121,7 +121,7 @@ static int savedpsm = 0;
 		.flags		= (_flags),		\
 	}
 
-static struct ieee80211_rate Sstar_rates[] = {
+static struct ieee80211_rate atbm_rates[] = {
 	RATETAB_ENT(10,  0,   0),
 	RATETAB_ENT(20,  1,   0),
 	RATETAB_ENT(55,  2,   0),
@@ -136,7 +136,7 @@ static struct ieee80211_rate Sstar_rates[] = {
 	RATETAB_ENT(540, 13, 0),
 };
 
-static struct ieee80211_rate Sstar_mcs_rates[] = {
+static struct ieee80211_rate atbm_mcs_rates[] = {
 	RATETAB_ENT(65,  14, IEEE80211_TX_RC_MCS),
 	RATETAB_ENT(130, 15, IEEE80211_TX_RC_MCS),
 	RATETAB_ENT(195, 16, IEEE80211_TX_RC_MCS),
@@ -148,12 +148,12 @@ static struct ieee80211_rate Sstar_mcs_rates[] = {
 	RATETAB_ENT(60 , 22, IEEE80211_TX_RC_MCS),
 };
 
-#define Sstar_a_rates		(Sstar_rates + 4)
-#define Sstar_a_rates_size	(ARRAY_SIZE(Sstar_rates) - 4)
-#define Sstar_g_rates		(Sstar_rates + 0)
-#define Sstar_g_rates_size	(ARRAY_SIZE(Sstar_rates))
-#define Sstar_n_rates		(Sstar_mcs_rates)
-#define Sstar_n_rates_size	(ARRAY_SIZE(Sstar_mcs_rates))
+#define atbm_a_rates		(atbm_rates + 4)
+#define atbm_a_rates_size	(ARRAY_SIZE(atbm_rates) - 4)
+#define atbm_g_rates		(atbm_rates + 0)
+#define atbm_g_rates_size	(ARRAY_SIZE(atbm_rates))
+#define atbm_n_rates		(atbm_mcs_rates)
+#define atbm_n_rates_size	(ARRAY_SIZE(atbm_mcs_rates))
 
 
 #define CHAN2G(_channel, _freq, _flags) {			\
@@ -173,7 +173,7 @@ static struct ieee80211_rate Sstar_mcs_rates[] = {
 	.max_antenna_gain	= 0,				\
 	.max_power		= 30,				\
 }
-#ifdef CONFIG_SSTAR_5G_PRETEND_2G
+#ifdef CONFIG_ATBM_5G_PRETEND_2G
 #define CHAN5G_2G(_channel,hw_channel ,_flags) {				\
 	.band			= IEEE80211_BAND_5GHZ,		\
 	.center_freq	= 5000 + (5 * (_channel)),		\
@@ -183,7 +183,7 @@ static struct ieee80211_rate Sstar_mcs_rates[] = {
 	.max_power		= 30,				\
 }
 #endif
-static struct ieee80211_channel Sstar_2ghz_chantable[] = {
+static struct ieee80211_channel atbm_2ghz_chantable[] = {
 	CHAN2G(1, 2412, 0),
 	CHAN2G(2, 2417, 0),
 	CHAN2G(3, 2422, 0),
@@ -200,8 +200,8 @@ static struct ieee80211_channel Sstar_2ghz_chantable[] = {
 	CHAN2G(14, 2484, 0),
 };
 
-#ifdef CONFIG_SSTAR_APOLLO_5GHZ_SUPPORT
-static struct ieee80211_channel Sstar_5ghz_chantable[] = {
+#ifdef CONFIG_ATBM_APOLLO_5GHZ_SUPPORT
+static struct ieee80211_channel atbm_5ghz_chantable[] = {
 	CHAN5G(34, 0),		CHAN5G(36, 0),
 	CHAN5G(38, 0),		CHAN5G(40, 0),
 	CHAN5G(42, 0),		CHAN5G(44, 0),
@@ -222,9 +222,9 @@ static struct ieee80211_channel Sstar_5ghz_chantable[] = {
 	CHAN5G(208, 0),		CHAN5G(212, 0),
 	CHAN5G(216, 0),
 };
-#elif defined (CONFIG_SSTAR_5G_PRETEND_2G) /* CONFIG_SSTAR_APOLLO_5GHZ_SUPPORT */
-#pragma message("SSTAR60XX:support 5G channel,but actualy at 2G") 
-static struct ieee80211_channel Sstar_5ghz_chantable[] = {
+#elif defined (CONFIG_ATBM_5G_PRETEND_2G) /* CONFIG_ATBM_APOLLO_5GHZ_SUPPORT */
+#pragma message("ATBM60XX:support 5G channel,but actualy at 2G") 
+static struct ieee80211_channel atbm_5ghz_chantable[] = {
 	CHAN5G_2G(34,36,0),//IEEE80211_CHAN_RADAR
 	CHAN5G_2G(36,36,0),//IEEE80211_CHAN_RADAR
 	CHAN5G_2G(38,38,0),
@@ -232,8 +232,8 @@ static struct ieee80211_channel Sstar_5ghz_chantable[] = {
 	CHAN5G_2G(42,42,0),
 	CHAN5G_2G(44,42,0),
 };
-/* Sstar channel define */
-static struct ieee80211_regdomain Sstar_request_regdom = {
+/* atbm channel define */
+static struct ieee80211_regdomain atbm_request_regdom = {
 	.n_reg_rules = 4,
 	.alpha2 =  "99",
 	.reg_rules = {
@@ -253,21 +253,21 @@ static struct ieee80211_regdomain Sstar_request_regdom = {
 };
 
 #endif
-#ifdef SSTAR_NOT_SUPPORT_40M_CHW
-#pragma message("SSW101x:not support 40M chw") 
+#ifdef ATBM_NOT_SUPPORT_40M_CHW
+#pragma message("ATBM601x:not support 40M chw") 
 #else
-#pragma message("SSW101/SSW101B:support 40M chw")
+#pragma message("ATBM602x/ATBM603x:support 40M chw")
 #endif
-static struct ieee80211_supported_band Sstar_band_2ghz = {
-	.channels = Sstar_2ghz_chantable,
-	.n_channels = ARRAY_SIZE(Sstar_2ghz_chantable),
-	.bitrates = Sstar_g_rates,
-	.n_bitrates = Sstar_g_rates_size,
+static struct ieee80211_supported_band atbm_band_2ghz = {
+	.channels = atbm_2ghz_chantable,
+	.n_channels = ARRAY_SIZE(atbm_2ghz_chantable),
+	.bitrates = atbm_g_rates,
+	.n_bitrates = atbm_g_rates_size,
 	.ht_cap = {
 		.cap = IEEE80211_HT_CAP_GRN_FLD
 				|
-#ifndef SSTAR_NOT_SUPPORT_40M_CHW
-#ifdef SSTAR_SUPPORT_WIDTH_40M
+#ifndef ATBM_NOT_SUPPORT_40M_CHW
+#ifdef ATBM_SUPPORT_WIDTH_40M
 //#if 0
 			IEEE80211_HT_CAP_SUP_WIDTH_20_40
 				|
@@ -275,16 +275,16 @@ static struct ieee80211_supported_band Sstar_band_2ghz = {
 				|
 #endif
 #endif
-#ifdef CONFIG_SSTAR_APOLLO_SUPPORT_SGI
+#ifdef CONFIG_ATBM_APOLLO_SUPPORT_SGI
 			IEEE80211_HT_CAP_SGI_20 |
-#ifndef SSTAR_NOT_SUPPORT_40M_CHW
-#ifdef SSTAR_SUPPORT_WIDTH_40M
+#ifndef ATBM_NOT_SUPPORT_40M_CHW
+#ifdef ATBM_SUPPORT_WIDTH_40M
 //#if 0
 			IEEE80211_HT_CAP_SGI_40
 				|
 #endif
 #endif
-#endif /* SSTAR_APOLLO_SUPPORT_SGI */
+#endif /* ATBM_APOLLO_SUPPORT_SGI */
 			(1 << IEEE80211_HT_CAP_RX_STBC_SHIFT)
 		,
 		.ht_supported = 1,
@@ -298,28 +298,28 @@ static struct ieee80211_supported_band Sstar_band_2ghz = {
 	},
 };
 
-#if defined (CONFIG_SSTAR_APOLLO_5GHZ_SUPPORT) || defined (CONFIG_SSTAR_5G_PRETEND_2G)
-static struct ieee80211_supported_band Sstar_band_5ghz = {
-	.channels = Sstar_5ghz_chantable,
-	.n_channels = ARRAY_SIZE(Sstar_5ghz_chantable),
-	.bitrates = Sstar_a_rates,
-	.n_bitrates = Sstar_a_rates_size,
+#if defined (CONFIG_ATBM_APOLLO_5GHZ_SUPPORT) || defined (CONFIG_ATBM_5G_PRETEND_2G)
+static struct ieee80211_supported_band atbm_band_5ghz = {
+	.channels = atbm_5ghz_chantable,
+	.n_channels = ARRAY_SIZE(atbm_5ghz_chantable),
+	.bitrates = atbm_a_rates,
+	.n_bitrates = atbm_a_rates_size,
 	.ht_cap = {
 		.cap = IEEE80211_HT_CAP_GRN_FLD |
-#ifndef SSTAR_NOT_SUPPORT_40M_CHW
-#ifdef SSTAR_SUPPORT_WIDTH_40M
+#ifndef ATBM_NOT_SUPPORT_40M_CHW
+#ifdef ATBM_SUPPORT_WIDTH_40M
 			IEEE80211_HT_CAP_SUP_WIDTH_20_40|
 			IEEE80211_HT_CAP_DSSSCCK40|
 #endif
 #endif
-#ifdef CONFIG_SSTAR_APOLLO_SUPPORT_SGI
+#ifdef CONFIG_ATBM_APOLLO_SUPPORT_SGI
 			IEEE80211_HT_CAP_SGI_20 |
-#ifndef SSTAR_NOT_SUPPORT_40M_CHW
-#ifdef SSTAR_SUPPORT_WIDTH_40M
+#ifndef ATBM_NOT_SUPPORT_40M_CHW
+#ifdef ATBM_SUPPORT_WIDTH_40M
 			IEEE80211_HT_CAP_SGI_40|
 #endif
 #endif
-#endif /* SSTAR_APOLLO_SUPPORT_SGI */
+#endif /* ATBM_APOLLO_SUPPORT_SGI */
 			(1 << IEEE80211_HT_CAP_RX_STBC_SHIFT),
 		.ht_supported = 1,
 		.ampdu_factor = IEEE80211_HT_MAX_AMPDU_8K,
@@ -331,19 +331,19 @@ static struct ieee80211_supported_band Sstar_band_5ghz = {
 		},
 	},
 };
-#endif /* CONFIG_SSTAR_APOLLO_5GHZ_SUPPORT */
+#endif /* CONFIG_ATBM_APOLLO_5GHZ_SUPPORT */
 
-static const unsigned long Sstar_ttl[] = {
+static const unsigned long atbm_ttl[] = {
 	1 * HZ,	/* VO */
 	2 * HZ,	/* VI */
 	5 * HZ, /* BE */
 	10 * HZ	/* BK */
 };
-void Sstar_set_fw_ver(struct Sstar_common *hw_priv)
+void atbm_set_fw_ver(struct atbm_common *hw_priv)
 {
 	fw_ver = hw_priv->wsm_caps.firmwareVersion;
 }
-#ifdef SSTAR_SUPPORT_WIDTH_40M
+#ifdef ATBM_SUPPORT_WIDTH_40M
 #define CHW_IS_40M			(1)
 #define CHW_IS_20M			(0)
 #define CHW_ACTION_TO_PEER(chw,action)				\
@@ -353,16 +353,16 @@ void Sstar_set_fw_ver(struct Sstar_common *hw_priv)
 		{												\
 			wsm_lock_tx_async(hw_priv);						\
 			action = (notifyPeerAction_t)chw;				\
-			Sstar_printk_debug("%s:%s----->%s\n",__func__,(chw?"20M":"40M"),(chw?"40M":"20M"));	\
+			atbm_printk_debug("%s:%s----->%s\n",__func__,(chw?"20M":"40M"),(chw?"40M":"20M"));	\
 			atomic_set(&hw_priv->phy_chantype,chw);								\
 			wsm_unlock_tx(hw_priv);												\
 		}																		\
 	}while(0)
-int Sstar_req_lmc_to_send_action(struct Sstar_vif *priv,notifyPeerAction_t is40M)
+int atbm_req_lmc_to_send_action(struct atbm_vif *priv,notifyPeerAction_t is40M)
 {
 	struct wsm_req_chtype_change req_chtype_chg;
 	static u8 broadcast_addr[6] = {0xff,0xff,0xff,0xff,0xff,0xff};
-	if(priv->join_status<=SSTAR_APOLLO_JOIN_STATUS_MONITOR)
+	if(priv->join_status<=ATBM_APOLLO_JOIN_STATUS_MONITOR)
 	{
 		return -1;
 	}
@@ -370,11 +370,11 @@ int Sstar_req_lmc_to_send_action(struct Sstar_vif *priv,notifyPeerAction_t is40M
 	{
 		return -1;
 	}
-	if(priv->join_status == SSTAR_APOLLO_JOIN_STATUS_AP)
+	if(priv->join_status == ATBM_APOLLO_JOIN_STATUS_AP)
 	{
 		memcpy(&req_chtype_chg.MacAddr[0],&broadcast_addr[0],6);
 	}
-	else if(priv->join_status == SSTAR_APOLLO_JOIN_STATUS_STA)
+	else if(priv->join_status == ATBM_APOLLO_JOIN_STATUS_STA)
 	{
 		memcpy(&req_chtype_chg.MacAddr[0],priv->vif->bss_conf.bssid,6);
 	}
@@ -382,7 +382,7 @@ int Sstar_req_lmc_to_send_action(struct Sstar_vif *priv,notifyPeerAction_t is40M
 	{
 		return -1;
 	}
-	Sstar_printk_debug("%s: join_status=%d, addr =%pM,is40M = %d\n",
+	atbm_printk_debug("%s: join_status=%d, addr =%pM,is40M = %d\n",
 			__func__,priv->join_status , &req_chtype_chg.MacAddr[0],is40M);
 	if(is40M == notifyPeer20M)
 		req_chtype_chg.flags = WSM_SEND_CHTYPE_CHG_REQUEST__FLAGS_SEN_20M;
@@ -391,12 +391,12 @@ int Sstar_req_lmc_to_send_action(struct Sstar_vif *priv,notifyPeerAction_t is40M
 
 	return wsm_req_chtype_change_func(priv->hw_priv,&req_chtype_chg,priv->if_id);
 }
-void Sstar_start_detect_cca(struct Sstar_vif *priv,u32 rx_phy_enable_num_req)
+void atbm_start_detect_cca(struct atbm_vif *priv,u32 rx_phy_enable_num_req)
 {
 	#define CCA_INTERVAL_S		100
 	struct wsm_get_cca_req get_cca;
 	struct wsm_get_cca_resp res_cca;
-	struct Sstar_common *hw_priv = priv->hw_priv;
+	struct atbm_common *hw_priv = priv->hw_priv;
 	enum nl80211_channel_type temp_channel_type = NL80211_CHAN_NO_HT;
 	if(priv == NULL)
 	{
@@ -421,42 +421,42 @@ void Sstar_start_detect_cca(struct Sstar_vif *priv,u32 rx_phy_enable_num_req)
 
 	if(wsm_get_cca(hw_priv,&get_cca,&res_cca,0))
 	{
-		Sstar_printk_err("%s:Sstar_get_cca_work err\n",__func__);
+		atbm_printk_err("%s:atbm_get_cca_work err\n",__func__);
 	}
 }
-void Sstar_channel_type_change_work(struct work_struct *work)
+void atbm_channel_type_change_work(struct work_struct *work)
 {
-	struct Sstar_vif *priv =  container_of(work, struct Sstar_vif, chantype_change_work.work);
-	struct Sstar_common *hw_priv = priv->hw_priv;
+	struct atbm_vif *priv =  container_of(work, struct atbm_vif, chantype_change_work.work);
+	struct atbm_common *hw_priv = priv->hw_priv;
 	struct wsm_set_chantype set_channtype;
 	enum nl80211_channel_type temp_channel_type;
 	notifyPeerAction_t action=notifyPeerMax;
-	if(Sstar_bh_is_term(hw_priv)){
+	if(atbm_bh_is_term(hw_priv)){
 		return;
 	}
 	if(priv == NULL)
 	{
-		Sstar_printk_err("%s:priv == NULL\n",__func__);
+		atbm_printk_err("%s:priv == NULL\n",__func__);
 		goto type_change_work_err;
 	}
 	if(!atomic_read(&hw_priv->channel_chaging))
 	{
-		Sstar_printk_err("%s:what happend.only if_id 0 can change channel type so return\n",__func__);
+		atbm_printk_err("%s:what happend.only if_id 0 can change channel type so return\n",__func__);
 		goto type_change_work_err;
 	}
-	if(priv->join_status == SSTAR_APOLLO_JOIN_STATUS_PASSIVE)
+	if(priv->join_status == ATBM_APOLLO_JOIN_STATUS_PASSIVE)
 	{
-		Sstar_printk_err("%s:priv->join_status err\n",__func__);
+		atbm_printk_err("%s:priv->join_status err\n",__func__);
 		goto type_change_work_err;
 	}
-	Sstar_printk_debug("Sstar_channel_type_change_work in+++++\n");
+	atbm_printk_debug("atbm_channel_type_change_work in+++++\n");
 	if (unlikely(down_trylock(&hw_priv->scan.lock))) {
 		/* Scan is already in progress. Requeue self. */
 		//schedule();
-		Sstar_printk_debug("%s: scan locked so requeue the work\n",__func__);
-		if(Sstar_hw_priv_queue_delayed_work(hw_priv, &priv->chantype_change_work,HZ/3) <= 0)
+		atbm_printk_debug("%s: scan locked so requeue the work\n",__func__);
+		if(atbm_hw_priv_queue_delayed_work(hw_priv, &priv->chantype_change_work,HZ/3) <= 0)
 		{
-			Sstar_printk_err("%s: scan locked so requeue the work err\n",__func__);
+			atbm_printk_err("%s: scan locked so requeue the work err\n",__func__);
 		}
 		return;
 	}
@@ -490,30 +490,30 @@ void Sstar_channel_type_change_work(struct work_struct *work)
 		set_channtype.flag = 0;
 		set_channtype.channelNumber = channel_hw_value(hw_priv->channel);
 		set_channtype.channelType = (u32)temp_channel_type;
-		Sstar_printk_always("%s:chatype(%d),channelNumber(%d)\n",__func__,
+		atbm_printk_always("%s:chatype(%d),channelNumber(%d)\n",__func__,
 			set_channtype.channelType,set_channtype.channelNumber);
 		clear_bit(WSM_SET_CHANTYPECHANGE_FLAGS__CHANNUM_CHANGE,&hw_priv->change_bit);
 		clear_bit(WSM_SET_CHANTYPECHANGE_FLAGS__CHANTYPE_CHANGE,&hw_priv->change_bit);		
 		if(wsm_set_chantype_func(hw_priv,&set_channtype,priv->if_id))
 		{
-			Sstar_printk_err("%s:wsm_set_chantype_func err\n",__func__);
+			atbm_printk_err("%s:wsm_set_chantype_func err\n",__func__);
 			/*
 			*if we set channel type err to lmc,send 20 M is safe
 			*/
-			Sstar_printk_err("%s:set channeltype err",__func__);
+			atbm_printk_err("%s:set channeltype err",__func__);
 			atomic_set(&hw_priv->phy_chantype,0);
 			goto type_change_work_exit;
 		}
-		Sstar_printk_debug("%s  %d\n", __FUNCTION__, __LINE__);
+		atbm_printk_debug("%s  %d\n", __FUNCTION__, __LINE__);
 		if(ieee80211_chw_is_ht40(temp_channel_type))
 		{
 			atomic_set(&hw_priv->tx_20M_lock,0);
-			Sstar_printk_debug("%s  %d\n", __FUNCTION__, __LINE__);
+			atbm_printk_debug("%s  %d\n", __FUNCTION__, __LINE__);
 		}
 		else
 		{
 			atomic_set(&hw_priv->tx_20M_lock,1);
-			Sstar_printk_debug("%s  %d\n", __FUNCTION__, __LINE__);
+			atbm_printk_debug("%s  %d\n", __FUNCTION__, __LINE__);
 		}
 	}
 	/*
@@ -531,13 +531,13 @@ void Sstar_channel_type_change_work(struct work_struct *work)
 		{
 			if((atomic_read(&hw_priv->cca_detect_running) == 0)&&(start_cca_check == 1))
 			{
-				Sstar_printk_debug( "%s:start get cca\n",__func__);
-				Sstar_start_detect_cca(priv,hw_priv->rx_phy_enable_num_req);
+				atbm_printk_debug( "%s:start get cca\n",__func__);
+				atbm_start_detect_cca(priv,hw_priv->rx_phy_enable_num_req);
 				atomic_set(&hw_priv->cca_detect_running,1);
 				mod_timer(&hw_priv->chantype_timer,
 				jiffies + (atomic_read(&hw_priv->cca_interval_ms)/1000)*HZ+HZ/1000);
 			}
-			Sstar_printk_debug( "%s:we can send 40M later\n",__func__);
+			atbm_printk_debug( "%s:we can send 40M later\n",__func__);
 			/*
 			*at here if hw_priv->phy_chantype is zero,we send action to
 			*ap to notify that we only can receive 20M
@@ -576,8 +576,8 @@ void Sstar_channel_type_change_work(struct work_struct *work)
 	}
 	if((action<notifyPeerMax)&&(start_cca_check == 1))
 	{
-		Sstar_printk_always("%s:Sstar_req_lmc_to_send_action %d\n",__func__,action);
-		Sstar_req_lmc_to_send_action(priv,action);
+		atbm_printk_always("%s:atbm_req_lmc_to_send_action %d\n",__func__,action);
+		atbm_req_lmc_to_send_action(priv,action);
 	}
 type_change_work_exit:
 	/*
@@ -589,7 +589,7 @@ type_change_work_exit:
 	mutex_unlock(&hw_priv->chantype_mutex);	
 	mutex_unlock(&hw_priv->conf_mutex);
 	up(&hw_priv->scan.lock);
-	Sstar_printk_debug("Sstar_channel_type_change_work out ------\n");
+	atbm_printk_debug("atbm_channel_type_change_work out ------\n");
 	return;
 type_change_work_err:
 	mutex_lock(&hw_priv->conf_mutex);
@@ -604,13 +604,13 @@ type_change_work_err:
 	return;
 
 }
-static void Sstar_chantype_timer(unsigned long arg)
+static void atbm_chantype_timer(unsigned long arg)
 {	
-	struct Sstar_common *hw_priv =
-			(struct Sstar_common *)arg;
+	struct atbm_common *hw_priv =
+			(struct atbm_common *)arg;
 	int can_get = 0;
 
-	if(Sstar_bh_is_term(hw_priv))
+	if(atbm_bh_is_term(hw_priv))
 	{
 		return;
 	}
@@ -621,40 +621,40 @@ static void Sstar_chantype_timer(unsigned long arg)
 	if(atomic_read(&hw_priv->tx_20M_lock))
 	{
 		can_get = 0;
-		Sstar_printk_debug("%s:tx_20M_lock is locked,we cannot get cca\n",__func__);
+		atbm_printk_debug("%s:tx_20M_lock is locked,we cannot get cca\n",__func__);
 	}
 	
 	if(can_get == 0)
 	{
-		Sstar_printk_debug("%s:channel_type(%d),tx_20M_lock(%d)\n",__func__, hw_priv->channel_type,atomic_read(&hw_priv->tx_20M_lock));
+		atbm_printk_debug("%s:channel_type(%d),tx_20M_lock(%d)\n",__func__, hw_priv->channel_type,atomic_read(&hw_priv->tx_20M_lock));
 		return;	
 	}
 	//printk("%s:can_get(%d)\n",__func__,can_get);
 	if(start_cca_check == 1)
 	{
-		if(Sstar_hw_priv_queue_work(hw_priv, &hw_priv->get_cca_work) <= 0)
+		if(atbm_hw_priv_queue_work(hw_priv, &hw_priv->get_cca_work) <= 0)
 		{
-			Sstar_printk_err("%s:cmd get cca err",__func__);
+			atbm_printk_err("%s:cmd get cca err",__func__);
 		}
 	}
 
 }
-void Sstar_get_cca_work(struct work_struct *work)
+void atbm_get_cca_work(struct work_struct *work)
 {
 #define CCA_CHANGE_TO_40M_a  atomic_read(&hw_priv->chw_sw_40M_level)
 #define CCA_CHANGE_TO_20M_a  atomic_read(&hw_priv->chw_sw_20M_level)
-	struct Sstar_common *hw_priv = container_of(work, struct Sstar_common, get_cca_work);
+	struct atbm_common *hw_priv = container_of(work, struct atbm_common, get_cca_work);
 	u8 can_get = 0;
 	u32	flags = 0;
 	struct wsm_get_cca_req get_cca;
 	struct wsm_get_cca_resp res_cca;
 	//u32 prev_cca;
 	notifyPeerAction_t action=notifyPeerMax;
-	struct Sstar_vif * priv = __ABwifi_hwpriv_to_vifpriv(hw_priv,0);
+	struct atbm_vif * priv = __ABwifi_hwpriv_to_vifpriv(hw_priv,0);
 
-	if((priv == NULL) || Sstar_bh_is_term(hw_priv))
+	if((priv == NULL) || atbm_bh_is_term(hw_priv))
 	{
-		Sstar_printk_err("%s:priv == NULL\n",__func__);
+		atbm_printk_err("%s:priv == NULL\n",__func__);
 		goto cca_work_end;
 	}
 	
@@ -664,7 +664,7 @@ void Sstar_get_cca_work(struct work_struct *work)
 	spin_unlock_bh(&hw_priv->spinlock_channel_type);
 	if(atomic_read(&hw_priv->tx_20M_lock))	{
 		can_get = 0;
-		Sstar_printk_err("%s:tx_20M_lock is locked,we cannot get cca\n",__func__);
+		atbm_printk_err("%s:tx_20M_lock is locked,we cannot get cca\n",__func__);
 	}
 	/*
 	*when the work pennding,hw_priv->channel_type may be changed;
@@ -676,26 +676,26 @@ void Sstar_get_cca_work(struct work_struct *work)
 		flags |= WSM_GET_CCA_FLAGS__START_CCA;
 
 		if(test_bit(WSM_SET_CHANTYPECHANGE_FLAGS__CCA_LEVEL_CHANGE,&hw_priv->change_bit))	{
-			Sstar_printk_err("%s:cca_interval_change\n",__func__);
+			atbm_printk_err("%s:cca_interval_change\n",__func__);
 			clear_bit(WSM_SET_CHANTYPECHANGE_FLAGS__CCA_LEVEL_CHANGE,&hw_priv->change_bit);
-			//Sstar_start_detect_cca(priv,atomic_read(&hw_priv->cca_interval_ms));
+			//atbm_start_detect_cca(priv,atomic_read(&hw_priv->cca_interval_ms));
 		}
 	}
 	get_cca.rx_phy_enable_num_req = hw_priv->rx_phy_enable_num_req;
 	get_cca.flags = flags;
 	if(wsm_get_cca(hw_priv,&get_cca,&res_cca,0))	{
-		Sstar_printk_err("%s:Sstar_get_cca_work err\n",__func__);
+		atbm_printk_err("%s:atbm_get_cca_work err\n",__func__);
 		goto cca_work_end;
 	}
 	
 	if(res_cca.status != WSM_STATUS_SUCCESS)	{
-		Sstar_printk_err("%s:res_cca.status err (%d)\n",__func__,res_cca.status);
+		atbm_printk_err("%s:res_cca.status err (%d)\n",__func__,res_cca.status);
 		goto cca_work_end;
 	}
 	else{
 		
 		if(res_cca.rx_phy_enable_num_cnf < get_cca.rx_phy_enable_num_req){
-			Sstar_printk_always("%s:getcca not good rx_phy_enable_num_cnf (%d) < (%d)\n",__func__,res_cca.rx_phy_enable_num_cnf , get_cca.rx_phy_enable_num_req);
+			atbm_printk_always("%s:getcca not good rx_phy_enable_num_cnf (%d) < (%d)\n",__func__,res_cca.rx_phy_enable_num_cnf , get_cca.rx_phy_enable_num_req);
 			goto cca_work_end;
 		}
 	}
@@ -722,8 +722,8 @@ void Sstar_get_cca_work(struct work_struct *work)
 
 	if((action<notifyPeerMax)&&(start_cca_check == 1))
 	{
-		Sstar_printk_err("%s:Sstar_req_lmc_to_send_action %d\n",__func__,action);
-		Sstar_req_lmc_to_send_action(priv,action);
+		atbm_printk_err("%s:atbm_req_lmc_to_send_action %d\n",__func__,action);
+		atbm_req_lmc_to_send_action(priv,action);
 	}
 cca_work_end:
 	/*
@@ -737,17 +737,18 @@ cca_work_end:
 	}
 	else
 	{
-		Sstar_printk_debug("%s:stop chantype_timer\n",__func__);
+		atbm_printk_debug("%s:stop chantype_timer\n",__func__);
 	}
 	mutex_unlock(&hw_priv->chantype_mutex);	
 }
-void Sstar_clear_wpas_p2p_40M_ie(struct Sstar_ieee80211_mgmt *mgmt,u32 pkg_len)
+void atbm_clear_wpas_p2p_40M_ie(struct atbm_ieee80211_mgmt *mgmt,u32 pkg_len)
 {
 	u8 *ie = NULL;
 	int ie_len = 0;
 	struct ieee80211_ht_cap *htcap = NULL;
 	u8 *htcap_ie = NULL;
-	#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 16, 0))
+	//#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 16, 0))
+	#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0))
 	typedef int (*mgmt_filter_handle)(__le16 fc);
 	#else
 	typedef bool (*mgmt_filter_handle)(__le16 fc);
@@ -758,7 +759,7 @@ void Sstar_clear_wpas_p2p_40M_ie(struct Sstar_ieee80211_mgmt *mgmt,u32 pkg_len)
 		u8*				variable;
 	};
 
-	struct mgmt_filter Sstar_mgmt_filter_table[]=
+	struct mgmt_filter atbm_mgmt_filter_table[]=
 	{
 		{.handle = ieee80211_is_beacon,.variable=mgmt->u.beacon.variable,},
 		{.handle = ieee80211_is_probe_req,.variable=mgmt->u.probe_req.variable,},
@@ -775,28 +776,28 @@ void Sstar_clear_wpas_p2p_40M_ie(struct Sstar_ieee80211_mgmt *mgmt,u32 pkg_len)
 	u8 index = 0;
 	if((mgmt == NULL) || (pkg_len == 0))
 	{
-		Sstar_printk_err("%s->err:mgmt(%p),pkg_len(%d)\n",__func__,mgmt,pkg_len);
+		atbm_printk_err("%s->err:mgmt(%p),pkg_len(%d)\n",__func__,mgmt,pkg_len);
 		return;
 	}
 	
-	for(index=0;Sstar_mgmt_filter_table[index].handle != NULL;index++)
+	for(index=0;atbm_mgmt_filter_table[index].handle != NULL;index++)
 	{
-		if(!Sstar_mgmt_filter_table[index].handle(mgmt->frame_control))
+		if(!atbm_mgmt_filter_table[index].handle(mgmt->frame_control))
 		{
-			if(Sstar_mgmt_filter_table[index+1].handle == NULL)
+			if(atbm_mgmt_filter_table[index+1].handle == NULL)
 			{
-				Sstar_printk_err("%s:is another mgmt\n",__func__);
+				atbm_printk_err("%s:is another mgmt\n",__func__);
 			}
 			continue;
 		}
 
-		ie =Sstar_mgmt_filter_table[index].variable;
-		Sstar_printk_debug("%s:filter index(%d)\n",__func__,index);
+		ie =atbm_mgmt_filter_table[index].variable;
+		atbm_printk_debug("%s:filter index(%d)\n",__func__,index);
 		break;
 	}
 	if(ie == NULL)
 	{
-		Sstar_printk_debug("%s:ie == NULL\n",__func__);
+		atbm_printk_debug("%s:ie == NULL\n",__func__);
 		return;
 	}
 	ie_len = pkg_len-(ie - (u8*)mgmt);
@@ -805,17 +806,17 @@ void Sstar_clear_wpas_p2p_40M_ie(struct Sstar_ieee80211_mgmt *mgmt,u32 pkg_len)
 		return;
 	}
 
-	htcap_ie = (u8 *)cfg80211_find_ie( SSTAR_WLAN_EID_HT_CAPABILITY, ie, ie_len);
+	htcap_ie = (u8 *)cfg80211_find_ie( ATBM_WLAN_EID_HT_CAPABILITY, ie, ie_len);
 
 	if(htcap_ie == NULL)
 	{
-		Sstar_printk_debug("%s:htcap_ie == NULL,len(%d),pkg_len(%d)\n",__func__,ie_len,pkg_len);
+		atbm_printk_debug("%s:htcap_ie == NULL,len(%d),pkg_len(%d)\n",__func__,ie_len,pkg_len);
 		return;
 	}
 
 	if(htcap_ie[1] < sizeof(struct ieee80211_ht_cap) )
 	{
-		Sstar_printk_debug("%s:ie len is err len(%d),pkg_len(%d)\n",__func__,htcap_ie[1],pkg_len);
+		atbm_printk_debug("%s:ie len is err len(%d),pkg_len(%d)\n",__func__,htcap_ie[1],pkg_len);
 		return;
 	}
 	htcap = (struct ieee80211_ht_cap *)(htcap_ie+2);
@@ -823,16 +824,16 @@ void Sstar_clear_wpas_p2p_40M_ie(struct Sstar_ieee80211_mgmt *mgmt,u32 pkg_len)
 	
 }
 #endif
-#ifdef SSTAR_PKG_REORDER
-#define TID_IS_SAFE(tid_index,action)	if((tid_index)>SSTAR_RX_DATA_QUEUES)	action
+#ifdef ATBM_PKG_REORDER
+#define TID_IS_SAFE(tid_index,action)	if((tid_index)>ATBM_RX_DATA_QUEUES)	action
 #define SEQ_IS_SAFE(seq_index,action) if((seq_index)>=BUFF_STORED_LEN)	action
-#define reorder_debug(debug_en,...)  if(debug_en)	Sstar_printk_debug( __VA_ARGS__)
+#define reorder_debug(debug_en,...)  if(debug_en)	atbm_printk_debug( __VA_ARGS__)
 #define REORDER_DEBUG		(1)
 #define THE_RETRY_PKG_INEDX	(0x800)
 #define BUFF_INDEX_IS_SAFE(index)	((index)&(BUFF_STORED_LEN-1))
 #define DEUG_SPINLOCK		(0)
 #if DEUG_SPINLOCK
-#define spinlock_debug(type)		Sstar_printk_debug("%s:tid_params_%s\n",__func__,#type)
+#define spinlock_debug(type)		atbm_printk_debug("%s:tid_params_%s\n",__func__,#type)
 #else
 #define spinlock_debug(type)
 #endif
@@ -848,22 +849,22 @@ void Sstar_clear_wpas_p2p_40M_ie(struct Sstar_ieee80211_mgmt *mgmt,u32 pkg_len)
 		spinlock_debug(type);				\
 		type(lock);							\
 	}while(0)
-static struct Sstar_ba_tid_params *Sstar_get_tid_params(struct Sstar_reorder_queue_comm * Sstar_reorder,u8 tid)
+static struct atbm_ba_tid_params *atbm_get_tid_params(struct atbm_reorder_queue_comm * atbm_reorder,u8 tid)
 {
-	struct Sstar_ba_tid_params *tid_params = NULL;
+	struct atbm_ba_tid_params *tid_params = NULL;
 	
-	if(tid>=SSTAR_RX_DATA_QUEUES)
+	if(tid>=ATBM_RX_DATA_QUEUES)
 	{
 		return NULL;
 	}
 
-	mutex_lock(&Sstar_reorder->reorder_mutex);
-	tid_params = &Sstar_reorder->Sstar_rx_tid[tid];
-	mutex_unlock(&Sstar_reorder->reorder_mutex);
+	mutex_lock(&atbm_reorder->reorder_mutex);
+	tid_params = &atbm_reorder->atbm_rx_tid[tid];
+	mutex_unlock(&atbm_reorder->reorder_mutex);
 
 	return tid_params;
 }
-static void Sstar_skb_buff_queue(struct Sstar_ba_tid_params *tid_params,u8 index,struct sk_buff *skb)
+static void atbm_skb_buff_queue(struct atbm_ba_tid_params *tid_params,u8 index,struct sk_buff *skb)
 {
 	u8 start_index = BUFF_INDEX_IS_SAFE(tid_params->start_seq);
 	tid_params->skb_reorder_buff[index] = skb;
@@ -879,9 +880,9 @@ static void Sstar_skb_buff_queue(struct Sstar_ba_tid_params *tid_params,u8 index
 
 	tid_params->skb_buffed++; 
 	WARN_ON(tid_params->wind_size<tid_params->skb_buffed);
- 	//__Sstar_skb_queue_tail(&tid_params->header, skb);
+ 	//__atbm_skb_queue_tail(&tid_params->header, skb);
 }
-static void Sstar_skb_buff_dequeue(struct Sstar_common *hw_priv,struct Sstar_ba_tid_params *tid_params,u8 index,bool uplayer)
+static void atbm_skb_buff_dequeue(struct atbm_common *hw_priv,struct atbm_ba_tid_params *tid_params,u8 index,bool uplayer)
 {
 	struct sk_buff *skb;
 	 
@@ -898,16 +899,16 @@ static void Sstar_skb_buff_dequeue(struct Sstar_common *hw_priv,struct Sstar_ba_
 		tid_params->skb_reorder_buff[index] = NULL; 
 		
 		if(uplayer==NULL){
-			Sstar_ieee80211_rx(hw_priv->hw, skb);
+			atbm_ieee80211_rx(hw_priv->hw, skb);
 		}
 		else {			
-			Sstar_kfree_skb(skb);
+			atbm_kfree_skb(skb);
 		}
 	}
-	//__Sstar_skb_dequeue(&tid_params->header)
+	//__atbm_skb_dequeue(&tid_params->header)
 }
 
-int Sstar_reorder_skb_forcedrop(struct Sstar_vif *priv,struct Sstar_ba_tid_params *tid_params,int need_free)
+int atbm_reorder_skb_forcedrop(struct atbm_vif *priv,struct atbm_ba_tid_params *tid_params,int need_free)
 {
 	u8 i = 0;
 	u8 seq = 0;	
@@ -916,14 +917,14 @@ int Sstar_reorder_skb_forcedrop(struct Sstar_vif *priv,struct Sstar_ba_tid_param
 	seq = BUFF_INDEX_IS_SAFE(tid_params->start_seq);
 	for(i=0;i<need_free;i++)
 	{
-		Sstar_skb_buff_dequeue(priv->hw_priv,tid_params,seq,1);
+		atbm_skb_buff_dequeue(priv->hw_priv,tid_params,seq,1);
 		tid_params->start_seq = (tid_params->start_seq+1)&SEQ_NUM_MASKER;
 		seq = BUFF_INDEX_IS_SAFE(tid_params->start_seq);
 	}		
 
 	return 0;
 }
-int Sstar_reorder_skb_forcefree(struct Sstar_vif *priv,struct Sstar_ba_tid_params *tid_params,int need_free)
+int atbm_reorder_skb_forcefree(struct atbm_vif *priv,struct atbm_ba_tid_params *tid_params,int need_free)
 {
 	u8 i = 0;
 	u8 seq = 0;	
@@ -932,7 +933,7 @@ int Sstar_reorder_skb_forcefree(struct Sstar_vif *priv,struct Sstar_ba_tid_param
 	seq = BUFF_INDEX_IS_SAFE(tid_params->start_seq);
 	for(i=0;i<need_free;i++)
 	{
-		Sstar_skb_buff_dequeue(priv->hw_priv,tid_params,seq,NULL);
+		atbm_skb_buff_dequeue(priv->hw_priv,tid_params,seq,NULL);
 		tid_params->start_seq = (tid_params->start_seq+1)&SEQ_NUM_MASKER;
 		seq = BUFF_INDEX_IS_SAFE(tid_params->start_seq);
 	}		
@@ -940,7 +941,7 @@ int Sstar_reorder_skb_forcefree(struct Sstar_vif *priv,struct Sstar_ba_tid_param
 	return 0;
 }
 
-int Sstar_reorder_skb_uplayer(struct Sstar_vif *priv,struct Sstar_ba_tid_params *tid_params)
+int atbm_reorder_skb_uplayer(struct atbm_vif *priv,struct atbm_ba_tid_params *tid_params)
 {
 	u16 seq = BUFF_INDEX_IS_SAFE(tid_params->start_seq);
 
@@ -951,7 +952,7 @@ int Sstar_reorder_skb_uplayer(struct Sstar_vif *priv,struct Sstar_ba_tid_params 
 			//reorder_debug(REORDER_DEBUG,"%s,index(%d)\n",__func__,seq);
 			break;
 		}
-		Sstar_skb_buff_dequeue(priv->hw_priv,tid_params,seq,NULL);
+		atbm_skb_buff_dequeue(priv->hw_priv,tid_params,seq,NULL);
 		tid_params->start_seq = (tid_params->start_seq+1)&SEQ_NUM_MASKER;
 		seq = BUFF_INDEX_IS_SAFE(tid_params->start_seq);
 	}
@@ -959,11 +960,11 @@ int Sstar_reorder_skb_uplayer(struct Sstar_vif *priv,struct Sstar_ba_tid_params 
 	return 0;
 }
 
-static void Sstar_reorder_pkg_timeout(unsigned long arg)
+static void atbm_reorder_pkg_timeout(unsigned long arg)
 {
-	struct Sstar_ba_tid_params *tid_params= (struct Sstar_ba_tid_params *)arg;
-	struct Sstar_vif *priv = (struct Sstar_vif *)tid_params->reorder_priv;
-	struct Sstar_common *hw_priv = ABwifi_vifpriv_to_hwpriv(priv);
+	struct atbm_ba_tid_params *tid_params= (struct atbm_ba_tid_params *)arg;
+	struct atbm_vif *priv = (struct atbm_vif *)tid_params->reorder_priv;
+	struct atbm_common *hw_priv = ABwifi_vifpriv_to_hwpriv(priv);
 	struct sk_buff_head frames;
 	u8 i = 0;
 	u16 index = 0;
@@ -983,7 +984,7 @@ static void Sstar_reorder_pkg_timeout(unsigned long arg)
 		if(time_is_before_eq_jiffies(tid_params->frame_rx_time[index]+(5*HZ/1000))){
 			
 			reorder_debug(REORDER_DEBUG,"ReOrder:timeout %x>%x sn %x\n",tid_params->frame_rx_time[index],jiffies,tid_params->start_seq);
-			Sstar_skb_buff_dequeue(hw_priv,tid_params,index,NULL);
+			atbm_skb_buff_dequeue(hw_priv,tid_params,index,NULL);
 		}
 		else {
 			break;
@@ -992,7 +993,7 @@ static void Sstar_reorder_pkg_timeout(unsigned long arg)
 		index = BUFF_INDEX_IS_SAFE(tid_params->start_seq);
 		i++;			
 	}
-	Sstar_reorder_skb_uplayer(priv,tid_params);
+	atbm_reorder_skb_uplayer(priv,tid_params);
 	index = BUFF_INDEX_IS_SAFE(tid_params->start_seq);
  	if(tid_params->skb_buffed){
 		mod_timer(&tid_params->overtime_timer,
@@ -1008,12 +1009,12 @@ exit:
 
 
 
-int Sstar_reorder_skb_queue(struct Sstar_vif *priv,struct sk_buff *skb,u8 link_id)
+int atbm_reorder_skb_queue(struct atbm_vif *priv,struct sk_buff *skb,u8 link_id)
 {
 	u16 index = 0;
 	int res = 0;
-	struct Sstar_reorder_queue_comm * Sstar_reorder = NULL;
-	struct Sstar_ba_tid_params *tid_params;
+	struct atbm_reorder_queue_comm * atbm_reorder = NULL;
+	struct atbm_ba_tid_params *tid_params;
 	struct ieee80211_hdr *frame = (struct ieee80211_hdr *)skb->data;
 	u8 frag =  frame->seq_ctrl & IEEE80211_SCTL_FRAG;
 	u8 more = ieee80211_has_morefrags(frame->frame_control);
@@ -1022,7 +1023,7 @@ int Sstar_reorder_skb_queue(struct Sstar_vif *priv,struct sk_buff *skb,u8 link_i
 	u16 frame_seq = 0;
 	u16 start_seq = 0;
 	u16 now_frame_id = 0;
-	if(link_id>SSTAR_APOLLO_LINK_ID_UNMAPPED)
+	if(link_id>ATBM_APOLLO_LINK_ID_UNMAPPED)
 	{
 		WARN_ON(1);
 		return 0;
@@ -1040,8 +1041,8 @@ int Sstar_reorder_skb_queue(struct Sstar_vif *priv,struct sk_buff *skb,u8 link_i
 	/*
 	*if it is a fragment frame,we add it to the buff.
 	*/
-	Sstar_reorder = &priv->Sstar_reorder_link_id[link_id];
-	tid_params =Sstar_get_tid_params(Sstar_reorder,tid);
+	atbm_reorder = &priv->atbm_reorder_link_id[link_id];
+	tid_params =atbm_get_tid_params(atbm_reorder,tid);
 	if(tid_params == NULL)
 	{
 		reorder_debug(REORDER_DEBUG,"tid_params == NULL");
@@ -1091,7 +1092,7 @@ int Sstar_reorder_skb_queue(struct Sstar_vif *priv,struct sk_buff *skb,u8 link_i
 			res = 0;
 			goto exit_reorder;;
 		}
-		Sstar_reorder_skb_forcefree(priv,tid_params,need_free);	
+		atbm_reorder_skb_forcefree(priv,tid_params,need_free);	
 	}
 	else {
 		/*
@@ -1111,13 +1112,13 @@ int Sstar_reorder_skb_queue(struct Sstar_vif *priv,struct sk_buff *skb,u8 link_i
 			//reorder_debug(REORDER_DEBUG,"seq(%x),start(%x),index(%d)\n",frame_seq,start_seq,index);
 		}
 	}
-	Sstar_skb_buff_queue(tid_params,now_frame_id,skb);
+	atbm_skb_buff_queue(tid_params,now_frame_id,skb);
 	
 maybe_send_order:
 	/*
 	*dequeue the sequential frames after the the "index" frame;
 	*/
-	Sstar_reorder_skb_uplayer(priv,tid_params);
+	atbm_reorder_skb_uplayer(priv,tid_params);
 	
 //		reorder_debug(REORDER_DEBUG,"header(%d),ampdu reordered,buffed(%d)---2\n",tid_params->index_hread,tid_params->skb_buffed);
 	if((!test_bit(REORDER_TIMER_RUNING,&tid_params->timer_running)||(start_seq!= tid_params->start_seq))&&
@@ -1142,35 +1143,35 @@ exit_reorder:
 	tid_params_spin_unlock(&tid_params->skb_reorder_spinlock,spin_unlock_bh);
 	return res;
 }
-void Sstar_reorder_func_init(struct Sstar_vif *priv)
+void atbm_reorder_func_init(struct atbm_vif *priv)
 {
 	
 	u8 i, j,k;
-	struct Sstar_reorder_queue_comm * Sstar_reorder;
-	struct Sstar_ba_tid_params *tid_params;
+	struct atbm_reorder_queue_comm * atbm_reorder;
+	struct atbm_ba_tid_params *tid_params;
 	reorder_debug(REORDER_DEBUG,"%s\n",__func__);
-	for(k=0;k<SSTAR_APOLLO_LINK_ID_UNMAPPED;k++)
+	for(k=0;k<ATBM_APOLLO_LINK_ID_UNMAPPED;k++)
 	{
-		Sstar_reorder = &priv->Sstar_reorder_link_id[k];
-		for(i=0;i<SSTAR_RX_DATA_QUEUES;i++)
+		atbm_reorder = &priv->atbm_reorder_link_id[k];
+		for(i=0;i<ATBM_RX_DATA_QUEUES;i++)
 		{
-			tid_params = &Sstar_reorder->Sstar_rx_tid[i];
+			tid_params = &atbm_reorder->atbm_rx_tid[i];
 			clear_bit(BAR_TID_EN,&tid_params->tid_en);
 			spin_lock_init(&tid_params->skb_reorder_spinlock);
 			tid_params->overtime_timer.data = (unsigned long)tid_params;
-			tid_params->overtime_timer.function = Sstar_reorder_pkg_timeout;
+			tid_params->overtime_timer.function = atbm_reorder_pkg_timeout;
 			init_timer(&tid_params->overtime_timer);
-			//Sstar_reorder->Sstar_rx_tid[i].skb_reorder_buff = NULL;
-			//Sstar_reorder->Sstar_rx_tid[i].frame_rx_time = NULL;
+			//atbm_reorder->atbm_rx_tid[i].skb_reorder_buff = NULL;
+			//atbm_reorder->atbm_rx_tid[i].frame_rx_time = NULL;
 		}
-		mutex_init(&Sstar_reorder->reorder_mutex);
-		Sstar_reorder->link_id=k;
-//		INIT_WORK(&Sstar_reorder->reorder_work,Sstar_reorder_pkg_work);
+		mutex_init(&atbm_reorder->reorder_mutex);
+		atbm_reorder->link_id=k;
+//		INIT_WORK(&atbm_reorder->reorder_work,atbm_reorder_pkg_work);
 
 	}
 	
 }
-void Sstar_reorder_tid_buffed_clear(struct Sstar_vif *priv,struct Sstar_ba_tid_params *tid_params)
+void atbm_reorder_tid_buffed_clear(struct atbm_vif *priv,struct atbm_ba_tid_params *tid_params)
 {
 	u8 header= 0;
 	if((priv == NULL)||(tid_params==NULL))
@@ -1186,11 +1187,11 @@ void Sstar_reorder_tid_buffed_clear(struct Sstar_vif *priv,struct Sstar_ba_tid_p
 	if(!tid_params->skb_buffed)
 		return;
 
-	Sstar_reorder_skb_forcefree(priv,tid_params,tid_params->wind_size);
+	atbm_reorder_skb_forcefree(priv,tid_params,tid_params->wind_size);
 	del_timer_sync(&tid_params->overtime_timer);
 	clear_bit(REORDER_TIMER_RUNING,&tid_params->timer_running);
 }
-void Sstar_reorder_tid_reset(struct Sstar_vif *priv,struct Sstar_ba_tid_params *tid_params)
+void atbm_reorder_tid_reset(struct atbm_vif *priv,struct atbm_ba_tid_params *tid_params)
 {
 	struct sk_buff *clear_skb;
 	if((priv == NULL)||(tid_params==NULL))
@@ -1206,7 +1207,7 @@ void Sstar_reorder_tid_reset(struct Sstar_vif *priv,struct Sstar_ba_tid_params *
 	tid_params_spin_lock(&tid_params->skb_reorder_spinlock,spin_lock_bh);
 	if(!tid_params->skb_buffed)
 		goto exit_tid_reset;
-	Sstar_reorder_skb_forcedrop(priv,tid_params,tid_params->wind_size);
+	atbm_reorder_skb_forcedrop(priv,tid_params,tid_params->wind_size);
 
 	tid_params->start_seq = 0;
 	del_timer_sync(&tid_params->overtime_timer);
@@ -1215,18 +1216,18 @@ exit_tid_reset:
 	tid_params_spin_unlock(&tid_params->skb_reorder_spinlock,spin_unlock_bh);
 
 }
-void Sstar_reorder_func_reset(struct Sstar_vif *priv,u8 link_id)
+void atbm_reorder_func_reset(struct atbm_vif *priv,u8 link_id)
 {
 	u8 link_start, link_end,tid;
-	struct Sstar_reorder_queue_comm * Sstar_reorder;
+	struct atbm_reorder_queue_comm * atbm_reorder;
 	if(link_id == 0xff)
 	{
 		link_start = 0;
-		link_end = SSTAR_APOLLO_LINK_ID_UNMAPPED;
+		link_end = ATBM_APOLLO_LINK_ID_UNMAPPED;
 	}
 	else
 	{
-		if(link_id>=SSTAR_APOLLO_LINK_ID_UNMAPPED)
+		if(link_id>=ATBM_APOLLO_LINK_ID_UNMAPPED)
 		{
 			return;
 		}
@@ -1235,31 +1236,31 @@ void Sstar_reorder_func_reset(struct Sstar_vif *priv,u8 link_id)
 	}
 	for(;link_start<link_end;link_start++)
 	{	
-		Sstar_reorder =  &priv->Sstar_reorder_link_id[link_start];
-//		mutex_lock(&Sstar_reorder->reorder_mutex);
-		for(tid=0;tid<SSTAR_RX_DATA_QUEUES;tid++)
+		atbm_reorder =  &priv->atbm_reorder_link_id[link_start];
+//		mutex_lock(&atbm_reorder->reorder_mutex);
+		for(tid=0;tid<ATBM_RX_DATA_QUEUES;tid++)
 		{
-			if(!test_bit(BAR_TID_EN,&Sstar_reorder->Sstar_rx_tid[tid].tid_en))
+			if(!test_bit(BAR_TID_EN,&atbm_reorder->atbm_rx_tid[tid].tid_en))
 			{
 				continue;
 			}
-			Sstar_reorder_tid_reset(priv,&Sstar_reorder->Sstar_rx_tid[tid]);
-			tid_params_spin_lock(&Sstar_reorder->Sstar_rx_tid[tid].skb_reorder_spinlock,spin_lock_bh);
-			clear_bit(BAR_TID_EN,&Sstar_reorder->Sstar_rx_tid[tid].tid_en);
-			Sstar_reorder->Sstar_rx_tid[tid].ssn = 0;
-			Sstar_reorder->Sstar_rx_tid[tid].wind_size = 0;
-			Sstar_reorder->Sstar_rx_tid[tid].start_seq = 0;
-			tid_params_spin_unlock(&Sstar_reorder->Sstar_rx_tid[tid].skb_reorder_spinlock,spin_unlock_bh);
+			atbm_reorder_tid_reset(priv,&atbm_reorder->atbm_rx_tid[tid]);
+			tid_params_spin_lock(&atbm_reorder->atbm_rx_tid[tid].skb_reorder_spinlock,spin_lock_bh);
+			clear_bit(BAR_TID_EN,&atbm_reorder->atbm_rx_tid[tid].tid_en);
+			atbm_reorder->atbm_rx_tid[tid].ssn = 0;
+			atbm_reorder->atbm_rx_tid[tid].wind_size = 0;
+			atbm_reorder->atbm_rx_tid[tid].start_seq = 0;
+			tid_params_spin_unlock(&atbm_reorder->atbm_rx_tid[tid].skb_reorder_spinlock,spin_unlock_bh);
 		}
-//		mutex_unlock(&Sstar_reorder->reorder_mutex);
+//		mutex_unlock(&atbm_reorder->reorder_mutex);
 	}
 }
-void Sstar_updata_ba_tid_params(struct Sstar_vif *priv,struct Sstar_ba_params *ba_params)
+void atbm_updata_ba_tid_params(struct atbm_vif *priv,struct atbm_ba_params *ba_params)
 {
 	u8 tid;
 	u8 link_id;
-	struct Sstar_reorder_queue_comm * Sstar_reorder =NULL;
-	struct Sstar_ba_tid_params *tid_params = NULL;
+	struct atbm_reorder_queue_comm * atbm_reorder =NULL;
+	struct atbm_ba_tid_params *tid_params = NULL;
 	u8 action = ba_params->action;
 	int i=0;
 
@@ -1268,29 +1269,29 @@ void Sstar_updata_ba_tid_params(struct Sstar_vif *priv,struct Sstar_ba_params *b
 		reorder_debug(REORDER_DEBUG,"err:%s:priv == NULL\n",__func__);
 		return;
 	}
-	if(priv->join_status < SSTAR_APOLLO_JOIN_STATUS_MONITOR)
+	if(priv->join_status < ATBM_APOLLO_JOIN_STATUS_MONITOR)
 	{
 		reorder_debug(REORDER_DEBUG,"interface type(%d) err\n",priv->join_status);
 		return;
 	}
-	if((priv->join_status == SSTAR_APOLLO_JOIN_STATUS_AP)&&
-		(ba_params->link_id == SSTAR_APOLLO_LINK_ID_UNMAPPED))
+	if((priv->join_status == ATBM_APOLLO_JOIN_STATUS_AP)&&
+		(ba_params->link_id == ATBM_APOLLO_LINK_ID_UNMAPPED))
 	{
 		return;
 	}
 	tid = ba_params->tid;
 	link_id = ba_params->link_id;
-	Sstar_reorder = &priv->Sstar_reorder_link_id[link_id-1];
-	tid_params = &Sstar_reorder->Sstar_rx_tid[tid];
+	atbm_reorder = &priv->atbm_reorder_link_id[link_id-1];
+	tid_params = &atbm_reorder->atbm_rx_tid[tid];
 	switch(action)
 	{
-		case SSTAR_BA__ACTION_RX_ADDBR:
+		case ATBM_BA__ACTION_RX_ADDBR:
 		{
 			reorder_debug(REORDER_DEBUG,"WSM_BA_FLAGS__RX_ADDBA_RE\n");
-//			mutex_lock(&Sstar_reorder->reorder_mutex);
+//			mutex_lock(&atbm_reorder->reorder_mutex);
 			if(test_bit(BAR_TID_EN,&tid_params->tid_en))
 			{
-				Sstar_printk_debug("tid_params->tid_en\n");	
+				atbm_printk_debug("tid_params->tid_en\n");	
 				goto exit_action_rx_addba;
 			}
 			tid_params_spin_lock(&tid_params->skb_reorder_spinlock,spin_lock_bh);
@@ -1306,38 +1307,38 @@ void Sstar_updata_ba_tid_params(struct Sstar_vif *priv,struct Sstar_ba_params *b
 				tid_params->frame_rx_time[i]=0;
 				}
 			
-			//__Sstar_skb_queue_head_init(&tid_params->header);
+			//__atbm_skb_queue_head_init(&tid_params->header);
 			tid_params->reorder_priv = priv;
 			tid_params->skb_buffed = 0;
 			set_bit(BAR_TID_EN,&tid_params->tid_en);
 			tid_params_spin_unlock(&tid_params->skb_reorder_spinlock,spin_unlock_bh);
 exit_action_rx_addba:
-//			mutex_unlock(&Sstar_reorder->reorder_mutex);
+//			mutex_unlock(&atbm_reorder->reorder_mutex);
 			break;
 		}
-		case SSTAR_BA__ACTION_RX_DELBA:
+		case ATBM_BA__ACTION_RX_DELBA:
 		{
 			
 			if(!test_bit(BAR_TID_EN,&tid_params->tid_en))
 				goto exit_action_rx_delba;
 			reorder_debug(REORDER_DEBUG,"WSM_BA_FLAGS__RX_DELBA_RE,link_id(%d)\n",link_id);
-			Sstar_reorder_tid_reset(priv,tid_params);
-//			mutex_lock(&Sstar_reorder->reorder_mutex);
+			atbm_reorder_tid_reset(priv,tid_params);
+//			mutex_lock(&atbm_reorder->reorder_mutex);
 			tid_params_spin_lock(&tid_params->skb_reorder_spinlock,spin_lock_bh);
-			clear_bit(BAR_TID_EN,&Sstar_reorder->Sstar_rx_tid[tid].tid_en);
+			clear_bit(BAR_TID_EN,&atbm_reorder->atbm_rx_tid[tid].tid_en);
 			tid_params->ssn = 0;
 			tid_params->wind_size = 0;
 			tid_params->start_seq = 0;
 			tid_params_spin_unlock(&tid_params->skb_reorder_spinlock,spin_unlock_bh);
 exit_action_rx_delba:
-//			mutex_unlock(&Sstar_reorder->reorder_mutex);
+//			mutex_unlock(&atbm_reorder->reorder_mutex);
 			break;			
 		}
-		case SSTAR_BA__ACTION_RX_BAR:
+		case ATBM_BA__ACTION_RX_BAR:
 		{
 			u16 pre_start_seq = 0;
 			 
-//			mutex_lock(&Sstar_reorder->reorder_mutex);
+//			mutex_lock(&atbm_reorder->reorder_mutex);
 			if(!test_bit(BAR_TID_EN,&tid_params->tid_en))
 				goto exit_actin_bar;
 			tid_params_spin_lock(&tid_params->skb_reorder_spinlock,spin_lock_bh);
@@ -1367,7 +1368,7 @@ exit_action_rx_delba:
 				*    b)if need_free <tid_params->wind_size,we dequeue the skb_queue,then pre_start_seq must be 
 				*	 equal to ba_params->ssn;
 				*/
-				Sstar_reorder_skb_forcefree(priv,tid_params,need_free);
+				atbm_reorder_skb_forcefree(priv,tid_params,need_free);
 				/*
 				*2. if need_free<tid_params->wind_size,then pre_start_seq must equal to ba_params->ssn
 				*/
@@ -1379,14 +1380,14 @@ exit_action_rx_delba:
 				*3.from the index_head ,the skb_buff has some buff that is not equal to NULL,we should dequeue it.
 				*but must MAKE SURE THAT :pre_start_seq == ba_params->ssn
 				*/				
-				Sstar_reorder_skb_uplayer(priv,tid_params);
+				atbm_reorder_skb_uplayer(priv,tid_params);
 				
 			}
 			else {
 				if(tid_params->skb_buffed){
 					reorder_debug(REORDER_DEBUG,"_RX_BAR free ALL case 4,(%x)=ssn(%x)-start_seq(%x),buffed(%d)\n",(ba_params->ssn-pre_start_seq),
 					ba_params->ssn,tid_params->start_seq,tid_params->skb_buffed);
-					Sstar_reorder_skb_forcefree(priv,tid_params,tid_params->wind_size);
+					atbm_reorder_skb_forcefree(priv,tid_params,tid_params->wind_size);
 				}
 				tid_params->start_seq = ba_params->ssn;
 			}
@@ -1412,29 +1413,29 @@ exit_action_rx_delba:
 exit_actin_bar_spin_unlock:
 			tid_params_spin_unlock(&tid_params->skb_reorder_spinlock,spin_unlock_bh);
 exit_actin_bar:
-//			mutex_unlock(&Sstar_reorder->reorder_mutex);
+//			mutex_unlock(&atbm_reorder->reorder_mutex);
 			break;
 		}
 		default:
 		{
-			Sstar_printk_err("%s:action err\n",__func__);
+			atbm_printk_err("%s:action err\n",__func__);
 			break;
 		}
 	}
 }
 #endif
-static void Sstar_set_p2p_vif_addr(struct Sstar_common *hw_priv)
+static void atbm_set_p2p_vif_addr(struct atbm_common *hw_priv)
 {
 	memcpy(hw_priv->addresses[1].addr,hw_priv->addresses[0].addr,ETH_ALEN);
-	#ifdef SSTAR_P2P_ADDR_USE_LOCAL_BIT
+	#ifdef ATBM_P2P_ADDR_USE_LOCAL_BIT
 	hw_priv->addresses[1].addr[0] ^= BIT(1);
 	#else
 	hw_priv->addresses[1].addr[5] += 1;
 	#endif
 }
-int Sstar_set_mac_addr2efuse(struct ieee80211_hw *hw, u8 *macAddr)
+int atbm_set_mac_addr2efuse(struct ieee80211_hw *hw, u8 *macAddr)
 {
-	struct Sstar_common *hw_priv = hw->priv;
+	struct atbm_common *hw_priv = hw->priv;
 	u8 EfusemacAddr[6] = {0};
 
 
@@ -1443,12 +1444,12 @@ int Sstar_set_mac_addr2efuse(struct ieee80211_hw *hw, u8 *macAddr)
 		
 		if (EfusemacAddr[0]| EfusemacAddr[1]|EfusemacAddr[2]|EfusemacAddr[3]|EfusemacAddr[4]|EfusemacAddr[5])
 		{
-			Sstar_printk_err("Cannot set MAC addr, because MAC addr of efuse have been writed\n");
+			atbm_printk_err("Cannot set MAC addr, because MAC addr of efuse have been writed\n");
 			return -1;
 		}
 	}else
 	{
-		Sstar_printk_err("Cannot get MAC addr, because MAC addr of efuse have been disabled\n");
+		atbm_printk_err("Cannot get MAC addr, because MAC addr of efuse have been disabled\n");
 		return -1;
 	}
 
@@ -1457,11 +1458,11 @@ int Sstar_set_mac_addr2efuse(struct ieee80211_hw *hw, u8 *macAddr)
 		if (macAddr[0]| macAddr[1]|macAddr[2]|macAddr[3]|macAddr[4]|macAddr[5])
 		{
 			memcpy(hw_priv->addresses[0].addr,macAddr,ETH_ALEN);		
-			Sstar_set_p2p_vif_addr(hw_priv);
+			atbm_set_p2p_vif_addr(hw_priv);
 		}
 	}else
 	{
-		Sstar_printk_err("Cannot set MAC addr, because MAC addr of efuse have been disabled\n");
+		atbm_printk_err("Cannot set MAC addr, because MAC addr of efuse have been disabled\n");
 		return -1;
 	}
 
@@ -1470,7 +1471,7 @@ int Sstar_set_mac_addr2efuse(struct ieee80211_hw *hw, u8 *macAddr)
 		hw_priv->addresses[0].addr[4] == 0 &&
 		hw_priv->addresses[0].addr[5] == 0) {
 		get_random_bytes(&hw_priv->addresses[0].addr[3], 3);
-		Sstar_set_p2p_vif_addr(hw_priv);
+		atbm_set_p2p_vif_addr(hw_priv);
 	}
 #ifdef P2P_MULTIVIF
 	memcpy(hw_priv->addresses[2].addr, hw_priv->addresses[1].addr,
@@ -1482,69 +1483,69 @@ int Sstar_set_mac_addr2efuse(struct ieee80211_hw *hw, u8 *macAddr)
 
 	return 0;
 }
-static const struct ieee80211_ops Sstar_ops = {
-	.start			= Sstar_start,
-	.stop			= Sstar_stop,
-	.add_interface		= Sstar_add_interface,
-	.remove_interface	= Sstar_remove_interface,
-	.change_interface	= Sstar_change_interface,
-	.tx			= Sstar_tx,
-	.hw_scan		= Sstar_hw_scan,
-	.cancel_hw_scan = Sstar_cancel_hw_scan,
+static const struct ieee80211_ops atbm_ops = {
+	.start			= atbm_start,
+	.stop			= atbm_stop,
+	.add_interface		= atbm_add_interface,
+	.remove_interface	= atbm_remove_interface,
+	.change_interface	= atbm_change_interface,
+	.tx			= atbm_tx,
+	.hw_scan		= atbm_hw_scan,
+	.cancel_hw_scan = atbm_cancel_hw_scan,
 #ifdef ROAM_OFFLOAD
-	.sched_scan_start	= Sstar_hw_sched_scan_start,
-	.sched_scan_stop	= Sstar_hw_sched_scan_stop,
+	.sched_scan_start	= atbm_hw_sched_scan_start,
+	.sched_scan_stop	= atbm_hw_sched_scan_stop,
 #endif /*ROAM_OFFLOAD*/
-	.set_tim		= Sstar_set_tim,
-	.sta_notify		= Sstar_sta_notify,
-	.sta_add		= Sstar_sta_add,
-	.sta_remove		= Sstar_sta_remove,
-	.set_key		= Sstar_set_key,
-	.set_rts_threshold	= Sstar_set_rts_threshold,
-	.config			= Sstar_config,
-	.bss_info_changed	= Sstar_bss_info_changed,
-	.prepare_multicast	= Sstar_prepare_multicast,
-	.configure_filter	= Sstar_configure_filter,
-	.conf_tx		= Sstar_conf_tx,
-	.get_stats		= Sstar_get_stats,
-	.ampdu_action		= Sstar_ampdu_action,
-	.flush			= Sstar_flush,
+	.set_tim		= atbm_set_tim,
+	.sta_notify		= atbm_sta_notify,
+	.sta_add		= atbm_sta_add,
+	.sta_remove		= atbm_sta_remove,
+	.set_key		= atbm_set_key,
+	.set_rts_threshold	= atbm_set_rts_threshold,
+	.config			= atbm_config,
+	.bss_info_changed	= atbm_bss_info_changed,
+	.prepare_multicast	= atbm_prepare_multicast,
+	.configure_filter	= atbm_configure_filter,
+	.conf_tx		= atbm_conf_tx,
+	.get_stats		= atbm_get_stats,
+	.ampdu_action		= atbm_ampdu_action,
+	.flush			= atbm_flush,
 #ifdef CONFIG_PM
-	.suspend		= Sstar_wow_suspend,
-	.resume			= Sstar_wow_resume,
+	.suspend		= atbm_wow_suspend,
+	.resume			= atbm_wow_resume,
 #endif /* CONFIG_PM */
 	/* Intentionally not offloaded:					*/
-	/*.channel_switch	= Sstar_channel_switch,		*/
-	.remain_on_channel	= Sstar_remain_on_channel,
-	.cancel_remain_on_channel = Sstar_cancel_remain_on_channel,
+	/*.channel_switch	= atbm_channel_switch,		*/
+	.remain_on_channel	= atbm_remain_on_channel,
+	.cancel_remain_on_channel = atbm_cancel_remain_on_channel,
 #ifdef IPV6_FILTERING
-	.set_data_filter        = Sstar_set_data_filter,
+	.set_data_filter        = atbm_set_data_filter,
 #endif /*IPV6_FILTERING*/
 #ifdef CONFIG_NL80211_TESTMODE
-	.testmode_cmd		= Sstar_altmtest_cmd,
+	.testmode_cmd		= atbm_altmtest_cmd,
 #endif
-	.set_mac_addr2efuse = Sstar_set_mac_addr2efuse,
-#ifdef CONFIG_SSTAR_STA_LISTEN
-	.sta_triger_listen = Sstar_sta_triger_listen,
-	.sta_stop_listen=Sstar_sta_stop_listen,
+	.set_mac_addr2efuse = atbm_set_mac_addr2efuse,
+#ifdef CONFIG_ATBM_STA_LISTEN
+	.sta_triger_listen = atbm_sta_triger_listen,
+	.sta_stop_listen=atbm_sta_stop_listen,
 #endif
 };
 #ifdef CONFIG_PM
-static const struct wiphy_wowlan_support Sstar_wowlan_support = {
+static const struct wiphy_wowlan_support atbm_wowlan_support = {
 	/* Support only for limited wowlan functionalities */
 	.flags = WIPHY_WOWLAN_ANY | WIPHY_WOWLAN_DISCONNECT,
 };
 #endif
-void Sstar_get_mac_address(struct Sstar_common *hw_priv)
+void atbm_get_mac_address(struct atbm_common *hw_priv)
 {
 	int i;
 	u8 macAddr[6] = {0};
 #ifdef CUSTOM_FEATURE_MAC/*TO usr macaddr of customers*/
 	char readmac[17+1]={0};
 #endif
-	for (i = 0; i < SSTAR_WIFI_MAX_VIFS; i++) {
+	for (i = 0; i < ATBM_WIFI_MAX_VIFS; i++) {
 		memcpy(hw_priv->addresses[i].addr,
-			   Sstar_mac_default[i],
+			   atbm_mac_default[i],
 			   ETH_ALEN);
 	}
 	if (wsm_get_mac_address(hw_priv, &macAddr[0]) == 0)
@@ -1552,7 +1553,7 @@ void Sstar_get_mac_address(struct Sstar_common *hw_priv)
 		if (macAddr[0]| macAddr[1]|macAddr[2]|macAddr[3]|macAddr[4]|macAddr[5])
 		{
 			memcpy(hw_priv->addresses[0].addr,macAddr,ETH_ALEN);
-			Sstar_set_p2p_vif_addr(hw_priv);
+			atbm_set_p2p_vif_addr(hw_priv);
 		}
 	}
 #ifdef CUSTOM_FEATURE_MAC/* To use macaddr of customers */
@@ -1564,7 +1565,7 @@ void Sstar_get_mac_address(struct Sstar_common *hw_priv)
 								(int *)&hw_priv->addresses[0].addr[3],
 								(int *)&hw_priv->addresses[0].addr[4],
 								(int *)&hw_priv->addresses[0].addr[5]);
-		Sstar_set_p2p_vif_addr(hw_priv);
+		atbm_set_p2p_vif_addr(hw_priv);
 	}
 #endif
 	
@@ -1572,7 +1573,7 @@ void Sstar_get_mac_address(struct Sstar_common *hw_priv)
 		hw_priv->addresses[0].addr[4] == 0 &&
 		hw_priv->addresses[0].addr[5] == 0) {
 		get_random_bytes(&hw_priv->addresses[0].addr[3], 3);
-		Sstar_set_p2p_vif_addr(hw_priv);
+		atbm_set_p2p_vif_addr(hw_priv);
 	}
 #ifdef P2P_MULTIVIF
 	memcpy(hw_priv->addresses[2].addr, hw_priv->addresses[1].addr,
@@ -1584,23 +1585,23 @@ void Sstar_get_mac_address(struct Sstar_common *hw_priv)
 
 }
 #ifdef CONFIG_WIRELESS_EXT
-extern void Sstar_etf_test_expire_timer(unsigned long arg);
+extern void atbm_etf_test_expire_timer(unsigned long arg);
 #endif
-struct ieee80211_hw *Sstar_init_common(size_t hw_priv_data_len)
+struct ieee80211_hw *atbm_init_common(size_t hw_priv_data_len)
 {
 	int i;
 	struct ieee80211_hw *hw;
-	struct Sstar_common *hw_priv;
+	struct atbm_common *hw_priv;
 	struct ieee80211_supported_band *sband;
 	int band;
 
-	hw = ieee80211_alloc_hw(hw_priv_data_len, &Sstar_ops);
+	hw = ieee80211_alloc_hw(hw_priv_data_len, &atbm_ops);
 	if (!hw)
 		return NULL;
 
 	hw_priv = hw->priv;
 	/* TODO:COMBO this debug message can be removed */
-	Sstar_printk_init("Allocated hw_priv @ %p\n", hw_priv);
+	atbm_printk_init("Allocated hw_priv @ %p\n", hw_priv);
 	hw_priv->if_id_slot = 0;
 	hw_priv->roc_if_id = -1;
 	hw_priv->bStartTx = 0;
@@ -1608,8 +1609,8 @@ struct ieee80211_hw *Sstar_init_common(size_t hw_priv_data_len)
 	atomic_set(&hw_priv->num_vifs, 0);
 
 	hw_priv->hw = hw;
-	hw_priv->rates = Sstar_rates; /* TODO: fetch from FW */
-	hw_priv->mcs_rates = Sstar_n_rates;
+	hw_priv->rates = atbm_rates; /* TODO: fetch from FW */
+	hw_priv->mcs_rates = atbm_n_rates;
 #ifdef ROAM_OFFLOAD
 	hw_priv->auto_scanning = 0;
 	hw_priv->frame_rcvd = 0;
@@ -1644,8 +1645,8 @@ struct ieee80211_hw *Sstar_init_common(size_t hw_priv_data_len)
 #if defined (CONFIG_RATE_HW_CONTROL)
 	hw->flags |= IEEE80211_HW_HAS_RATE_CONTROL;
 #endif
-#ifdef CONFIG_SSTAR_MONITOR_HDR_PRISM
-	hw->flags |= IEEE80211_HW_MONITOR_NEED_PRISM_HEADER;
+#ifdef CONFIG_ATBM_MONITOR_HDR_PRISM
+	hw->flags |= IEEE80211_HW_MONITOR_NEED_PRISM_HEADER
 #endif
 	hw->wiphy->interface_modes = BIT(NL80211_IFTYPE_STATION) |
 					  BIT(NL80211_IFTYPE_ADHOC) |
@@ -1665,7 +1666,7 @@ struct ieee80211_hw *Sstar_init_common(size_t hw_priv_data_len)
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0))
 	hw->wiphy->flags |= WIPHY_FLAG_HAS_REMAIN_ON_CHANNEL;
 	hw->wiphy->flags |= WIPHY_FLAG_OFFCHAN_TX 
-	#ifdef SSTAR_AP_SME
+	#ifdef ATBM_AP_SME
 							   | WIPHY_FLAG_HAVE_AP_SME
 	#endif
 								;
@@ -1680,7 +1681,7 @@ struct ieee80211_hw *Sstar_init_common(size_t hw_priv_data_len)
 	hw->wiphy->wowlan.max_pkt_offset = 0,
 #endif
 #else
-	hw->wiphy->wowlan = &Sstar_wowlan_support;
+	hw->wiphy->wowlan = &atbm_wowlan_support;
 #endif
 #endif
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(3, 0, 8))
@@ -1689,12 +1690,12 @@ struct ieee80211_hw *Sstar_init_common(size_t hw_priv_data_len)
 	#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 11, 0))
 	hw->wiphy->flags |= WIPHY_FLAG_DISABLE_BEACON_HINTS;
 	#endif
-	hw->wiphy->n_addresses = SSTAR_WIFI_MAX_VIFS;
+	hw->wiphy->n_addresses = ATBM_WIFI_MAX_VIFS;
 	hw->wiphy->addresses = hw_priv->addresses;
 	hw->wiphy->max_remain_on_channel_duration = 1000;
 	hw->channel_change_time = 500;	/* TODO: find actual value */
 	/* hw_priv->beacon_req_id = cpu_to_le32(0); */
-#ifdef SSTAR_WIFI_QUEUE_LOCK_BUG
+#ifdef ATBM_WIFI_QUEUE_LOCK_BUG
 #ifndef P2P_MULTIVIF
 	hw->queues = 8;
 #else
@@ -1710,40 +1711,40 @@ struct ieee80211_hw *Sstar_init_common(size_t hw_priv_data_len)
 	hw->extra_tx_headroom = WSM_TX_EXTRA_HEADROOM + 64 +
 		8  /* TKIP IV */ +
 		12 /* TKIP ICV and MIC */;
-	hw->extra_tx_headroom += IEEE80211_SSTAR_SKB_HEAD_SIZE;
-	hw->sta_data_size = sizeof(struct Sstar_sta_priv);
-	hw->vif_data_size = sizeof(struct Sstar_vif);
+	hw->extra_tx_headroom += IEEE80211_ATBM_SKB_HEAD_SIZE;
+	hw->sta_data_size = sizeof(struct atbm_sta_priv);
+	hw->vif_data_size = sizeof(struct atbm_vif);
 	if (sgi)
 	{
-		Sstar_band_2ghz.ht_cap.cap |=  IEEE80211_HT_CAP_SGI_20;
-		if (Sstar_band_2ghz.ht_cap.cap &  IEEE80211_HT_CAP_SUP_WIDTH_20_40)
-			Sstar_band_2ghz.ht_cap.cap |=  IEEE80211_HT_CAP_SGI_40;
-		if (Sstar_band_2ghz.ht_cap.cap &  IEEE80211_HT_CAP_SUP_WIDTH_20_40)
-			Sstar_band_2ghz.ht_cap.cap |=  IEEE80211_HT_CAP_SGI_40;
+		atbm_band_2ghz.ht_cap.cap |=  IEEE80211_HT_CAP_SGI_20;
+		if (atbm_band_2ghz.ht_cap.cap &  IEEE80211_HT_CAP_SUP_WIDTH_20_40)
+			atbm_band_2ghz.ht_cap.cap |=  IEEE80211_HT_CAP_SGI_40;
+		if (atbm_band_2ghz.ht_cap.cap &  IEEE80211_HT_CAP_SUP_WIDTH_20_40)
+			atbm_band_2ghz.ht_cap.cap |=  IEEE80211_HT_CAP_SGI_40;
 	}else
 	{		
-		Sstar_band_2ghz.ht_cap.cap &=  ~(IEEE80211_HT_CAP_SGI_20|IEEE80211_HT_CAP_SGI_40);
+		atbm_band_2ghz.ht_cap.cap &=  ~(IEEE80211_HT_CAP_SGI_20|IEEE80211_HT_CAP_SGI_40);
 	}
 	if (stbc)
 	{
 		//disable MIMO RXSTBC
-		Sstar_band_2ghz.ht_cap.cap |= 0;//IEEE80211_HT_CAP_RX_STBC;
+		atbm_band_2ghz.ht_cap.cap |= 0;//IEEE80211_HT_CAP_RX_STBC;
 	}else
 	{
-		Sstar_band_2ghz.ht_cap.cap &= ~(IEEE80211_HT_CAP_TX_STBC|IEEE80211_HT_CAP_RX_STBC);
+		atbm_band_2ghz.ht_cap.cap &= ~(IEEE80211_HT_CAP_TX_STBC|IEEE80211_HT_CAP_RX_STBC);
 	}
-	hw->wiphy->bands[IEEE80211_BAND_2GHZ] = &Sstar_band_2ghz;
-#if defined (CONFIG_SSTAR_APOLLO_5GHZ_SUPPORT) || defined (CONFIG_SSTAR_5G_PRETEND_2G)
-	hw->wiphy->bands[IEEE80211_BAND_5GHZ] = &Sstar_band_5ghz;
-#endif /* CONFIG_SSTAR_APOLLO_5GHZ_SUPPORT */
+	hw->wiphy->bands[IEEE80211_BAND_2GHZ] = &atbm_band_2ghz;
+#if defined (CONFIG_ATBM_APOLLO_5GHZ_SUPPORT) || defined (CONFIG_ATBM_5G_PRETEND_2G)
+	hw->wiphy->bands[IEEE80211_BAND_5GHZ] = &atbm_band_5ghz;
+#endif /* CONFIG_ATBM_APOLLO_5GHZ_SUPPORT */
 
-#ifdef  CONFIG_SSTAR_5G_PRETEND_2G
+#ifdef  CONFIG_ATBM_5G_PRETEND_2G
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0))
 	hw->wiphy->regulatory_flags = REGULATORY_CUSTOM_REG |REGULATORY_DISABLE_BEACON_HINTS|REGULATORY_COUNTRY_IE_IGNORE;
 #else
 	hw->wiphy->flags |= WIPHY_FLAG_CUSTOM_REGULATORY;
 #endif
-	wiphy_apply_custom_regulatory(hw->wiphy,&Sstar_request_regdom);
+	wiphy_apply_custom_regulatory(hw->wiphy,&atbm_request_regdom);
 #endif
 	/* Channel params have to be cleared before registering wiphy again */
 	for (band = 0; band < IEEE80211_NUM_BANDS; band++) {
@@ -1780,57 +1781,57 @@ struct ieee80211_hw *Sstar_init_common(size_t hw_priv_data_len)
 	sema_init(&hw_priv->wsm_oper_lock, 1);
 	init_timer(&hw_priv->wsm_pm_timer);
 	hw_priv->wsm_pm_timer.data = (unsigned long)hw_priv;
-	hw_priv->wsm_pm_timer.function = Sstar_pm_timer;
+	hw_priv->wsm_pm_timer.function = atbm_pm_timer;
 	spin_lock_init(&hw_priv->wsm_pm_spin_lock);
 	atomic_set(&hw_priv->wsm_pm_running, 0);
 	#endif
-#ifdef CONFIG_SSTAR_APOLLO_TESTMODE
+#ifdef CONFIG_ATBM_APOLLO_TESTMODE
 	spin_lock_init(&hw_priv->tsm_lock);
-#endif /*CONFIG_SSTAR_APOLLO_TESTMODE*/
-	hw_priv->workqueue = create_singlethread_workqueue(ieee80211_alloc_name(hw,"Sstar_wq"));
+#endif /*CONFIG_ATBM_APOLLO_TESTMODE*/
+	hw_priv->workqueue = create_singlethread_workqueue(ieee80211_alloc_name(hw,"atbm_wq"));
 	sema_init(&hw_priv->scan.lock, 1);
-	INIT_WORK(&hw_priv->scan.work, Sstar_scan_work);
+	INIT_WORK(&hw_priv->scan.work, atbm_scan_work);
 #ifdef ROAM_OFFLOAD
-	INIT_WORK(&hw_priv->scan.swork, Sstar_sched_scan_work);
+	INIT_WORK(&hw_priv->scan.swork, atbm_sched_scan_work);
 #endif /*ROAM_OFFLOAD*/
-	INIT_DELAYED_WORK(&hw_priv->scan.probe_work, Sstar_probe_work);
-	INIT_DELAYED_WORK(&hw_priv->scan.timeout, Sstar_scan_timeout);
+	INIT_DELAYED_WORK(&hw_priv->scan.probe_work, atbm_probe_work);
+	INIT_DELAYED_WORK(&hw_priv->scan.timeout, atbm_scan_timeout);
 //#ifdef CONFIG_WIRELESS_EXT
 	INIT_WORK(&hw_priv->etf_tx_end_work, etf_scan_end_work);
 	//init_timer(&hw_priv->etf_expire_timer);	
 	//hw_priv->etf_expire_timer.expires = jiffies+1000*HZ;
 	//hw_priv->etf_expire_timer.data = (unsigned long)hw_priv;
-	//hw_priv->etf_expire_timer.function = Sstar_etf_test_expire_timer;
+	//hw_priv->etf_expire_timer.function = atbm_etf_test_expire_timer;
 //#endif //#ifdef CONFIG_WIRELESS_EXT
-#ifdef CONFIG_SSTAR_APOLLO_TESTMODE
+#ifdef CONFIG_ATBM_APOLLO_TESTMODE
 	INIT_DELAYED_WORK(&hw_priv->advance_scan_timeout,
-		 Sstar_advance_scan_timeout);
+		 atbm_advance_scan_timeout);
 #endif
-	INIT_DELAYED_WORK(&hw_priv->rem_chan_timeout, Sstar_rem_chan_timeout);
+	INIT_DELAYED_WORK(&hw_priv->rem_chan_timeout, atbm_rem_chan_timeout);
 	INIT_WORK(&hw_priv->tx_policy_upload_work, tx_policy_upload_work);
 	spin_lock_init(&hw_priv->event_queue_lock);
 	INIT_LIST_HEAD(&hw_priv->event_queue);
-	INIT_WORK(&hw_priv->event_handler, Sstar_event_handler);
-#ifdef CONFIG_SSTAR_BA_STATUS
-	INIT_WORK(&hw_priv->ba_work, Sstar_ba_work);
+	INIT_WORK(&hw_priv->event_handler, atbm_event_handler);
+#ifdef CONFIG_ATBM_BA_STATUS
+	INIT_WORK(&hw_priv->ba_work, atbm_ba_work);
 	spin_lock_init(&hw_priv->ba_lock);
 	init_timer(&hw_priv->ba_timer);
 	hw_priv->ba_timer.data = (unsigned long)hw_priv;
-	hw_priv->ba_timer.function = Sstar_ba_timer;
+	hw_priv->ba_timer.function = atbm_ba_timer;
 #endif
-	Sstar_skb_queue_head_init(&hw_priv->rx_frame_queue);
-	Sstar_skb_queue_head_init(&hw_priv->rx_frame_free);
-#ifdef SSTAR_SUPPORT_SMARTCONFIG
-	INIT_WORK(&hw_priv->scan.smartwork, Sstar_smart_scan_work);
-	INIT_WORK(&hw_priv->scan.smartsetChanwork, Sstar_smart_setchan_work);
-	INIT_WORK(&hw_priv->scan.smartstopwork, Sstar_smart_stop_work);
+	atbm_skb_queue_head_init(&hw_priv->rx_frame_queue);
+	atbm_skb_queue_head_init(&hw_priv->rx_frame_free);
+#ifdef ATBM_SUPPORT_SMARTCONFIG
+	INIT_WORK(&hw_priv->scan.smartwork, atbm_smart_scan_work);
+	INIT_WORK(&hw_priv->scan.smartsetChanwork, atbm_smart_setchan_work);
+	INIT_WORK(&hw_priv->scan.smartstopwork, atbm_smart_stop_work);
 	init_timer(&hw_priv->smartconfig_expire_timer);	
 	hw_priv->smartconfig_expire_timer.data = (unsigned long)hw_priv;
-	hw_priv->smartconfig_expire_timer.function = Sstar_smartconfig_expire_timer;
+	hw_priv->smartconfig_expire_timer.function = atbm_smartconfig_expire_timer;
 #endif
 #ifdef SDIO_BUS
 	init_waitqueue_head(&hw_priv->wsm_synchanl_done);
-#ifdef SSTAR_SDIO_PATCH
+#ifdef ATBM_SDIO_PATCH
 	spin_lock_init(&hw_priv->SeqBitMapLock);
 	INIT_LIST_HEAD(&hw_priv->SeqBitMapList);
 	INIT_WORK(&hw_priv->wsm_sync_channl, wsm_sync_channl);
@@ -1838,38 +1839,38 @@ struct ieee80211_hw *Sstar_init_common(size_t hw_priv_data_len)
 	INIT_WORK(&hw_priv->wsm_sync_channl, wsm_sync_channl_reset);
 #endif
 #endif
-	if (unlikely(Sstar_queue_stats_init(&hw_priv->tx_queue_stats,
+	if (unlikely(atbm_queue_stats_init(&hw_priv->tx_queue_stats,
 			WLAN_LINK_ID_MAX,
-			Sstar_skb_dtor,
+			atbm_skb_dtor,
 			hw_priv))) {
 		ieee80211_free_hw(hw);
 		return NULL;
 	}
 
 	for (i = 0; i < 4; ++i) {
-		if (unlikely(Sstar_queue_init(&hw_priv->tx_queue[i],
-				&hw_priv->tx_queue_stats, i, SSTAR_WIFI_MAX_QUEUE_SZ,
-				Sstar_ttl[i]))) {
+		if (unlikely(atbm_queue_init(&hw_priv->tx_queue[i],
+				&hw_priv->tx_queue_stats, i, ATBM_WIFI_MAX_QUEUE_SZ,
+				atbm_ttl[i]))) {
 			for (; i > 0; i--)
-				Sstar_queue_deinit(&hw_priv->tx_queue[i - 1]);
-			Sstar_queue_stats_deinit(&hw_priv->tx_queue_stats);
+				atbm_queue_deinit(&hw_priv->tx_queue[i - 1]);
+			atbm_queue_stats_deinit(&hw_priv->tx_queue_stats);
 			ieee80211_free_hw(hw);
 			return NULL;
 		}
 	}
-#ifdef SSTAR_SUPPORT_WIDTH_40M
+#ifdef ATBM_SUPPORT_WIDTH_40M
 	spin_lock_init(&hw_priv->spinlock_channel_type);
 	hw_priv->channel_type = NL80211_CHAN_NO_HT;
 	atomic_set(&hw_priv->channel_chaging, 0);
 	atomic_set(&hw_priv->phy_chantype,0);
 	atomic_set(&hw_priv->tx_20M_lock,1);
 	atomic_set(&hw_priv->cca_detect_running,0);
-	hw_priv->chanch_if_id = SSTAR_WIFI_MAX_VIFS;
-	INIT_WORK(&hw_priv->get_cca_work,Sstar_get_cca_work);
+	hw_priv->chanch_if_id = ATBM_WIFI_MAX_VIFS;
+	INIT_WORK(&hw_priv->get_cca_work,atbm_get_cca_work);
 	mutex_init(&hw_priv->chantype_mutex);
 	init_timer(&hw_priv->chantype_timer);
 	hw_priv->chantype_timer.data = (unsigned long)hw_priv;
-	hw_priv->chantype_timer.function = Sstar_chantype_timer;
+	hw_priv->chantype_timer.function = atbm_chantype_timer;
 	hw_priv->rx_phy_enable_num_req = DEFAULT_CCA_INTERVAL_US/DEFAULT_CCA_UTIL_US/3*2; //
 	atomic_set(&hw_priv->cca_interval_ms,DEFAULT_CCA_INTERVAL_MS);
 	hw_priv->rx_40M_pkg_cnt=0;
@@ -1883,7 +1884,7 @@ struct ieee80211_hw *Sstar_init_common(size_t hw_priv_data_len)
 	atomic_set(&hw_priv->chw_sw_40M_level,128);
 #endif
 
-#ifdef SSTAR_P2P_CHANGE
+#ifdef ATBM_P2P_CHANGE
 	atomic_set(&hw_priv->go_bssid_set,0);
 	atomic_set(&hw_priv->receive_go_resp,0);
 	atomic_set(&hw_priv->p2p_oper_channel,0);
@@ -1892,8 +1893,8 @@ struct ieee80211_hw *Sstar_init_common(size_t hw_priv_data_len)
 #endif
 
 	hw_priv->monitor_if_id = -1;
-#ifdef CONFIG_SSTAR_STA_LISTEN
-	Sstar_sta_listen_int(hw_priv);
+#ifdef CONFIG_ATBM_STA_LISTEN
+	atbm_sta_listen_int(hw_priv);
 #endif
 	init_waitqueue_head(&hw_priv->channel_switch_done);
 	init_waitqueue_head(&hw_priv->wsm_cmd_wq);
@@ -1903,10 +1904,10 @@ struct ieee80211_hw *Sstar_init_common(size_t hw_priv_data_len)
 	wsm_buf_init(&hw_priv->wsm_cmd_buf);
 	spin_lock_init(&hw_priv->wsm_cmd.lock);
 	tx_policy_init(hw_priv);
-#if defined(CONFIG_SSTAR_APOLLO_WSM_DUMPS_SHORT)
+#if defined(CONFIG_ATBM_APOLLO_WSM_DUMPS_SHORT)
 	hw_priv->wsm_dump_max_size = 20;
-#endif /* CONFIG_SSTAR_APOLLO_WSM_DUMPS_SHORT */
-	for (i = 0; i < SSTAR_WIFI_MAX_VIFS; i++)
+#endif /* CONFIG_ATBM_APOLLO_WSM_DUMPS_SHORT */
+	for (i = 0; i < ATBM_WIFI_MAX_VIFS; i++)
 		hw_priv->hw_bufs_used_vif[i] = 0;
 
 #ifdef MCAST_FWDING
@@ -1914,55 +1915,55 @@ struct ieee80211_hw *Sstar_init_common(size_t hw_priv_data_len)
                wsm_init_release_buffer_request(hw_priv, i);
        hw_priv->buf_released = 0;
 #endif
-	hw_priv->vif0_throttle = SSTAR_WIFI_HOST_VIF0_11BG_THROTTLE;
-	hw_priv->vif1_throttle = SSTAR_WIFI_HOST_VIF1_11BG_THROTTLE;
+	hw_priv->vif0_throttle = ATBM_WIFI_HOST_VIF0_11BG_THROTTLE;
+	hw_priv->vif1_throttle = ATBM_WIFI_HOST_VIF1_11BG_THROTTLE;
 	return hw;
 }
-//EXPORT_SYMBOL_GPL(Sstar_init_common);
+//EXPORT_SYMBOL_GPL(atbm_init_common);
 
-int Sstar_register_common(struct ieee80211_hw *dev)
+int atbm_register_common(struct ieee80211_hw *dev)
 {
-#ifdef CONFIG_SSTAR_APOLLO_LEDS
-	struct Sstar_common *hw_priv = dev->priv;
-#endif /* CONFIG_SSTAR_APOLLO_LEDS */
+#ifdef CONFIG_ATBM_APOLLO_LEDS
+	struct atbm_common *hw_priv = dev->priv;
+#endif /* CONFIG_ATBM_APOLLO_LEDS */
 	int err;
 	err = ieee80211_register_hw(dev);
 	if (err) {
-		Sstar_dbg(SSTAR_APOLLO_DBG_ERROR, "Cannot register device (%d).\n",
+		atbm_dbg(ATBM_APOLLO_DBG_ERROR, "Cannot register device (%d).\n",
 				err);
 		return err;
 	}
-#ifdef CONFIG_SSTAR_APOLLO_LEDS
-	err = Sstar_init_leds(priv);
+#ifdef CONFIG_ATBM_APOLLO_LEDS
+	err = atbm_init_leds(priv);
 	if (err) {
-		Sstar_pm_deinit(&hw_priv->pm_state);
+		atbm_pm_deinit(&hw_priv->pm_state);
 		ieee80211_unregister_hw(dev);
 		return err;
 	}
-#endif /* CONFIG_SSTAR_APOLLO_LEDS */
+#endif /* CONFIG_ATBM_APOLLO_LEDS */
 
 
-	Sstar_dbg(SSTAR_APOLLO_DBG_MSG, "is registered as '%s'\n",
+	atbm_dbg(ATBM_APOLLO_DBG_MSG, "is registered as '%s'\n",
 			wiphy_name(dev->wiphy));
 	return 0;
 }
-//EXPORT_SYMBOL_GPL(Sstar_register_common);
+//EXPORT_SYMBOL_GPL(atbm_register_common);
 
-void Sstar_free_common(struct ieee80211_hw *dev)
+void atbm_free_common(struct ieee80211_hw *dev)
 {
-	/* struct Sstar_common *hw_priv = dev->priv; */
+	/* struct atbm_common *hw_priv = dev->priv; */
 	/* unsigned int i; */
 
 	ieee80211_free_hw(dev);
 }
-//EXPORT_SYMBOL_GPL(Sstar_free_common);
+//EXPORT_SYMBOL_GPL(atbm_free_common);
 
-void Sstar_unregister_common(struct ieee80211_hw *dev)
+void atbm_unregister_common(struct ieee80211_hw *dev)
 {
-	struct Sstar_common *hw_priv = dev->priv;
+	struct atbm_common *hw_priv = dev->priv;
 	int i;
-	atomic_set(&hw_priv->Sstar_pluged,0);
-	Sstar_printk_exit("Sstar_unregister_common.++\n");
+	atomic_set(&hw_priv->atbm_pluged,0);
+	atbm_printk_exit("atbm_unregister_common.++\n");
 	ieee80211_unregister_hw(dev);
 	
 	hw_priv->sbus_ops->irq_unsubscribe(hw_priv->sbus_priv);
@@ -1970,32 +1971,32 @@ void Sstar_unregister_common(struct ieee80211_hw *dev)
 	if(hw_priv->sbus_ops->sbus_xmit_func_deinit)
 		hw_priv->sbus_ops->sbus_xmit_func_deinit(hw_priv->sbus_priv);
 	if(hw_priv->sbus_ops->sbus_rev_func_deinit)	
-		hw_priv->sbus_ops->sbus_rev_func_deinit(hw_priv->sbus_priv);
+		hw_priv->sbus_ops->sbus_xmit_func_deinit(hw_priv->sbus_priv);
 	
 	hw_priv->init_done = 0;
-	Sstar_unregister_bh(hw_priv);
-	Sstar_debug_release_common(hw_priv);
+	atbm_unregister_bh(hw_priv);
+	atbm_debug_release_common(hw_priv);
 #ifdef OPER_CLOCK_USE_SEM
 	del_timer_sync(&hw_priv->wsm_pm_timer);
 	spin_lock_bh(&hw_priv->wsm_pm_spin_lock);
 	if(atomic_read(&hw_priv->wsm_pm_running) == 1){
 		atomic_set(&hw_priv->wsm_pm_running, 0);
 		wsm_oper_unlock(hw_priv);
-		Sstar_release_suspend(hw_priv);
-		Sstar_printk_exit("%s,up pm lock\n",__func__);
+		atbm_release_suspend(hw_priv);
+		atbm_printk_exit("%s,up pm lock\n",__func__);
 	}
 	spin_unlock_bh(&hw_priv->wsm_pm_spin_lock);
 #endif	
-#ifdef CONFIG_SSTAR_APOLLO_LEDS
-	Sstar_unregister_leds(hw_priv);
-#endif /* CONFIG_SSTAR_APOLLO_LEDS */
+#ifdef CONFIG_ATBM_APOLLO_LEDS
+	atbm_unregister_leds(hw_priv);
+#endif /* CONFIG_ATBM_APOLLO_LEDS */
 
 	mutex_destroy(&hw_priv->conf_mutex);
 #ifdef MCAST_FWDING
 	for (i = 0; i < WSM_MAX_BUF; i++)
 		wsm_buf_deinit(&hw_priv->wsm_release_buf[i]);
 #endif
-#ifdef CONFIG_SSTAR_BA_STATUS
+#ifdef CONFIG_ATBM_BA_STATUS
 	del_timer_sync(&hw_priv->ba_timer);
 #endif
 	flush_workqueue(hw_priv->workqueue);
@@ -2011,7 +2012,7 @@ void Sstar_unregister_common(struct ieee80211_hw *dev)
 
 	wsm_buf_deinit(&hw_priv->wsm_cmd_buf);
 	if (hw_priv->skb_cache) {
-		Sstar_dev_kfree_skb(hw_priv->skb_cache);
+		atbm_dev_kfree_skb(hw_priv->skb_cache);
 		hw_priv->skb_cache = NULL;
 	}
 
@@ -2020,17 +2021,17 @@ void Sstar_unregister_common(struct ieee80211_hw *dev)
 		hw_priv->sdd = NULL;
 	}
 
-	Sstar_free_event_queue(hw_priv);
+	atbm_free_event_queue(hw_priv);
 	
 	for (i = 0; i < 4; ++i)
-		Sstar_queue_deinit(&hw_priv->tx_queue[i]);
-	Sstar_queue_stats_deinit(&hw_priv->tx_queue_stats);
+		atbm_queue_deinit(&hw_priv->tx_queue[i]);
+	atbm_queue_stats_deinit(&hw_priv->tx_queue_stats);
 	#ifdef CONFIG_PM
-	Sstar_pm_deinit(&hw_priv->pm_state);
+	atbm_pm_deinit(&hw_priv->pm_state);
 	#endif
 
-	//for (i = 0; i < SSTAR_WIFI_MAX_VIFS; i++) {
-	//	Sstar_kfree(hw_priv->vif_list[i]);
+	//for (i = 0; i < ATBM_WIFI_MAX_VIFS; i++) {
+	//	atbm_kfree(hw_priv->vif_list[i]);
 	//	hw_priv->vif_list[i] = NULL;
 	//}
 	/*
@@ -2038,11 +2039,11 @@ void Sstar_unregister_common(struct ieee80211_hw *dev)
 	*/
 	if(hw_priv->sbus_ops->sbus_reset_chip)
 		hw_priv->sbus_ops->sbus_reset_chip(hw_priv->sbus_priv);
-	Sstar_printk_exit("Sstar_unregister_common.--\n");
+	atbm_printk_exit("atbm_unregister_common.--\n");
 }
-//EXPORT_SYMBOL_GPL(Sstar_unregister_common);
+//EXPORT_SYMBOL_GPL(atbm_unregister_common);
 
-static void ABwifi_set_ifce_comb(struct Sstar_common *hw_priv,
+static void ABwifi_set_ifce_comb(struct atbm_common *hw_priv,
 				 struct ieee80211_hw *hw)
 {
 #ifdef P2P_MULTIVIF
@@ -2110,7 +2111,7 @@ static void ABwifi_set_ifce_comb(struct Sstar_common *hw_priv,
 	hw->wiphy->iface_combinations = &hw_priv->if_combs[0];
 	hw->wiphy->n_iface_combinations = 3;
 
-#ifdef	CONFIG_SSTAR_5G_PRETEND_2G
+#ifdef	CONFIG_ATBM_5G_PRETEND_2G
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(3, 9, 0))
 	hw_priv->if_combs[0].radar_detect_widths =	BIT(NL80211_CHAN_NO_HT) |
 					BIT(NL80211_CHAN_HT20) |
@@ -2129,9 +2130,9 @@ static void ABwifi_set_ifce_comb(struct Sstar_common *hw_priv,
 
 }
 
-void Sstar_monitor_pc(struct Sstar_common *hw_priv);
+void atbm_monitor_pc(struct atbm_common *hw_priv);
 //#ifdef RESET_CHANGE
-struct Sstar_common *g_hw_priv=0;
+struct atbm_common *g_hw_priv=0;
 //#endif
 #ifdef CONFIG_TXPOWER_DCXO_VALUE
 //txpower and dcxo config file
@@ -2139,14 +2140,14 @@ char strfilename[] = CONFIG_TXPOWER_DCXO_VALUE;
 #else
 char strfilename[] = "";
 #endif
-int Sstar_core_probe(const struct sbus_ops *sbus_ops,
+int atbm_core_probe(const struct sbus_ops *sbus_ops,
 		      struct sbus_priv *sbus,
 		      struct device *pdev,
-		      struct Sstar_common **pself)
+		      struct atbm_common **pself)
 {
 	int err = -ENOMEM;
 	struct ieee80211_hw *dev;
-	struct Sstar_common *hw_priv=NULL;
+	struct atbm_common *hw_priv=NULL;
 	struct wsm_operational_mode mode = {
 		.power_mode = wsm_power_mode_quiescent,
 		.disableMoreFlagUsage = true,
@@ -2171,61 +2172,57 @@ int Sstar_core_probe(const struct sbus_ops *sbus_ops,
 			else /* Set default */
 				mode.power_mode = wsm_power_mode_quiescent;
 		}
-		Sstar_printk_init("apollo wifi : PSM changed to %d\n",mode.power_mode);
+		atbm_printk_init("apollo wifi : PSM changed to %d\n",mode.power_mode);
 	}
 	else {
-		Sstar_printk_init("apollo wifi : Using default PSM %d\n",mode.power_mode);
+		atbm_printk_init("apollo wifi : Using default PSM %d\n",mode.power_mode);
 	}
 #endif
 
-	dev = Sstar_init_common(sizeof(struct Sstar_common));
+	dev = atbm_init_common(sizeof(struct atbm_common));
 	if (!dev)
 		goto err;
 
 	hw_priv = dev->priv;
-	Sstar_hw_priv_assign_pointer(hw_priv);
+	atbm_hw_priv_assign_pointer(hw_priv);
 	hw_priv->init_done = 0;
-	atomic_set(&hw_priv->Sstar_pluged,0);
+	atomic_set(&hw_priv->atbm_pluged,0);
 	hw_priv->sbus_ops = sbus_ops;
 	hw_priv->sbus_priv = sbus;
 	hw_priv->pdev = pdev;
 	SET_IEEE80211_DEV(hw_priv->hw, pdev);
 	*pself = dev->priv;
-	/* WSM callbacks. */
-	hw_priv->wsm_cbc.scan_complete = Sstar_scan_complete_cb;
-	hw_priv->wsm_cbc.tx_confirm = Sstar_tx_confirm_cb;
-	hw_priv->wsm_cbc.rx = Sstar_rx_cb;
-	hw_priv->wsm_cbc.suspend_resume = Sstar_suspend_resume;
-	/* hw_priv->wsm_cbc.set_pm_complete = Sstar_set_pm_complete_cb; */
-	hw_priv->wsm_cbc.channel_switch = Sstar_channel_switch_cb;
-#ifdef CONFIG_PM
-	err = Sstar_pm_init(&hw_priv->pm_state, hw_priv);
-	if (err) {
-		Sstar_dbg(SSTAR_APOLLO_DBG_ERROR, "Cannot init PM. (%d).\n",
-				err);
-		goto err1;
-	}
-#endif
-	err = Sstar_register_bh(hw_priv);
-	if (err)
-		goto err1;
 	/*
 	*init bus tx/rx
 	*/
 	if(hw_priv->sbus_ops->sbus_xmit_func_init)
-		err = hw_priv->sbus_ops->sbus_xmit_func_init(hw_priv->sbus_priv);
+		hw_priv->sbus_ops->sbus_xmit_func_init(hw_priv->sbus_priv);
 	if(hw_priv->sbus_ops->sbus_rev_func_init)
-		err |= hw_priv->sbus_ops->sbus_rev_func_init(hw_priv->sbus_priv);
-
-	if(err){
-		Sstar_printk_err("%s:rev and xmit init err\n",__func__);
+		hw_priv->sbus_ops->sbus_rev_func_init(hw_priv->sbus_priv);
+	/* WSM callbacks. */
+	hw_priv->wsm_cbc.scan_complete = atbm_scan_complete_cb;
+	hw_priv->wsm_cbc.tx_confirm = atbm_tx_confirm_cb;
+	hw_priv->wsm_cbc.rx = atbm_rx_cb;
+	hw_priv->wsm_cbc.suspend_resume = atbm_suspend_resume;
+	/* hw_priv->wsm_cbc.set_pm_complete = atbm_set_pm_complete_cb; */
+	hw_priv->wsm_cbc.channel_switch = atbm_channel_switch_cb;
+#ifdef CONFIG_PM
+	err = atbm_pm_init(&hw_priv->pm_state, hw_priv);
+	if (err) {
+		atbm_dbg(ATBM_APOLLO_DBG_ERROR, "Cannot init PM. (%d).\n",
+				err);
 		goto err1;
 	}
-	atomic_set(&hw_priv->Sstar_pluged,1);
+#endif
+	err = atbm_register_bh(hw_priv);
+	if (err)
+		goto err1;
+	
+	atomic_set(&hw_priv->atbm_pluged,1);
 reload_fw:
-	err = Sstar_load_firmware(hw_priv);
+	err = atbm_load_firmware(hw_priv);
 	if (err){
-		Sstar_printk_err("Sstar_load_firmware ERROR!\n");
+		atbm_printk_err("atbm_load_firmware ERROR!\n");
 		goto err2;
 	}
 
@@ -2233,20 +2230,20 @@ reload_fw:
 	hw_priv->sbus_ops->lock(hw_priv->sbus_priv);
 	WARN_ON(hw_priv->sbus_ops->set_block_size(hw_priv->sbus_priv,
 		SDIO_BLOCK_SIZE));
-	Sstar_printk_init("set_block_size=%d\n", SDIO_BLOCK_SIZE);
+	atbm_printk_init("set_block_size=%d\n", SDIO_BLOCK_SIZE);
 	hw_priv->sbus_ops->unlock(hw_priv->sbus_priv);
 
 	hw_priv->init_done = 1;
 #if 0
-	Sstar_printk_init("mdelay wait wsm_startup_done  !!\n");
+	atbm_printk_init("mdelay wait wsm_startup_done  !!\n");
 	if (wait_event_interruptible_timeout(hw_priv->wsm_startup_done,
 			hw_priv->wsm_caps.firmwareReady,3*HZ)<=0){
-			Sstar_monitor_pc(hw_priv);
+			atbm_monitor_pc(hw_priv);
 			mdelay(10);
-			Sstar_monitor_pc(hw_priv);
+			atbm_monitor_pc(hw_priv);
 			printk("wait wsm_startup_done timeout!!\n");
 			if(hw_priv->sbus_ops->sbus_reset_chip){
-				Sstar_printk_err( "reload fw\n");
+				atbm_printk_err( "reload fw\n");
 				if(hw_priv->sbus_ops->irq_unsubscribe)
 					hw_priv->sbus_ops->irq_unsubscribe(hw_priv->sbus_priv);
 				hw_priv->sbus_ops->sbus_reset_chip(hw_priv->sbus_priv);
@@ -2260,7 +2257,7 @@ reload_fw:
 //fix mstar CVT suspend bug,in CVT mstar suspend wait_event_interruptible_timeout sometime will not delay
 	{
 	int loop =0;
-	Sstar_printk_init("mdelay wait wsm_startup_done  !!\n");
+	atbm_printk_init("mdelay wait wsm_startup_done  !!\n");
 	while(hw_priv->wsm_caps.firmwareReady !=1){
 		/*
 		*if the system is not smp, mdelay may not triger schedule.
@@ -2269,11 +2266,11 @@ reload_fw:
 		mdelay(10);
 		schedule_timeout_interruptible(msecs_to_jiffies(20));
 		if(loop++>100){
-			Sstar_printk_init("wait_event_interruptible_timeout wsm_startup_done timeout ERROR !!\n");
+			atbm_printk_init("wait_event_interruptible_timeout wsm_startup_done timeout ERROR !!\n");
 			
-			Sstar_monitor_pc(hw_priv);
+			atbm_monitor_pc(hw_priv);
 			if(hw_priv->sbus_ops->sbus_reset_chip){
-					Sstar_printk_err("reload fw\n");
+					atbm_printk_err("reload fw\n");
 					if(hw_priv->sbus_ops->irq_unsubscribe)
 						hw_priv->sbus_ops->irq_unsubscribe(hw_priv->sbus_priv);
 					hw_priv->sbus_ops->sbus_reset_chip(hw_priv->sbus_priv);
@@ -2286,7 +2283,7 @@ reload_fw:
 	}
 	}
 #endif 
-	Sstar_firmware_init_check(hw_priv);
+	atbm_firmware_init_check(hw_priv);
 	for (if_id = 0; if_id < ABwifi_get_nr_hw_ifaces(hw_priv); if_id++) {
 		/* Set low-power mode. */
 		err = wsm_set_operational_mode(hw_priv, &mode, if_id);
@@ -2303,8 +2300,8 @@ reload_fw:
 #endif //CONFIG_TX_NO_CONFIRM
 		}
 	}
-	Sstar_set_fw_ver(hw_priv);
-	Sstar_get_mac_address(hw_priv);
+	atbm_set_fw_ver(hw_priv);
+	atbm_get_mac_address(hw_priv);
 	if (efuse)
 	{
 		char buffer[15];
@@ -2314,7 +2311,7 @@ reload_fw:
 				WARN_ON(1);
 				goto err3;
 			}
-			Sstar_printk_init("apollo wifi : Set efuse data\n");
+			atbm_printk_init("apollo wifi : Set efuse data\n");
 		}
 	}
 	{
@@ -2324,16 +2321,15 @@ reload_fw:
 			WARN_ON(1);
 			goto err3;
 		}
-		Sstar_printk_init("efuse data is [0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x:0x%x:0x%x:0x%x:0x%x:0x%x]\n",
+		atbm_printk_init("efuse data is [0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x:0x%x:0x%x:0x%x:0x%x:0x%x]\n",
 				efuse_data.version,efuse_data.dcxo_trim,efuse_data.delta_gain1,efuse_data.delta_gain2,efuse_data.delta_gain3,
 				efuse_data.Tj_room,efuse_data.topref_ctrl_bias_res_trim,efuse_data.PowerSupplySel,efuse_data.mac[0],efuse_data.mac[1],
 				efuse_data.mac[2],efuse_data.mac[3],efuse_data.mac[4],efuse_data.mac[5]);
-		memcpy(&hw_priv->efuse,&efuse_data,sizeof(struct efuse_headr));
 	}
 	//use delta_gain and dcxo value in config file,when file is exist
 	if(access_file(strfilename,readbuf,sizeof(readbuf),1) > 0)
 	{
-		Sstar_printk_init("param:%s",readbuf);
+		atbm_printk_init("param:%s",readbuf);
 		for(i=0;i<strlen(readbuf);i++)
 		{
 			if(readbuf[i] == '\n')
@@ -2341,25 +2337,25 @@ reload_fw:
 		}
 		sscanf(readbuf, "delta_gain1:%d delta_gain2:%d delta_gain3:%d dcxo:%d ",
 			&delta_gain1, &delta_gain2, &delta_gain3, &dcxo);
-		Sstar_printk_init("delta_gain1:%d delta_gain2:%d delta_gain3:%d dcxo:%d\n",
+		atbm_printk_init("delta_gain1:%d delta_gain2:%d delta_gain3:%d dcxo:%d\n",
 			delta_gain1, delta_gain2, delta_gain3, dcxo);
 		memset(readbuf, 0, 128);
 		memset(readbuf, 0, sizeof(readbuf));
 		sprintf(readbuf, "set_txpwr_and_dcxo,%d,%d,%d,%d ", delta_gain1, delta_gain2, delta_gain3, dcxo);
 		
-		Sstar_printk_init("cmd: %s\n", readbuf);
+		atbm_printk_init("cmd: %s\n", readbuf);
 		err = wsm_write_mib(hw_priv, WSM_MIB_ID_FW_CMD, readbuf, strlen(readbuf), if_id);
 		if(err < 0){
-			Sstar_printk_err("%s: write mib failed(%d). \n",__func__, err);
+			atbm_printk_err("%s: write mib failed(%d). \n",__func__, err);
 		}
 	}
 	
-	err = Sstar_register_common(dev);
+	err = atbm_register_common(dev);
 	if (err) {
 		goto err3;
 	}
 #ifdef CONFIG_PM
-	Sstar_pm_stay_awake(&hw_priv->pm_state, 6 * HZ);
+	atbm_pm_stay_awake(&hw_priv->pm_state, 6 * HZ);
 #endif  //#ifdef CONFIG_PM
 	*pself = dev->priv;
 	return err;
@@ -2368,39 +2364,32 @@ err3:
 	//sbus_ops->reset(sbus);
 	hw_priv->sbus_ops->irq_unsubscribe(hw_priv->sbus_priv);
 err2:
-	atomic_set(&hw_priv->Sstar_pluged,0);
-	Sstar_unregister_bh(hw_priv);
+	atomic_set(&hw_priv->atbm_pluged,0);
+	atbm_unregister_bh(hw_priv);
 err1:
-	/*
-	*init bus tx/rx
-	*/
-	if(hw_priv->sbus_ops->sbus_xmit_func_deinit)
-		hw_priv->sbus_ops->sbus_xmit_func_deinit(hw_priv->sbus_priv);
-	if(hw_priv->sbus_ops->sbus_rev_func_deinit)
-		hw_priv->sbus_ops->sbus_rev_func_deinit(hw_priv->sbus_priv);	
 	wsm_buf_deinit(&hw_priv->wsm_cmd_buf);
 	for (i = 0; i < 4; ++i)
-		Sstar_queue_deinit(&hw_priv->tx_queue[i]);
-	Sstar_queue_stats_deinit(&hw_priv->tx_queue_stats);
+		atbm_queue_deinit(&hw_priv->tx_queue[i]);
+	atbm_queue_stats_deinit(&hw_priv->tx_queue_stats);
 	#ifdef CONFIG_PM
-	Sstar_pm_deinit(&hw_priv->pm_state);
+	atbm_pm_deinit(&hw_priv->pm_state);
 	#endif
-	Sstar_free_common(dev);
+	atbm_free_common(dev);
 err:
 	*pself=NULL;
 	if(hw_priv)
 		hw_priv->init_done = 0;
 	return err;
 }
-//EXPORT_SYMBOL_GPL(Sstar_core_probe);
+//EXPORT_SYMBOL_GPL(atbm_core_probe);
 
-void Sstar_core_release(struct Sstar_common *self)
+void atbm_core_release(struct atbm_common *self)
 {
-	Sstar_unregister_common(self->hw);
-	Sstar_free_common(self->hw);
+	atbm_unregister_common(self->hw);
+	atbm_free_common(self->hw);
 	return;
 }
-//EXPORT_SYMBOL_GPL(Sstar_core_release);
+//EXPORT_SYMBOL_GPL(atbm_core_release);
 #ifdef CUSTOM_FEATURE_MAC /* To use macaddr and ps mode of customers */
 int access_file(char *path, char *buffer, int size, int isRead)
 {
@@ -2414,7 +2403,7 @@ int access_file(char *path, char *buffer, int size, int isRead)
 		fp = filp_open(path,O_CREAT|O_WRONLY,S_IRUSR);
 
 	if (IS_ERR(fp)) {
-		Sstar_printk_err("apollo wifi : can't open %s\n",path);
+		atbm_printk_err("apollo wifi : can't open %s\n",path);
 		return -1;
 	}
 
@@ -2422,7 +2411,7 @@ int access_file(char *path, char *buffer, int size, int isRead)
 	{
 #if 0
 		if(fp->f_op->read == NULL) {
-			Sstar_printk_err("apollo wifi : Not allow to read\n");
+			atbm_printk_err("apollo wifi : Not allow to read\n");
 			return -2;
 		}
 		else 
@@ -2437,7 +2426,7 @@ int access_file(char *path, char *buffer, int size, int isRead)
 	else
 	{
 		if(fp->f_op->write == NULL) {
-			Sstar_printk_err("apollo wifi : Not allow to write\n");
+			atbm_printk_err("apollo wifi : Not allow to write\n");
 			return -2;
 		}
 		else {
@@ -2449,36 +2438,36 @@ int access_file(char *path, char *buffer, int size, int isRead)
 	}
 	filp_close(fp,NULL);
 
-	Sstar_printk_debug("apollo wifi : access_file return code(%d)\n",ret);
+	atbm_printk_debug("apollo wifi : access_file return code(%d)\n",ret);
 	return ret;
 }
 #endif
-#if defined(CONFIG_NL80211_TESTMODE) || defined(CONFIG_SSTAR_IOCTRL)
+#if defined(CONFIG_NL80211_TESTMODE) || defined(CONFIG_ATBM_IOCTRL)
 
 
-void Sstar_set_shortGI(u32 shortgi)
+void atbm_set_shortGI(u32 shortgi)
 {
-	Sstar_printk_always("Sstar_set_shortGI,%d\n", shortgi);
+	atbm_printk_always("atbm_set_shortGI,%d\n", shortgi);
 	if (shortgi)
 	{
-		Sstar_band_2ghz.ht_cap.cap |=  IEEE80211_HT_CAP_SGI_20;
-		if (Sstar_band_2ghz.ht_cap.cap &  IEEE80211_HT_CAP_SUP_WIDTH_20_40)
-			Sstar_band_2ghz.ht_cap.cap |=  IEEE80211_HT_CAP_SGI_40;
+		atbm_band_2ghz.ht_cap.cap |=  IEEE80211_HT_CAP_SGI_20;
+		if (atbm_band_2ghz.ht_cap.cap &  IEEE80211_HT_CAP_SUP_WIDTH_20_40)
+			atbm_band_2ghz.ht_cap.cap |=  IEEE80211_HT_CAP_SGI_40;
 	}else
 	{
-		Sstar_band_2ghz.ht_cap.cap &=  ~(IEEE80211_HT_CAP_SGI_20|IEEE80211_HT_CAP_SGI_40);
+		atbm_band_2ghz.ht_cap.cap &=  ~(IEEE80211_HT_CAP_SGI_20|IEEE80211_HT_CAP_SGI_40);
 	}
 
 }
-void Sstar_set_40M(struct Sstar_common *hw_priv,u32 params)
+void atbm_set_40M(struct atbm_common *hw_priv,u32 params)
 {
-	#define SSTAR_40M_FREE			((u32)(-1))
-#ifdef SSTAR_SUPPORT_WIDTH_40M
+	#define ATBM_40M_FREE			((u32)(-1))
+#ifdef ATBM_SUPPORT_WIDTH_40M
 	u16 is40M = (u16)(params>>16);
 	u16 chtype = (u16)(params&0xffff);
 	static u8 saved_chw;
 	static enum nl80211_channel_type saved_chtype;
-	struct Sstar_vif * priv = ABwifi_hwpriv_to_vifpriv(hw_priv,0);
+	struct atbm_vif * priv = ABwifi_hwpriv_to_vifpriv(hw_priv,0);
 	
 	if(!priv)
 	{
@@ -2489,22 +2478,22 @@ void Sstar_set_40M(struct Sstar_common *hw_priv,u32 params)
 	{
 		saved_chw = atomic_read(&hw_priv->tx_20M_lock);
 		saved_chtype = hw_priv->channel_type;
-		Sstar_printk_always("%s:saved_chw(%d),saved_chtype(%d)\n",__func__,saved_chw,saved_chtype);
+		atbm_printk_always("%s:saved_chw(%d),saved_chtype(%d)\n",__func__,saved_chw,saved_chtype);
 	}
-	Sstar_priv_vif_list_read_unlock(&priv->vif_lock);
+	atbm_priv_vif_list_read_unlock(&priv->vif_lock);
 
-	if((params == SSTAR_40M_FREE)&&
+	if((params == ATBM_40M_FREE)&&
 		test_bit(WSM_SET_CHANTYPECHANGE_FLAGS__TOOL_SET_FORCE,&hw_priv->change_bit))
 	{
 		atomic_set(&hw_priv->tx_20M_lock,saved_chw);
 		is40M = saved_chw;
 		chtype = saved_chtype;
 		clear_bit(WSM_SET_CHANTYPECHANGE_FLAGS__TOOL_SET_FORCE,&hw_priv->change_bit);
-		Sstar_printk_always("%s: free the 40M params\n",__func__);
+		atbm_printk_always("%s: free the 40M params\n",__func__);
 	}
-	else if(params == SSTAR_40M_FREE)
+	else if(params == ATBM_40M_FREE)
 	{
-		Sstar_printk_always("the params is err params(%x)\n",params);
+		atbm_printk_always("the params is err params(%x)\n",params);
 		return ;
 	}
 	else
@@ -2512,7 +2501,7 @@ void Sstar_set_40M(struct Sstar_common *hw_priv,u32 params)
 		set_bit(WSM_SET_CHANTYPECHANGE_FLAGS__TOOL_SET_FORCE,&hw_priv->change_bit);
 	}
 	
-	Sstar_printk_always("Sstar_set_40M,chtype(%d),send_40M(%d)\n",chtype ,is40M);
+	atbm_printk_always("atbm_set_40M,chtype(%d),send_40M(%d)\n",chtype ,is40M);
 	
 	if(chtype>NL80211_CHAN_HT40PLUS)
 	{
@@ -2525,7 +2514,7 @@ void Sstar_set_40M(struct Sstar_common *hw_priv,u32 params)
 		hw_priv->channel_type = chtype;
 		spin_unlock_bh(&hw_priv->spinlock_channel_type);
 		set_bit(WSM_SET_CHANTYPECHANGE_FLAGS__CHANTYPE_CHANGE,&hw_priv->change_bit);
-		Sstar_printk_always("%s:chtype(%d),channel_type(%d)\n",__func__,chtype,hw_priv->channel_type);
+		atbm_printk_always("%s:chtype(%d),channel_type(%d)\n",__func__,chtype,hw_priv->channel_type);
 	}
 	
 	is40M = ((is40M)&&ieee80211_chw_is_ht40(chtype));
@@ -2533,70 +2522,70 @@ void Sstar_set_40M(struct Sstar_common *hw_priv,u32 params)
 		atomic_set(&hw_priv->tx_20M_lock,!!!is40M);
 	
 	atomic_add_return(1, &hw_priv->channel_chaging);
-	if(Sstar_hw_priv_queue_delayed_work(hw_priv, &priv->chantype_change_work,0) <= 0)
+	if(atbm_hw_priv_queue_delayed_work(hw_priv, &priv->chantype_change_work,0) <= 0)
 	{
-		Sstar_printk_always("%s: queue chantype_change_work err\n",__func__);
+		atbm_printk_always("%s: queue chantype_change_work err\n",__func__);
 		if(atomic_sub_return(1, &hw_priv->channel_chaging)<=0)
 		{
-			Sstar_printk_always("%s: channel_chaging value err\n",__func__);
+			atbm_printk_always("%s: channel_chaging value err\n",__func__);
 		}
 	}
 	
 	if (ieee80211_chw_is_ht40(chtype))
 	{
-		Sstar_band_2ghz.ht_cap.cap |=  IEEE80211_HT_CAP_SUP_WIDTH_20_40;
-		if (Sstar_band_2ghz.ht_cap.cap & IEEE80211_HT_CAP_SGI_20)
-			Sstar_band_2ghz.ht_cap.cap |=  IEEE80211_HT_CAP_SGI_40;
+		atbm_band_2ghz.ht_cap.cap |=  IEEE80211_HT_CAP_SUP_WIDTH_20_40;
+		if (atbm_band_2ghz.ht_cap.cap & IEEE80211_HT_CAP_SGI_20)
+			atbm_band_2ghz.ht_cap.cap |=  IEEE80211_HT_CAP_SGI_40;
 	}else
 	{
-		Sstar_band_2ghz.ht_cap.cap &=  ~(IEEE80211_HT_CAP_SUP_WIDTH_20_40|IEEE80211_HT_CAP_SGI_40);
+		atbm_band_2ghz.ht_cap.cap &=  ~(IEEE80211_HT_CAP_SUP_WIDTH_20_40|IEEE80211_HT_CAP_SGI_40);
 	}
 #endif
 
 }
 
-void Sstar_set_cca(struct Sstar_common *hw_priv,u8 *buff)
+void atbm_set_cca(struct atbm_common *hw_priv,u8 *buff)
 {
-#ifdef SSTAR_SUPPORT_WIDTH_40M	
+#ifdef ATBM_SUPPORT_WIDTH_40M	
 
-	#define SSTAR_CCA_FREE			((u32)(-1))
-	struct Sstar_cca_val
+	#define ATBM_CCA_FREE			((u32)(-1))
+	struct atbm_cca_val
 	{
 		u32 cca_20M_level;
 		u32 cca_40M_level;
 		u32 cca_interval;
-	} *pSstar_cca_val = NULL;
+	} *patbm_cca_val = NULL;
 
-	struct Sstar_cca_chage
+	struct atbm_cca_chage
 	{
 		u8 cca_20M_level_change;
 		u8 cca_40M_level_change;
 		u8 cca_interval_change;
 	}cca_change = {.cca_interval_change = 0, .cca_20M_level_change=0,.cca_40M_level_change  = 0,};
-	pSstar_cca_val = (struct Sstar_cca_val *)buff;
-	Sstar_printk_always(KERN_ERR "%s:cca_interval(%d),cca_20M_level(%d),cca_40M_level(%d)",__func__,pSstar_cca_val->cca_interval,
-		pSstar_cca_val->cca_20M_level,pSstar_cca_val->cca_40M_level);
-	if(pSstar_cca_val->cca_interval != SSTAR_CCA_FREE) cca_change.cca_interval_change = 1;
-	if(pSstar_cca_val->cca_20M_level != SSTAR_CCA_FREE)  cca_change.cca_20M_level_change = 1;
-	if(pSstar_cca_val->cca_40M_level != SSTAR_CCA_FREE)  cca_change.cca_40M_level_change = 1;
+	patbm_cca_val = (struct atbm_cca_val *)buff;
+	atbm_printk_always(KERN_ERR "%s:cca_interval(%d),cca_20M_level(%d),cca_40M_level(%d)",__func__,patbm_cca_val->cca_interval,
+		patbm_cca_val->cca_20M_level,patbm_cca_val->cca_40M_level);
+	if(patbm_cca_val->cca_interval != ATBM_CCA_FREE) cca_change.cca_interval_change = 1;
+	if(patbm_cca_val->cca_20M_level != ATBM_CCA_FREE)  cca_change.cca_20M_level_change = 1;
+	if(patbm_cca_val->cca_40M_level != ATBM_CCA_FREE)  cca_change.cca_40M_level_change = 1;
 
 	if(cca_change.cca_interval_change&&
-		(atomic_read(&hw_priv->cca_interval_ms) != pSstar_cca_val->cca_interval))
+		(atomic_read(&hw_priv->cca_interval_ms) != patbm_cca_val->cca_interval))
 	{
-		Sstar_printk_always( "%s:cca_interval_change(%d)\n",__func__,pSstar_cca_val->cca_interval);
-		atomic_set(&hw_priv->cca_interval_ms, pSstar_cca_val->cca_interval) ;
+		atbm_printk_always( "%s:cca_interval_change(%d)\n",__func__,patbm_cca_val->cca_interval);
+		atomic_set(&hw_priv->cca_interval_ms, patbm_cca_val->cca_interval) ;
 		set_bit(WSM_SET_CHANTYPECHANGE_FLAGS__CCA_LEVEL_CHANGE,&hw_priv->change_bit);
 	}
 
 	if(cca_change.cca_20M_level_change)
 	{
-		Sstar_printk_always("%s:cca_20M_level_change(%d)\n",__func__,pSstar_cca_val->cca_20M_level);
-		atomic_set(&hw_priv->chw_sw_20M_level, pSstar_cca_val->cca_20M_level) ;
+		atbm_printk_always("%s:cca_20M_level_change(%d)\n",__func__,patbm_cca_val->cca_20M_level);
+		atomic_set(&hw_priv->chw_sw_20M_level, patbm_cca_val->cca_20M_level) ;
 	}
 	if(cca_change.cca_40M_level_change)
 	{
-		Sstar_printk_always("%s:cca_40M_level_change(%d)\n",__func__,pSstar_cca_val->cca_40M_level);
-		atomic_set(&hw_priv->chw_sw_40M_level, pSstar_cca_val->cca_40M_level) ;
+		atbm_printk_always("%s:cca_40M_level_change(%d)\n",__func__,patbm_cca_val->cca_40M_level);
+		atomic_set(&hw_priv->chw_sw_40M_level, patbm_cca_val->cca_40M_level) ;
 	}
 	
 #endif

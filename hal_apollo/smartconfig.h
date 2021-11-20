@@ -30,7 +30,7 @@ enum smartconfig_status{
 };
 
 enum smartconfig_type{
-	CONFIG_TP_SSTAR_SMART = 0,
+	CONFIG_TP_ATBM_SMART = 0,
 	CONFIG_TP_AIRKISS = 1,
 };
 
@@ -43,11 +43,11 @@ struct smartconfig_config{
 	/*ms : 500ms ~ 10000ms*/
 	int payload_time;
 };
-int Sstar_smartconfig_start(struct Sstar_common *hw_priv,int enable);
-int Sstar_smartconfig_stop(struct Sstar_common *hw_priv);
-int smartconfig_start(struct Sstar_common *hw_priv,struct smartconfig_config * st_cfg);
-int smartconfig_stop(struct Sstar_common *hw_priv);
-int smartconfig_status(struct Sstar_common *hw_priv);
+int atbm_smartconfig_start(struct atbm_common *hw_priv,int enable);
+int atbm_smartconfig_stop(struct atbm_common *hw_priv);
+int smartconfig_start(struct atbm_common *hw_priv,struct smartconfig_config * st_cfg);
+int smartconfig_stop(struct atbm_common *hw_priv);
+int smartconfig_status(struct atbm_common *hw_priv);
 
 /*cnt : 2 ~ 10*/
 int smartconfig_magic_channel_cnt(int cnt);
@@ -55,10 +55,10 @@ int smartconfig_magic_channel_cnt(int cnt);
 int smartconfig_magic_channel_timeout(int ms);
 /*ms : 500ms ~ 10000ms*/
 int smartconfig_payload_timeout(int ms);
-void Sstar_smart_scan_work(struct work_struct *work);
-void Sstar_smart_setchan_work(struct work_struct *work);
-void Sstar_smart_stop_work(struct work_struct *work);
-void Sstar_smartconfig_expire_timer(unsigned long arg);
+void atbm_smart_scan_work(struct work_struct *work);
+void atbm_smart_setchan_work(struct work_struct *work);
+void atbm_smart_stop_work(struct work_struct *work);
+void atbm_smartconfig_expire_timer(unsigned long arg);
 
 
 

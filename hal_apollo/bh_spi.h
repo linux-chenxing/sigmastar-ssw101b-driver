@@ -1,6 +1,6 @@
 
-#ifndef SSTAR_APOLLO_BH_USB_H
-#define SSTAR_APOLLO_BH_USB_H
+#ifndef ATBM_APOLLO_BH_USB_H
+#define ATBM_APOLLO_BH_USB_H
 
 
 #define USB_BLOCK_SIZE (512)
@@ -8,4 +8,4 @@
 #define TX_BUFFER_SIZE 1680
 
 
-#endif//SSTAR_APOLLO_BH_USB_H
+#endif//ATBM_APOLLO_BH_USB_H

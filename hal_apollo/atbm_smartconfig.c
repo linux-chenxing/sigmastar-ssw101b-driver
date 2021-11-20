@@ -1,4 +1,4 @@
-#ifdef SSTAR_SUPPORT_SMARTCONFIG
+#ifdef ATBM_SUPPORT_SMARTCONFIG
 
 #include "apollo.h"
 #include "smartconfig.h"
@@ -63,7 +63,7 @@ int payloadchecksum(short *data,int len ){
 	int j;
 
 	int checksum_recv = 0;
-	Sstar_printk_smt("len = %d\n", len);
+	atbm_printk_smt("len = %d\n", len);
 	for(j=0;j<len;j++)
 	{	
 		checksum_recv += data[j];
@@ -76,7 +76,7 @@ int payloadchecksum(short *data,int len ){
 		return 1;
 	}
 	else{ 
-		Sstar_printk_smt("smartconfig checksum_fail = %d %d \n", checksum_recv,data[len]);
+		atbm_printk_smt("smartconfig checksum_fail = %d %d \n", checksum_recv,data[len]);
 		return 0;
 	}
 }
@@ -156,7 +156,7 @@ int payload_build_data(short *data,int len){
 	for(i=0;i<len;i+=2){
 		ssid_password[i/2] = decBuffer[i]|(decBuffer[i+1]<<4);
 	}
-	Sstar_printk_smt("password&ssid %s\n",ssid_password);
+	atbm_printk_smt("password&ssid %s\n",ssid_password);
 	if(len/2 >= ssidlen){
 		//password + ssid 
 		hmac_cfg.password_len = len/2- ssidlen;
@@ -180,7 +180,7 @@ int payload_build_data(short *data,int len){
 			hmac_cfg.privacy =0;
 		}
 		else {
-			Sstar_printk_smt("<ERROR> smartconfig key len error %d\n",hmac_cfg.password_len);
+			atbm_printk_smt("<ERROR> smartconfig key len error %d\n",hmac_cfg.password_len);
 
 		}
 			
@@ -189,19 +189,19 @@ int payload_build_data(short *data,int len){
 }
 
 
-int fun_recv_magic(struct Sstar_common *hw_priv,short rxdata)
+int fun_recv_magic(struct atbm_common *hw_priv,short rxdata)
 {
 	if((baselen > rxdata)||(baselen==0)){
 		baselen = rxdata;
-		Sstar_printk_smt("baselen = %d\n", baselen);
+		atbm_printk_smt("baselen = %d\n", baselen);
 	}
-	Sstar_printk_smt("%s %d\n", __FUNCTION__, __LINE__);
+	atbm_printk_smt("%s %d\n", __FUNCTION__, __LINE__);
 	magic_code[rxdata&3] = rxdata;
 	//printk("rxdata&3 %d rxdata %d\n",rxdata&3,rxdata);
 	if((magic_code[baselen & 3]+1 == magic_code[(baselen+1) & 3])&&
 		(magic_code[baselen & 3]+2== magic_code[(baselen+2) & 3])&&
 		(magic_code[baselen & 3]+3== magic_code[(baselen+3) & 3])){
-		Sstar_printk_smt("CONFIG_ST_PAYLOAD %d\n",baselen);
+		atbm_printk_smt("CONFIG_ST_PAYLOAD %d\n",baselen);
 		smartconfg_st = CONFIG_ST_PAYLOAD ;
 		return 1;
 	}
@@ -215,8 +215,8 @@ int fun_recv_payload(short rxdata, int turn_id)
 
 	   int payloaddata_id =0;
 		//Console_SetPolling(1);
-		Sstar_printk_smt("turn_id = %d\n", turn_id);
-		Sstar_printk_smt("rxdata: 0x%x,st %d\n", rxdata,smartconfg_st);
+		atbm_printk_smt("turn_id = %d\n", turn_id);
+		atbm_printk_smt("rxdata: 0x%x,st %d\n", rxdata,smartconfg_st);
 		switch(smartconfg_st){
 		case CONFIG_ST_PAYLOAD:		
 			memset(smartconfig_ori_data, 0, sizeof(smartconfig_ori_data));
@@ -230,7 +230,7 @@ int fun_recv_payload(short rxdata, int turn_id)
 			//id_x_cnt =0;
 			if((rxdata > SMARTCONFIG_MAGIC) && ((rxdata & STC_STCTYPE_F_MASK) == STC_TOTALLEN_F_TOTAL_LEN)){
 				smartconfig_ori_data[0] = rxdata;
-				Sstar_printk_smt("CONFIG_ST_RE_PAYLOAD:rxdata:0x%x\n", rxdata);
+				atbm_printk_smt("CONFIG_ST_RE_PAYLOAD:rxdata:0x%x\n", rxdata);
 				//len=1;
 				smartconfg_st = CONFIG_ST_GET_TOTALLEN;
 			}
@@ -244,12 +244,12 @@ int fun_recv_payload(short rxdata, int turn_id)
 					//printk("rxdata = 0x%x\n", rxdata);
 					//printk("smartconfig_ori_data[0] = 0x%x\n", smartconfig_ori_data[0]);
 					//printk("((~smartconfig_ori_data[0] & 0xff)|STC_TOTALLEN_F_CSUM) = 0x%x\n", ((~smartconfig_ori_data[0] & 0xff)|STC_TOTALLEN_F_CSUM));
-					Sstar_printk_smt("totallen_checksum error\n");
+					atbm_printk_smt("totallen_checksum error\n");
 					break;
 				}
 				//save total len
 				totallen= smartconfig_ori_data[0] & 0xff;
-				Sstar_printk_smt("st_totallen=%d\n",totallen);
+				atbm_printk_smt("st_totallen=%d\n",totallen);
 				if(totallen < SMARTCONFIG_MINI_LEN){
 					//if checksum error 
 					smartconfg_st = CONFIG_ST_PAYLOAD;
@@ -286,22 +286,22 @@ int fun_recv_payload(short rxdata, int turn_id)
 						break;
 					}
 					smartconfig_ori_payload[payloadHdrLen+payloaddata_id+ turn_id*16]=rxdata;
-					Sstar_printk_smt("st_payload[%d]=%x,len %d\n", payloadHdrLen+payloaddata_id+ turn_id*16,smartconfig_ori_payload[payloadHdrLen+payloaddata_id+ turn_id*16],payloaddatalen);
+					atbm_printk_smt("st_payload[%d]=%x,len %d\n", payloadHdrLen+payloaddata_id+ turn_id*16,smartconfig_ori_payload[payloadHdrLen+payloaddata_id+ turn_id*16],payloaddatalen);
 					payloaddatalen++;
 				}
 				else {						
 				    //printk("222 id_x_cnt %d id_x %d payloaddata_id %d payloaddata_id_pre %d\n",id_x_cnt,id_x,payloaddata_id , payloaddata_id_pre);
 					if(((payloaddata_id_pre+1)&0xf)==payloaddata_id){	
-						Sstar_printk_smt("before stpayload[%d]=%x\n", payloadHdrLen+payloaddata_id+ turn_id*16,smartconfig_ori_payload[payloadHdrLen+payloaddata_id+ turn_id*16]);
+						atbm_printk_smt("before stpayload[%d]=%x\n", payloadHdrLen+payloaddata_id+ turn_id*16,smartconfig_ori_payload[payloadHdrLen+payloaddata_id+ turn_id*16]);
 						smartconfig_ori_payload[payloadHdrLen+payloaddata_id+ turn_id*16]=rxdata;
-						Sstar_printk_smt("xxx stpayload[%d]=%x\n", payloadHdrLen+payloaddata_id+ turn_id*16,smartconfig_ori_payload[payloadHdrLen+payloaddata_id+ turn_id*16]);
+						atbm_printk_smt("xxx stpayload[%d]=%x\n", payloadHdrLen+payloaddata_id+ turn_id*16,smartconfig_ori_payload[payloadHdrLen+payloaddata_id+ turn_id*16]);
 					}
 				}
 	
 				
 				payloaddata_id_pre= payloaddata_id;	
 				if((turn_id >= (totallen-1 - payloadHdrLen)/16 ) &&(payloaddata_id == (totallen-2 - payloadHdrLen )%16  )){
-					Sstar_printk_smt("id_x = %d\n", turn_id);
+					atbm_printk_smt("id_x = %d\n", turn_id);
 				  	smartconfg_st = CONFIG_ST_GET_PAYLOAD_CSUM;
 				}
 				
@@ -311,7 +311,7 @@ int fun_recv_payload(short rxdata, int turn_id)
 				//id_x = 0;
 				smartconfig_ori_payload[totallen-1]=rxdata;
 				//payloaddatalen -= payloaderror_cnt;
-				Sstar_printk_smt("payloaddatalen=%d,totallen=%d\n",payloaddatalen,totallen);
+				atbm_printk_smt("payloaddatalen=%d,totallen=%d\n",payloaddatalen,totallen);
 
 				//if((payloaddatalen <= totallen/2) && (smartconfig_ori_payload[totallen/2] != 0)){
 					//smartconfg_st = CONFIG_ST_PAYLOAD;
@@ -321,8 +321,8 @@ int fun_recv_payload(short rxdata, int turn_id)
 					if(payloadchecksum(smartconfig_ori_payload,payloaddatalen+1)){	
 						 payload_build_data(smartconfig_ori_payload,payloaddatalen);
 						 smartconfg_st = CONFIG_ST_DONE_SUCCESS;
-						 Sstar_printk_smt("_SUCCESS \n");
-						 Sstar_printk_smt("smartconfig_ori_data[0] = %d]\n", smartconfig_ori_data[0]);
+						 atbm_printk_smt("_SUCCESS \n");
+						 atbm_printk_smt("smartconfig_ori_data[0] = %d]\n", smartconfig_ori_data[0]);
 						 return CONFIG_ST_DONE_SUCCESS;
 					}
 					else {							
@@ -360,7 +360,7 @@ short func_send_smartconfig_data(short data,int step)
 }
 
 char password[]="1234567890";
-char ssid[]="Sstar_wifi_ap2222";
+char ssid[]="atbm_wifi_ap2222";
 
 
 int smartconfig_send_main(char *ssid,int len_ssid,char* password,int len_pwd)

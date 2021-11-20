@@ -1,7 +1,7 @@
 /*
- * Firmware I/O code for mac80211 sigmastar APOLLO drivers
+ * Firmware I/O code for mac80211 altobeam APOLLO drivers
  * *
- * Copyright (c) 2016, sigmastar
+ * Copyright (c) 2016, altobeam
  * Author:
  *
  * Based on apollo code
@@ -33,7 +33,7 @@
 #include "bh.h"
 #include "dcxo_dpll.h"
 
-#ifdef SSTAR_USE_SAVED_FW
+#ifdef ATBM_USE_SAVED_FW
 #pragma message("Suspend Save Firmware")
 #endif
 #ifdef CONFIG_USE_FW_H
@@ -55,108 +55,108 @@ struct firmware_headr {
 	u16 checksum;
 };
 
-struct firmware_sigmastar {
+struct firmware_altobeam {
 	struct firmware_headr hdr;
 	u8 *fw_iccm;
 	u8 *fw_dccm;
 };
-static struct firmware_sigmastar Sstar_fw;
+static struct firmware_altobeam atbm_fw;
 
-void Sstar_release_firmware(void)
+void atbm_release_firmware(void)
 {
-	Sstar_printk_exit("Sstar_release_firmware\n");
-	if(Sstar_fw.fw_dccm)
+	atbm_printk_exit("atbm_release_firmware\n");
+	if(atbm_fw.fw_dccm)
 	{
-		vfree(Sstar_fw.fw_dccm);
-		Sstar_fw.fw_dccm = NULL;
+		vfree(atbm_fw.fw_dccm);
+		atbm_fw.fw_dccm = NULL;
 	}
-	if(Sstar_fw.fw_iccm)
+	if(atbm_fw.fw_iccm)
 	{
-		vfree(Sstar_fw.fw_iccm);
-		Sstar_fw.fw_iccm = NULL;
+		vfree(atbm_fw.fw_iccm);
+		atbm_fw.fw_iccm = NULL;
 	}
 }
-int Sstar_init_firmware(void)
+int atbm_init_firmware(void)
 {
-	Sstar_printk_init("Sstar_init_firmware\n");
-	memset(&Sstar_fw,0,sizeof(struct firmware_sigmastar));
+	atbm_printk_init("atbm_init_firmware\n");
+	memset(&atbm_fw,0,sizeof(struct firmware_altobeam));
 	return 0;
 }
 
-int Sstar_set_firmare(struct firmware_sigmastar *fw)
+int atbm_set_firmare(struct firmware_altobeam *fw)
 {
-#ifdef SSTAR_USE_SAVED_FW
+#ifdef ATBM_USE_SAVED_FW
 	if(!fw || (!fw->fw_dccm&&!fw->fw_iccm))
 	{
-		Sstar_printk_err(KERN_ERR "fw is err\n");
+		atbm_printk_err(KERN_ERR "fw is err\n");
 		return -1;
 	}
 
-	if(Sstar_fw.fw_dccm || Sstar_fw.fw_iccm)
+	if(atbm_fw.fw_dccm || atbm_fw.fw_iccm)
 	{
-		Sstar_printk_err("Sstar_fw has been set\n");
+		atbm_printk_err("atbm_fw has been set\n");
 		return -1;
 	}
-	memcpy(&Sstar_fw.hdr,&fw->hdr,sizeof(struct firmware_headr));
+	memcpy(&atbm_fw.hdr,&fw->hdr,sizeof(struct firmware_headr));
 	
-	if(Sstar_fw.hdr.iccm_len)
+	if(atbm_fw.hdr.iccm_len)
 	{
-		Sstar_fw.fw_iccm = vmalloc(Sstar_fw.hdr.iccm_len);
-		Sstar_printk_err("%s:fw_iccm(%p)\n",__func__,Sstar_fw.fw_iccm);
-		if(!Sstar_fw.fw_iccm)
+		atbm_fw.fw_iccm = vmalloc(atbm_fw.hdr.iccm_len);
+		atbm_printk_err("%s:fw_iccm(%p)\n",__func__,atbm_fw.fw_iccm);
+		if(!atbm_fw.fw_iccm)
 		{
-			Sstar_printk_err("alloc Sstar_fw.fw_iccm err\n");
+			atbm_printk_err("alloc atbm_fw.fw_iccm err\n");
 			goto err;
 		}
-		memcpy(Sstar_fw.fw_iccm,fw->fw_iccm,Sstar_fw.hdr.iccm_len);
+		memcpy(atbm_fw.fw_iccm,fw->fw_iccm,atbm_fw.hdr.iccm_len);
 	}
 
-	if(Sstar_fw.hdr.dccm_len)
+	if(atbm_fw.hdr.dccm_len)
 	{
-		Sstar_fw.fw_dccm= vmalloc(Sstar_fw.hdr.dccm_len);
+		atbm_fw.fw_dccm= vmalloc(atbm_fw.hdr.dccm_len);
 		
-		Sstar_printk_err("%s:fw_dccm(%p)\n",__func__,Sstar_fw.fw_dccm);
-		if(!Sstar_fw.fw_dccm)
+		atbm_printk_err("%s:fw_dccm(%p)\n",__func__,atbm_fw.fw_dccm);
+		if(!atbm_fw.fw_dccm)
 		{
-			Sstar_printk_err("alloc Sstar_fw.fw_dccm err\n");
+			atbm_printk_err("alloc atbm_fw.fw_dccm err\n");
 			goto err;
 		}
-		memcpy(Sstar_fw.fw_dccm,fw->fw_dccm,Sstar_fw.hdr.dccm_len);
+		memcpy(atbm_fw.fw_dccm,fw->fw_dccm,atbm_fw.hdr.dccm_len);
 	}
 	return 0;
 err:
-	if(Sstar_fw.fw_iccm)
+	if(atbm_fw.fw_iccm)
 	{
-		vfree(Sstar_fw.fw_iccm);
-		Sstar_fw.fw_iccm = NULL;
+		vfree(atbm_fw.fw_iccm);
+		atbm_fw.fw_iccm = NULL;
 	}
 
-	if(Sstar_fw.fw_dccm)
+	if(atbm_fw.fw_dccm)
 	{
-		vfree(Sstar_fw.fw_dccm);
-		Sstar_fw.fw_dccm = NULL;
+		vfree(atbm_fw.fw_dccm);
+		atbm_fw.fw_dccm = NULL;
 	}
 #endif //#ifndef USB_BUS
 	return -1;
 }
 
-#define FW_IS_READY	((Sstar_fw.fw_dccm != NULL) || (Sstar_fw.fw_iccm != NULL))
-int Sstar_get_fw(struct firmware_sigmastar *fw)
+#define FW_IS_READY	((atbm_fw.fw_dccm != NULL) || (atbm_fw.fw_iccm != NULL))
+int atbm_get_fw(struct firmware_altobeam *fw)
 {
 	if(!FW_IS_READY)
 	{
 		return -1;
 	}
 
-	memcpy(&fw->hdr,&Sstar_fw.hdr,sizeof(struct firmware_headr));
-	fw->fw_iccm = Sstar_fw.fw_iccm;
-	fw->fw_dccm = Sstar_fw.fw_dccm;
-	Sstar_printk_always("%s:get fw\n",__func__);
+	memcpy(&fw->hdr,&atbm_fw.hdr,sizeof(struct firmware_headr));
+	fw->fw_iccm = atbm_fw.fw_iccm;
+	fw->fw_dccm = atbm_fw.fw_dccm;
+	atbm_printk_always("%s:get fw\n",__func__);
 	return 0;
 }
 
 
-int Sstar_get_hw_type(u32 config_reg_val, int *major_revision)
+int atbm_get_hw_type(u32 config_reg_val, int *major_revision)
 {
 #if 0
 	int hw_type = -1;
@@ -171,7 +171,7 @@ int Sstar_get_hw_type(u32 config_reg_val, int *major_revision)
 	return HIF_1601_CHIP;
 }
 
-static int Sstar_load_firmware_generic(struct Sstar_common *priv, u8 *data,u32 size,u32 addr)
+static int atbm_load_firmware_generic(struct atbm_common *priv, u8 *data,u32 size,u32 addr)
 {
 
 	int ret=0;
@@ -179,9 +179,9 @@ static int Sstar_load_firmware_generic(struct Sstar_common *priv, u8 *data,u32 s
 	u8 *buf = NULL;
 
 
-	buf = Sstar_kmalloc(DOWNLOAD_BLOCK_SIZE*2, GFP_KERNEL | GFP_DMA);
+	buf = atbm_kmalloc(DOWNLOAD_BLOCK_SIZE*2, GFP_KERNEL | GFP_DMA);
 	if (!buf) {
-		Sstar_dbg(SSTAR_APOLLO_DBG_ERROR,
+		atbm_dbg(ATBM_APOLLO_DBG_ERROR,
 			"%s: can't allocate bootloader buffer.\n", __func__);
 		ret = -ENOMEM;
 		goto error;
@@ -193,7 +193,7 @@ static int Sstar_load_firmware_generic(struct Sstar_common *priv, u8 *data,u32 s
 #endif //#ifndef HW_DOWN_FW
 
 	/*  downloading loop */
-	Sstar_printk_init( "%s: addr %x: len %x\n",__func__,addr,size);
+	atbm_printk_init( "%s: addr %x: len %x\n",__func__,addr,size);
 	for (put = 0; put < size ;put += DOWNLOAD_BLOCK_SIZE) {
 		u32 tx_size;
 
@@ -204,35 +204,35 @@ static int Sstar_load_firmware_generic(struct Sstar_common *priv, u8 *data,u32 s
 		memcpy(buf, &data[put], tx_size);
 
 		/* send the block to sram */
-		ret = Sstar_fw_write(priv,put+addr,buf, tx_size);
+		ret = atbm_fw_write(priv,put+addr,buf, tx_size);
 		if (ret < 0) {
-			Sstar_dbg(SSTAR_APOLLO_DBG_ERROR,
+			atbm_dbg(ATBM_APOLLO_DBG_ERROR,
 				"%s: can't write block at line %d.\n",
 				__func__, __LINE__);
-			Sstar_printk_err("%s:put = 0x%x\n",__func__,put);
+			atbm_printk_err("%s:put = 0x%x\n",__func__,put);
 			goto error;
 		}
 	} /* End of bootloader download loop */
 
 error:
-	Sstar_kfree(buf);
+	atbm_kfree(buf);
 	return ret;
 
 
 }
 
-char * Sstar_HwGetChipFw(struct Sstar_common *priv)
+char * atbm_HwGetChipFw(struct atbm_common *priv)
 {
 	u32 chipver = 0;
 	char * strHwChipFw;
 
 	if(fw)
 	{
-		Sstar_printk_always("%s, use module_param fw [%s]\n",__func__, fw );
+		atbm_printk_always("%s, use module_param fw [%s]\n",__func__, fw );
 	 	return fw;
 	}
 
-	Sstar_direct_read_reg_32(priv,0x0acc017c,&chipver);
+	atbm_direct_read_reg_32(priv,0x0acc017c,&chipver);
 	chipver&=0x3f;
 	switch(chipver)
 	{
@@ -277,7 +277,7 @@ char * Sstar_HwGetChipFw(struct Sstar_common *priv)
 		break;
 	}
 
-	Sstar_printk_always("%s, chipver=0x%x, use fw [%s]\n",__func__, chipver,strHwChipFw );
+	atbm_printk_always("%s, chipver=0x%x, use fw [%s]\n",__func__, chipver,strHwChipFw );
 
 	return strHwChipFw;
 }
@@ -288,7 +288,7 @@ char * Sstar_HwGetChipFw(struct Sstar_common *priv)
 #endif
 #ifdef USED_FW_FILE
 /*check if fw headr ok*/
-static int Sstar_fw_checksum(struct firmware_headr * hdr)
+static int atbm_fw_checksum(struct firmware_headr * hdr)
 {
 	return 1;
 }
@@ -305,218 +305,218 @@ static int Sstar_fw_checksum(struct firmware_headr * hdr)
 #endif
 #ifdef CONFIG_PM_SLEEP
 #pragma message("CONFIG_PM_SLEEP")
-int Sstar_cache_fw_before_suspend(struct device	 *pdev)
+int atbm_cache_fw_before_suspend(struct device	 *pdev)
 {
-#if defined (USED_FW_FILE) && defined(SSTAR_USE_SAVED_FW)
+#if defined (USED_FW_FILE) && defined(ATBM_USE_SAVED_FW)
 	int ret = 0;
 	const char *fw_path= fw;
 	const struct firmware *firmware = NULL;
-	struct firmware_sigmastar fw_sigmastar;
+	struct firmware_altobeam fw_altobeam;
 
-	memset(&fw_sigmastar,0,sizeof(struct firmware_sigmastar));
+	memset(&fw_altobeam,0,sizeof(struct firmware_altobeam));
 	if(fw_path == NULL){
 		goto error2;
 	}
 	if(FW_IS_READY){
-		Sstar_printk_err("Sstar_fw ready\n");
+		atbm_printk_err("atbm_fw ready\n");
 		goto error2;
 	}
 	
 	ret = request_firmware(&firmware, fw_path, pdev);
 	if(ret){
-		Sstar_printk_err("%s:request_firmware err\n",__func__);
+		atbm_printk_err("%s:request_firmware err\n",__func__);
 		goto error2;
 	}
-	if(*(int *)firmware->data == SIGMASTAR_WIFI_HDR_FLAG){
-		memcpy(&fw_sigmastar.hdr,firmware->data,sizeof(struct firmware_headr));
-		if(Sstar_fw_checksum(&fw_sigmastar.hdr)==0){
+	if(*(int *)firmware->data == ALTOBEAM_WIFI_HDR_FLAG){
+		memcpy(&fw_altobeam.hdr,firmware->data,sizeof(struct firmware_headr));
+		if(atbm_fw_checksum(&fw_altobeam.hdr)==0){
 			ret = -1;
-			 Sstar_dbg(SSTAR_APOLLO_DBG_ERROR,"%s: Sstar_fw_checksum fail 11\n", __func__);
+			 atbm_dbg(ATBM_APOLLO_DBG_ERROR,"%s: atbm_fw_checksum fail 11\n", __func__);
 			 goto error1;
 		}
-		fw_sigmastar.fw_iccm = (u8 *)firmware->data + sizeof(struct firmware_headr);
-		fw_sigmastar.fw_dccm = fw_sigmastar.fw_iccm + fw_sigmastar.hdr.iccm_len;
-		Sstar_dbg(SSTAR_APOLLO_DBG_ERROR,"%s: have header,lmac version(%d) iccm_len(%d) dccm_len(%d)\n", __func__,
-			fw_sigmastar.hdr.version,fw_sigmastar.hdr.iccm_len,fw_sigmastar.hdr.dccm_len);
+		fw_altobeam.fw_iccm = (u8 *)firmware->data + sizeof(struct firmware_headr);
+		fw_altobeam.fw_dccm = fw_altobeam.fw_iccm + fw_altobeam.hdr.iccm_len;
+		atbm_dbg(ATBM_APOLLO_DBG_ERROR,"%s: have header,lmac version(%d) iccm_len(%d) dccm_len(%d)\n", __func__,
+			fw_altobeam.hdr.version,fw_altobeam.hdr.iccm_len,fw_altobeam.hdr.dccm_len);
 	}
 	else {
-		fw_sigmastar.hdr.version =  0x001;
+		fw_altobeam.hdr.version =  0x001;
 		if(firmware->size > DOWNLOAD_ITCM_SIZE){
-			fw_sigmastar.hdr.iccm_len =  DOWNLOAD_ITCM_SIZE;
-			fw_sigmastar.hdr.dccm_len =  firmware->size - fw_sigmastar.hdr.iccm_len;
-			if(fw_sigmastar.hdr.dccm_len > DOWNLOAD_DTCM_SIZE) {
+			fw_altobeam.hdr.iccm_len =  DOWNLOAD_ITCM_SIZE;
+			fw_altobeam.hdr.dccm_len =  firmware->size - fw_altobeam.hdr.iccm_len;
+			if(fw_altobeam.hdr.dccm_len > DOWNLOAD_DTCM_SIZE) {
 				ret = -1;
-			 	Sstar_dbg(SSTAR_APOLLO_DBG_ERROR,"%s: Sstar_fw_checksum fail 22\n", __func__);
+			 	atbm_dbg(ATBM_APOLLO_DBG_ERROR,"%s: atbm_fw_checksum fail 22\n", __func__);
 			 	goto error1;
 			}
-			fw_sigmastar.fw_iccm = (u8 *)firmware->data;
-			fw_sigmastar.fw_dccm = fw_sigmastar.fw_iccm+fw_sigmastar.hdr.iccm_len;
+			fw_altobeam.fw_iccm = (u8 *)firmware->data;
+			fw_altobeam.fw_dccm = fw_altobeam.fw_iccm+fw_altobeam.hdr.iccm_len;
 		}
 		else {
-			fw_sigmastar.hdr.iccm_len = firmware->size;
-			fw_sigmastar.hdr.dccm_len = 0;
-			fw_sigmastar.fw_iccm = (u8 *)firmware->data;
+			fw_altobeam.hdr.iccm_len = firmware->size;
+			fw_altobeam.hdr.dccm_len = 0;
+			fw_altobeam.fw_iccm = (u8 *)firmware->data;
 			
 		}
 
 	}
-	Sstar_release_firmware();
+	atbm_release_firmware();
 	
-	memcpy(&Sstar_fw.hdr,&fw_sigmastar.hdr,sizeof(struct firmware_headr));
-	if(Sstar_fw.hdr.iccm_len)
+	memcpy(&atbm_fw.hdr,&fw_altobeam.hdr,sizeof(struct firmware_headr));
+	if(atbm_fw.hdr.iccm_len)
 	{
-		Sstar_fw.fw_iccm = vmalloc(Sstar_fw.hdr.iccm_len);
+		atbm_fw.fw_iccm = vmalloc(atbm_fw.hdr.iccm_len);
 		
-		if(!Sstar_fw.fw_iccm)
+		if(!atbm_fw.fw_iccm)
 		{
-			Sstar_printk_err( "alloc Sstar_fw.fw_iccm err\n");
+			atbm_printk_err( "alloc atbm_fw.fw_iccm err\n");
 			goto error1;
 		}
-		memcpy(Sstar_fw.fw_iccm,fw_sigmastar.fw_iccm,Sstar_fw.hdr.iccm_len);
+		memcpy(atbm_fw.fw_iccm,fw_altobeam.fw_iccm,atbm_fw.hdr.iccm_len);
 	}
 
-	if(Sstar_fw.hdr.dccm_len)
+	if(atbm_fw.hdr.dccm_len)
 	{
-		Sstar_fw.fw_dccm= vmalloc(Sstar_fw.hdr.dccm_len);
+		atbm_fw.fw_dccm= vmalloc(atbm_fw.hdr.dccm_len);
 
-		if(!Sstar_fw.fw_dccm)
+		if(!atbm_fw.fw_dccm)
 		{
-			Sstar_printk_err("alloc Sstar_fw.fw_dccm err\n");
+			atbm_printk_err("alloc atbm_fw.fw_dccm err\n");
 			goto error1;
 		}
-		memcpy(Sstar_fw.fw_dccm,fw_sigmastar.fw_dccm,Sstar_fw.hdr.dccm_len);
+		memcpy(atbm_fw.fw_dccm,fw_altobeam.fw_dccm,atbm_fw.hdr.dccm_len);
 	}
-	Sstar_printk_always("%s:cached fw\n",__func__);
+	atbm_printk_always("%s:cached fw\n",__func__);
 	release_firmware(firmware);
 	return 0;
 error1:
 	
-	Sstar_printk_err("%s:error1\n",__func__);
+	atbm_printk_err("%s:error1\n",__func__);
 	release_firmware(firmware);
-	if(Sstar_fw.fw_iccm)
+	if(atbm_fw.fw_iccm)
 	{
-		vfree(Sstar_fw.fw_iccm);
-		Sstar_fw.fw_iccm = NULL;
+		vfree(atbm_fw.fw_iccm);
+		atbm_fw.fw_iccm = NULL;
 	}
 
-	if(Sstar_fw.fw_dccm)
+	if(atbm_fw.fw_dccm)
 	{
-		vfree(Sstar_fw.fw_dccm);
-		Sstar_fw.fw_dccm = NULL;
+		vfree(atbm_fw.fw_dccm);
+		atbm_fw.fw_dccm = NULL;
 	}
 error2:
-	Sstar_printk_err("%s:error2\n",__func__);
+	atbm_printk_err("%s:error2\n",__func__);
 	return ret;
 #else
 	return 0;
 #endif//
 }
 #endif
-static int Sstar_start_load_firmware(struct Sstar_common *priv)
+static int atbm_start_load_firmware(struct atbm_common *priv)
 {
 
 	int ret;
 #ifdef USED_FW_FILE
-	const char *fw_path= Sstar_HwGetChipFw(priv);
+	const char *fw_path= atbm_HwGetChipFw(priv);
 #endif//
 	const struct firmware *firmware = NULL;
-	struct firmware_sigmastar fw_sigmastar;
+	struct firmware_altobeam fw_altobeam;
 loadfw:
 	//u32 testreg_uart;
 #ifdef START_DCXO_CONFIG
-	Sstar_ahb_write_32(priv,0x18e00014,0x200);
-	Sstar_ahb_read_32(priv,0x18e00014,&val32_1);
-	//Sstar_ahb_read_32(priv,0x16400000,&testreg_uart);
-	Sstar_printk_always("0x18e000e4-->%08x %08x\n",val32_1);
+	atbm_ahb_write_32(priv,0x18e00014,0x200);
+	atbm_ahb_read_32(priv,0x18e00014,&val32_1);
+	//atbm_ahb_read_32(priv,0x16400000,&testreg_uart);
+	atbm_printk_always("0x18e000e4-->%08x %08x\n",val32_1);
 #endif//TEST_DCXO_CONFIG
 	if(!FW_IS_READY)
 	{
 #ifdef USED_FW_FILE
-	    Sstar_dbg(SSTAR_APOLLO_DBG_MSG,"%s:FW FILE = %s\n",__func__,fw_path);
+	    atbm_dbg(ATBM_APOLLO_DBG_MSG,"%s:FW FILE = %s\n",__func__,fw_path);
 		ret = request_firmware(&firmware, fw_path, priv->pdev);
 		if (ret) {
-			Sstar_dbg(SSTAR_APOLLO_DBG_ERROR,
+			atbm_dbg(ATBM_APOLLO_DBG_ERROR,
 				"%s: can't load firmware file %s.\n",
 				__func__, fw_path);
 			goto error;
 		}
 		BUG_ON(!firmware->data);
-		if(*(int *)firmware->data == SIGMASTAR_WIFI_HDR_FLAG){
-			memcpy(&fw_sigmastar.hdr,firmware->data,sizeof(struct firmware_headr));
-			if(Sstar_fw_checksum(&fw_sigmastar.hdr)==0){
+		if(*(int *)firmware->data == ALTOBEAM_WIFI_HDR_FLAG){
+			memcpy(&fw_altobeam.hdr,firmware->data,sizeof(struct firmware_headr));
+			if(atbm_fw_checksum(&fw_altobeam.hdr)==0){
 				ret = -1;
-				 Sstar_dbg(SSTAR_APOLLO_DBG_ERROR,"%s: Sstar_fw_checksum fail 11\n", __func__);
+				 atbm_dbg(ATBM_APOLLO_DBG_ERROR,"%s: atbm_fw_checksum fail 11\n", __func__);
 				 goto error;
 			}
-			fw_sigmastar.fw_iccm = (u8 *)firmware->data + sizeof(struct firmware_headr);
-			fw_sigmastar.fw_dccm = fw_sigmastar.fw_iccm + fw_sigmastar.hdr.iccm_len;
-			Sstar_dbg(SSTAR_APOLLO_DBG_ERROR,"%s: have header,lmac version(%d) iccm_len(%d) dccm_len(%d),fwsize(%zu),hdrsize(%zu)\n", __func__,
-				fw_sigmastar.hdr.version,fw_sigmastar.hdr.iccm_len,fw_sigmastar.hdr.dccm_len,firmware->size,sizeof(struct firmware_headr));
+			fw_altobeam.fw_iccm = (u8 *)firmware->data + sizeof(struct firmware_headr);
+			fw_altobeam.fw_dccm = fw_altobeam.fw_iccm + fw_altobeam.hdr.iccm_len;
+			atbm_dbg(ATBM_APOLLO_DBG_ERROR,"%s: have header,lmac version(%d) iccm_len(%d) dccm_len(%d),fwsize(%zu),hdrsize(%zu)\n", __func__,
+				fw_altobeam.hdr.version,fw_altobeam.hdr.iccm_len,fw_altobeam.hdr.dccm_len,firmware->size,sizeof(struct firmware_headr));
 
-			//frame_hexdump("fw_iccm ",fw_sigmastar.fw_iccm,64);
-			//frame_hexdump("fw_dccm ",fw_sigmastar.fw_dccm,64);
+			//frame_hexdump("fw_iccm ",fw_altobeam.fw_iccm,64);
+			//frame_hexdump("fw_dccm ",fw_altobeam.fw_dccm,64);
 		}
 		else {
-			fw_sigmastar.hdr.version =  0x001;
+			fw_altobeam.hdr.version =  0x001;
 			if(firmware->size > DOWNLOAD_ITCM_SIZE){
-				fw_sigmastar.hdr.iccm_len =  DOWNLOAD_ITCM_SIZE;
-				fw_sigmastar.hdr.dccm_len =  firmware->size - fw_sigmastar.hdr.iccm_len;
-				if(fw_sigmastar.hdr.dccm_len > DOWNLOAD_DTCM_SIZE) {
+				fw_altobeam.hdr.iccm_len =  DOWNLOAD_ITCM_SIZE;
+				fw_altobeam.hdr.dccm_len =  firmware->size - fw_altobeam.hdr.iccm_len;
+				if(fw_altobeam.hdr.dccm_len > DOWNLOAD_DTCM_SIZE) {
 					ret = -1;
-				 	Sstar_dbg(SSTAR_APOLLO_DBG_ERROR,"%s: Sstar_fw_checksum fail 22\n", __func__);
+				 	atbm_dbg(ATBM_APOLLO_DBG_ERROR,"%s: atbm_fw_checksum fail 22\n", __func__);
 				 	goto error;
 				}
-				fw_sigmastar.fw_iccm = (u8 *)firmware->data;
-				fw_sigmastar.fw_dccm = fw_sigmastar.fw_iccm+fw_sigmastar.hdr.iccm_len;
+				fw_altobeam.fw_iccm = (u8 *)firmware->data;
+				fw_altobeam.fw_dccm = fw_altobeam.fw_iccm+fw_altobeam.hdr.iccm_len;
 			}
 			else {
-				fw_sigmastar.hdr.iccm_len = firmware->size;
-				fw_sigmastar.hdr.dccm_len = 0;
-				fw_sigmastar.fw_iccm = (u8 *)firmware->data;
+				fw_altobeam.hdr.iccm_len = firmware->size;
+				fw_altobeam.hdr.dccm_len = 0;
+				fw_altobeam.fw_iccm = (u8 *)firmware->data;
 				
 			}
 
 		}
 #else //USED_FW_FILE
 		{
-		Sstar_dbg(SSTAR_APOLLO_DBG_ERROR,"%s: used firmware.h=\n", __func__);
-		fw_sigmastar.hdr.iccm_len = sizeof(fw_code);
-		fw_sigmastar.hdr.dccm_len = sizeof(fw_data);
+		atbm_dbg(ATBM_APOLLO_DBG_ERROR,"%s: used firmware.h=\n", __func__);
+		fw_altobeam.hdr.iccm_len = sizeof(fw_code);
+		fw_altobeam.hdr.dccm_len = sizeof(fw_data);
 		
-		fw_sigmastar.fw_iccm = &fw_code[0];
-		fw_sigmastar.fw_dccm = &fw_data[0];
+		fw_altobeam.fw_iccm = &fw_code[0];
+		fw_altobeam.fw_dccm = &fw_data[0];
 		}
 #endif //USED_FW_FILE
-		Sstar_set_firmare(&fw_sigmastar);
+		atbm_set_firmare(&fw_altobeam);
 	}
 	else
 	{
-		if((ret = Sstar_get_fw(&fw_sigmastar))<0)
+		if((ret = atbm_get_fw(&fw_altobeam))<0)
 		{
 			goto error;
 		}
 	}
-	Sstar_dbg(SSTAR_APOLLO_DBG_ERROR,"%s: START DOWNLOAD ICCM=========\n", __func__);
+	atbm_dbg(ATBM_APOLLO_DBG_ERROR,"%s: START DOWNLOAD ICCM=========\n", __func__);
 
-	ret = Sstar_load_firmware_generic(priv,fw_sigmastar.fw_iccm,fw_sigmastar.hdr.iccm_len,DOWNLOAD_ITCM_ADDR);
+	ret = atbm_load_firmware_generic(priv,fw_altobeam.fw_iccm,fw_altobeam.hdr.iccm_len,DOWNLOAD_ITCM_ADDR);
 	if(ret<0)
 		goto error;
 	#ifdef USB_BUS
-	fw_sigmastar.hdr.dccm_len = 0x8000;
+	fw_altobeam.hdr.dccm_len = 0x8000;
 	#else
-	if(fw_sigmastar.hdr.dccm_len > 0x9000)
-	fw_sigmastar.hdr.dccm_len = 0x9000;
+	if(fw_altobeam.hdr.dccm_len > 0x9000)
+	fw_altobeam.hdr.dccm_len = 0x9000;
 	#endif
-	Sstar_dbg(SSTAR_APOLLO_DBG_ERROR,"%s: START DOWNLOAD DCCM=========\n", __func__);
-	ret = Sstar_load_firmware_generic(priv,fw_sigmastar.fw_dccm,fw_sigmastar.hdr.dccm_len,DOWNLOAD_DTCM_ADDR);
+	atbm_dbg(ATBM_APOLLO_DBG_ERROR,"%s: START DOWNLOAD DCCM=========\n", __func__);
+	ret = atbm_load_firmware_generic(priv,fw_altobeam.fw_dccm,fw_altobeam.hdr.dccm_len,DOWNLOAD_DTCM_ADDR);
 	if(ret<0)
 		goto error;
 
-	Sstar_dbg(SSTAR_APOLLO_DBG_MSG, "%s: FIRMWARE DOWNLOAD SUCCESS\n",__func__);
+	atbm_dbg(ATBM_APOLLO_DBG_MSG, "%s: FIRMWARE DOWNLOAD SUCCESS\n",__func__);
 
 error:
 	if (ret<0){
-		if(Sstar_reset_lmc_cpu(priv) == 0)
+		if(atbm_reset_lmc_cpu(priv) == 0)
 			goto loadfw;
 	}
 	if (firmware)
@@ -527,20 +527,20 @@ error:
 }
 
 
-int Sstar_load_firmware(struct Sstar_common *hw_priv)
+int atbm_load_firmware(struct atbm_common *hw_priv)
 {
 	int ret;
 
-	Sstar_printk_init("Sstar_before_load_firmware++\n");
-	ret = Sstar_before_load_firmware(hw_priv);
+	atbm_printk_init("atbm_before_load_firmware++\n");
+	ret = atbm_before_load_firmware(hw_priv);
 	if(ret <0)
 		goto out;
-	Sstar_printk_init("Sstar_start_load_firmware++\n");
-	ret = Sstar_start_load_firmware(hw_priv);
+	atbm_printk_init("atbm_start_load_firmware++\n");
+	ret = atbm_start_load_firmware(hw_priv);
 	if(ret <0)
 		goto out;
-	Sstar_printk_init("Sstar_after_load_firmware++\n");
-	ret = Sstar_after_load_firmware(hw_priv);
+	atbm_printk_init("atbm_after_load_firmware++\n");
+	ret = atbm_after_load_firmware(hw_priv);
 	if(ret <0){
 		goto out;
 	}

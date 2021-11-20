@@ -69,45 +69,45 @@ void ieee80211_led_names(struct ieee80211_local *local)
 
 void ieee80211_led_init(struct ieee80211_local *local)
 {
-	local->rx_led = Sstar_kzalloc(sizeof(struct led_trigger), GFP_KERNEL);
+	local->rx_led = atbm_kzalloc(sizeof(struct led_trigger), GFP_KERNEL);
 	if (local->rx_led) {
 		local->rx_led->name = local->rx_led_name;
 		if (led_trigger_register(local->rx_led)) {
-			Sstar_kfree(local->rx_led);
+			atbm_kfree(local->rx_led);
 			local->rx_led = NULL;
 		}
 	}
 
-	local->tx_led = Sstar_kzalloc(sizeof(struct led_trigger), GFP_KERNEL);
+	local->tx_led = atbm_kzalloc(sizeof(struct led_trigger), GFP_KERNEL);
 	if (local->tx_led) {
 		local->tx_led->name = local->tx_led_name;
 		if (led_trigger_register(local->tx_led)) {
-			Sstar_kfree(local->tx_led);
+			atbm_kfree(local->tx_led);
 			local->tx_led = NULL;
 		}
 	}
 
-	local->assoc_led = Sstar_kzalloc(sizeof(struct led_trigger), GFP_KERNEL);
+	local->assoc_led = atbm_kzalloc(sizeof(struct led_trigger), GFP_KERNEL);
 	if (local->assoc_led) {
 		local->assoc_led->name = local->assoc_led_name;
 		if (led_trigger_register(local->assoc_led)) {
-			Sstar_kfree(local->assoc_led);
+			atbm_kfree(local->assoc_led);
 			local->assoc_led = NULL;
 		}
 	}
 
-	local->radio_led = Sstar_kzalloc(sizeof(struct led_trigger), GFP_KERNEL);
+	local->radio_led = atbm_kzalloc(sizeof(struct led_trigger), GFP_KERNEL);
 	if (local->radio_led) {
 		local->radio_led->name = local->radio_led_name;
 		if (led_trigger_register(local->radio_led)) {
-			Sstar_kfree(local->radio_led);
+			atbm_kfree(local->radio_led);
 			local->radio_led = NULL;
 		}
 	}
 
 	if (local->tpt_led_trigger) {
 		if (led_trigger_register(&local->tpt_led_trigger->trig)) {
-			Sstar_kfree(local->tpt_led_trigger);
+			atbm_kfree(local->tpt_led_trigger);
 			local->tpt_led_trigger = NULL;
 		}
 	}
@@ -117,24 +117,24 @@ void ieee80211_led_exit(struct ieee80211_local *local)
 {
 	if (local->radio_led) {
 		led_trigger_unregister(local->radio_led);
-		Sstar_kfree(local->radio_led);
+		atbm_kfree(local->radio_led);
 	}
 	if (local->assoc_led) {
 		led_trigger_unregister(local->assoc_led);
-		Sstar_kfree(local->assoc_led);
+		atbm_kfree(local->assoc_led);
 	}
 	if (local->tx_led) {
 		led_trigger_unregister(local->tx_led);
-		Sstar_kfree(local->tx_led);
+		atbm_kfree(local->tx_led);
 	}
 	if (local->rx_led) {
 		led_trigger_unregister(local->rx_led);
-		Sstar_kfree(local->rx_led);
+		atbm_kfree(local->rx_led);
 	}
 
 	if (local->tpt_led_trigger) {
 		led_trigger_unregister(&local->tpt_led_trigger->trig);
-		Sstar_kfree(local->tpt_led_trigger);
+		atbm_kfree(local->tpt_led_trigger);
 	}
 }
 
@@ -227,7 +227,7 @@ char *__ieee80211_create_tpt_led_trigger(struct ieee80211_hw *hw,
 	if (WARN_ON(local->tpt_led_trigger))
 		return NULL;
 
-	tpt_trig = Sstar_kzalloc(sizeof(struct tpt_led_trigger), GFP_KERNEL);
+	tpt_trig = atbm_kzalloc(sizeof(struct tpt_led_trigger), GFP_KERNEL);
 	if (!tpt_trig)
 		return NULL;
 

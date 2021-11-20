@@ -1,6 +1,6 @@
 /*
 * *
-* Copyright (c) 2016, sigmastar
+* Copyright (c) 2016, altobeam
 * Author:
 *
 * Based on apollo code
@@ -12,49 +12,49 @@
 * published by the Free Software Foundation.
 */
 
-#ifndef SSTAR_NL80211_TESTMODE_MSG_COPY_H
-#define SSTAR_NL80211_TESTMODE_MSG_COPY_H
+#ifndef ATBM_NL80211_TESTMODE_MSG_COPY_H
+#define ATBM_NL80211_TESTMODE_MSG_COPY_H
 
 /* example command structure for test purposes */
-struct Sstar_msg_test_t {
+struct atbm_msg_test_t {
 	int dummy;
 };
 
 /* example reply structure for test purposes */
-struct Sstar_reply_test_t {
+struct atbm_reply_test_t {
 	int dummy;
 };
 
 /* example event structure for test purposes */
-struct Sstar_event_test_t {
+struct atbm_event_test_t {
 	int dummy;
 };
 
-enum Sstar_msg_id {
-	SSTAR_MSG_TEST = 0,	/* for test purposes */
-	SSTAR_MSG_EVENT_TEST,	/* for test purposes */
-	SSTAR_MSG_SET_SNAP_FRAME,
-	SSTAR_MSG_EVENT_FRAME_DATA,
-	SSTAR_MSG_GET_TX_POWER_LEVEL,
-	SSTAR_MSG_GET_TX_POWER_RANGE,
-	SSTAR_MSG_SET_ADVANCE_SCAN_ELEMS,
-	SSTAR_MSG_SET_TX_QUEUE_PARAMS,
-	SSTAR_MSG_SET_POWER_SAVE,
+enum atbm_msg_id {
+	ATBM_MSG_TEST = 0,	/* for test purposes */
+	ATBM_MSG_EVENT_TEST,	/* for test purposes */
+	ATBM_MSG_SET_SNAP_FRAME,
+	ATBM_MSG_EVENT_FRAME_DATA,
+	ATBM_MSG_GET_TX_POWER_LEVEL,
+	ATBM_MSG_GET_TX_POWER_RANGE,
+	ATBM_MSG_SET_ADVANCE_SCAN_ELEMS,
+	ATBM_MSG_SET_TX_QUEUE_PARAMS,
+	ATBM_MSG_SET_POWER_SAVE,
 	/* Add new IDs here */
 
-	SSTAR_MSG_ID_MAX,
+	ATBM_MSG_ID_MAX,
 };
 
-enum Sstar_nl80211_testmode_data_attributes {
-	SSTAR_TM_MSG_ID = 0x0001,	/* u32 type containing the SSTAR message ID */
-	SSTAR_TM_MSG_DATA,	/* message payload */
+enum atbm_nl80211_testmode_data_attributes {
+	ATBM_TM_MSG_ID = 0x0001,	/* u32 type containing the ATBM message ID */
+	ATBM_TM_MSG_DATA,	/* message payload */
 
 	/* Max indicator so module test may add its own attributes */
-	SSTAR_TM_MSG_ATTR_MAX,
+	ATBM_TM_MSG_ATTR_MAX,
 };
 
 /**
- * Sstar_msg_set_snap_frame - set SNAP frame format
+ * atbm_msg_set_snap_frame - set SNAP frame format
  * @len: length of SNAP frame, if 0 SNAP frame disabled
  * @frame: SNAP frame format
  *
@@ -62,26 +62,26 @@ enum Sstar_nl80211_testmode_data_attributes {
  * format and length have to be hidden
  *
  */
-struct Sstar_msg_set_snap_frame {
+struct atbm_msg_set_snap_frame {
 	u8 len;
 	u8 frame[0];
 };
 
 /**
- * Sstar_msg_set_txqueue_params - store Tx queue params
+ * atbm_msg_set_txqueue_params - store Tx queue params
  * @user_priority: User priority for which TSPEC negotiated
  * @medium_time: Allowed medium time
  * @expiry_time: The expiry time of MSDU
  *
  */
-struct Sstar_msg_set_txqueue_params {
+struct atbm_msg_set_txqueue_params {
 	u8 user_priority;
 	u16 medium_time;
 	u16 expiry_time;
 };
-#ifdef CONFIG_SSTAR_APOLLO_TESTMODE
+#ifdef CONFIG_ATBM_APOLLO_TESTMODE
 /**
- * Sstar_tsm_stats - To retrieve the Transmit Stream Measurement stats
+ * atbm_tsm_stats - To retrieve the Transmit Stream Measurement stats
  * @actual_msrmt_start_time: The TSF at the time at which the measurement
  * started
  * @msrmt_duration: Duration for measurement
@@ -104,7 +104,7 @@ struct Sstar_msg_set_txqueue_params {
  * @bin5: bin5 transmit delay histogram
  *
  */
-struct Sstar_tsm_stats {
+struct atbm_tsm_stats {
 	u64 actual_msrmt_start_time;
 	u16 msrmt_duration;
 	u8 peer_sta_addr[6];
@@ -133,14 +133,14 @@ struct Sstar_tsm_stats {
 
 #endif
 /**
- * Sstar_msg_set_start_stop_tsm - To start or stop collecting TSM metrics in
+ * atbm_msg_set_start_stop_tsm - To start or stop collecting TSM metrics in
  * apollo driver
  * @start: To start or stop collecting TSM metrics
  * @up: up for which metrics to be collected
  * @packetization_delay: Packetization period for this TID
  *
  */
-struct Sstar_msg_start_stop_tsm {
+struct atbm_msg_start_stop_tsm {
 	u8 start;	/*1: To start, 0: To stop*/
 	u8 up;
 	u16 packetization_delay;
@@ -154,6 +154,6 @@ struct power_save_elems {
 };
 
 
-#define SSTAR_TM_MAX_ATTRIB_SIZE 1024
+#define ATBM_TM_MAX_ATTRIB_SIZE 1024
 
-#endif /* SSTAR_NL80211_TESTMODE_MSG_COPY_H*/
+#endif /* ATBM_NL80211_TESTMODE_MSG_COPY_H*/

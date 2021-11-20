@@ -13,7 +13,7 @@
 #include <linux/export.h>
 #include <asm/unaligned.h>
 
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include "driver-ops.h"
 #include "key.h"
 #include "tkip.h"
@@ -260,14 +260,14 @@ int ieee80211_tkip_decrypt_data(struct crypto_cipher *tfm,
 	keyid = pos[3];
 	iv32 = get_unaligned_le32(pos + 4);
 	pos += 8;
-#ifdef CONFIG_MAC80211_SSTAR_TKIP_DEBUG
+#ifdef CONFIG_MAC80211_ATBM_TKIP_DEBUG
 	{
 		int i;
-		Sstar_printk_always( "TKIP decrypt: data(len=%zd)", payload_len);
+		atbm_printk_always( "TKIP decrypt: data(len=%zd)", payload_len);
 		for (i = 0; i < payload_len; i++)
-			Sstar_printk_always(" %02x", payload[i]);
-		Sstar_printk_always("\n");
-		Sstar_printk_always("TKIP decrypt: iv16=%04x iv32=%08x\n",
+			atbm_printk_always(" %02x", payload[i]);
+		atbm_printk_always("\n");
+		atbm_printk_always("TKIP decrypt: iv16=%04x iv32=%08x\n",
 		       iv16, iv32);
 	}
 #endif
@@ -282,14 +282,14 @@ int ieee80211_tkip_decrypt_data(struct crypto_cipher *tfm,
 	    (iv32 < key->u.tkip.rx[queue].iv32 ||
 	     (iv32 == key->u.tkip.rx[queue].iv32 &&
 	      iv16 <= key->u.tkip.rx[queue].iv16))) {
-#ifdef CONFIG_MAC80211_SSTAR_TKIP_DEBUG
-		Sstar_printk_debug( "TKIP replay detected for RX frame from "
+#ifdef CONFIG_MAC80211_ATBM_TKIP_DEBUG
+		atbm_printk_debug( "TKIP replay detected for RX frame from "
 		       "%pM (RX IV (%08x,%04x) <= prev. IV (%08x,%04x)\n",
 		       ta,
 		       iv32, iv16, key->u.tkip.rx[queue].iv32,
 		       key->u.tkip.rx[queue].iv16);
 #endif
-		Sstar_printk_debug("tkip_decrypt_data,iv32(%d),iv16(%d),rx_iv32(%d),rx_iv16(%d)\n",iv32,iv16,key->u.tkip.rx[queue].iv32,key->u.tkip.rx[queue].iv16);
+		atbm_printk_debug("tkip_decrypt_data,iv32(%d),iv16(%d),rx_iv32(%d),rx_iv16(%d)\n",iv32,iv16,key->u.tkip.rx[queue].iv32,key->u.tkip.rx[queue].iv16);
 		return TKIP_DECRYPT_REPLAY;
 	}
 
@@ -303,20 +303,20 @@ int ieee80211_tkip_decrypt_data(struct crypto_cipher *tfm,
 	    key->u.tkip.rx[queue].iv32 != iv32) {
 		/* IV16 wrapped around - perform TKIP phase 1 */
 		tkip_mixing_phase1(tk, &key->u.tkip.rx[queue], ta, iv32);
-#ifdef CONFIG_MAC80211_SSTAR_TKIP_DEBUG
+#ifdef CONFIG_MAC80211_ATBM_TKIP_DEBUG
 		{
 			int i;
 			u8 key_offset = NL80211_TKIP_DATA_OFFSET_ENCR_KEY;
-			Sstar_printk_debug( "TKIP decrypt: Phase1 TA=%pM"
+			atbm_printk_debug( "TKIP decrypt: Phase1 TA=%pM"
 			       " TK=", ta);
 			for (i = 0; i < 16; i++)
-				Sstar_printk_debug("%02x ",
+				atbm_printk_debug("%02x ",
 				       key->conf.key[key_offset + i]);
-			Sstar_printk_debug("\n");
-			Sstar_printk_debug( "TKIP decrypt: P1K=");
+			atbm_printk_debug("\n");
+			atbm_printk_debug( "TKIP decrypt: P1K=");
 			for (i = 0; i < 5; i++)
-				Sstar_printk_debug("%04x ", key->u.tkip.rx[queue].p1k[i]);
-			Sstar_printk_debug("\n");
+				atbm_printk_debug("%04x ", key->u.tkip.rx[queue].p1k[i]);
+			atbm_printk_debug("\n");
 		}
 #endif
 	}
@@ -334,13 +334,13 @@ int ieee80211_tkip_decrypt_data(struct crypto_cipher *tfm,
 	}
 
 	tkip_mixing_phase2(tk, &key->u.tkip.rx[queue], iv16, rc4key);
-#ifdef CONFIG_MAC80211_SSTAR_TKIP_DEBUG
+#ifdef CONFIG_MAC80211_ATBM_TKIP_DEBUG
 	{
 		int i;
-		Sstar_printk_debug( "TKIP decrypt: Phase2 rc4key=");
+		atbm_printk_debug( "TKIP decrypt: Phase2 rc4key=");
 		for (i = 0; i < 16; i++)
-			Sstar_printk_debug("%02x ", rc4key[i]);
-		Sstar_printk_debug("\n");
+			atbm_printk_debug("%02x ", rc4key[i]);
+		atbm_printk_debug("\n");
 	}
 #endif
 

@@ -1,1 +1,1 @@
-#define DRIVER_VER  1532
+#define DRIVER_VER  1504

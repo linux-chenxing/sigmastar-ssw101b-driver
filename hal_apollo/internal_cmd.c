@@ -17,16 +17,12 @@
 #include "internal_cmd.h"
 #include "svn_version.h"
 
-#define SSTAR_WSM_ADAPTIVE		"set_adaptive"SSTAR_SPACE_STR
-#define SSTAR_WSM_TXPWR_DCXO		"set_txpwr_and_dcxo"SSTAR_SPACE_STR
-#define SSTAR_WSM_TXPWR			"set_rate_txpower_mode"SSTAR_SPACE_STR
-#define SSTAR_WSM_SET_FREQ		"set_freq"SSTAR_SPACE_STR"%d"SSTAR_SPACE_STR"%d"
-#define SSTAR_WSM_FIX_RATE		"lmac_rate"SSTAR_SPACE_STR"%d"
-#define SSTAR_WSM_TOP_RATE		"lmac_max_rate"SSTAR_SPACE_STR"%d"
-#define SSTAR_WSM_MIN_RATE		"lmac_min_rate"SSTAR_SPACE_STR"%d"
-#define SSTAR_WSM_SET_RATE_POWER	"set_spec_rate_txpower_mode"SSTAR_SPACE_STR"%d"SSTAR_SPACE_STR"%d"
+#define ATBM_WSM_ADAPTIVE		"set_adaptive"ATBM_SPACE_STR
+#define ATBM_WSM_TXPWR_DCXO		"set_txpwr_and_dcxo"ATBM_SPACE_STR
+#define ATBM_WSM_TXPWR			"set_rate_txpower_mode"ATBM_SPACE_STR
+#define ATBM_WSM_SET_FREQ		"set_freq"ATBM_SPACE_STR"%d"ATBM_SPACE_STR"%d"
 
-#define SSTAR_WSM_CMD_LEN		1680
+#define ATBM_WSM_CMD_LEN		1680
 const char *chip_6038  = "6038";
 const char *chip_6032  = "6032";
 const char *chip_6032i = "6032i";
@@ -37,28 +33,28 @@ int ieee80211_set_channel(struct wiphy *wiphy,
 				 struct ieee80211_channel *chan,
 				 enum nl80211_channel_type channel_type);
 
-static void Sstar_internal_cmd_scan_dump(struct ieee80211_internal_scan_request *scan_req)
+static void atbm_internal_cmd_scan_dump(struct ieee80211_internal_scan_request *scan_req)
 {
 	int i;
 	if(scan_req->n_ssids){
 		for(i = 0;i<scan_req->n_ssids;i++){
-			Sstar_printk_debug("%s: ssid[%s][%d]\n",__func__,scan_req->ssids[i].ssid,scan_req->ssids[i].ssid_len);
+			atbm_printk_debug("%s: ssid[%s][%d]\n",__func__,scan_req->ssids[i].ssid,scan_req->ssids[i].ssid_len);
 		}
 	}	
 	if(scan_req->n_channels){
 		for(i = 0;i<scan_req->n_channels;i++){
-			Sstar_printk_debug("%s: channel[%d]\n",__func__,scan_req->channels[i]);
+			atbm_printk_debug("%s: channel[%d]\n",__func__,scan_req->channels[i]);
 		}
 	}
 	if(scan_req->n_macs){
 		for(i = 0;i<scan_req->n_macs;i++){
-			Sstar_printk_debug("%s: mac[%pM]\n",__func__,scan_req->macs[i].mac);
+			atbm_printk_debug("%s: mac[%pM]\n",__func__,scan_req->macs[i].mac);
 		}
 	}
-	Sstar_printk_debug("%s: ie_len[%d]\n",__func__,scan_req->ie_len);
+	atbm_printk_debug("%s: ie_len[%d]\n",__func__,scan_req->ie_len);
 }
 
-bool  Sstar_internal_cmd_scan_build(struct ieee80211_local *local,struct ieee80211_internal_scan_request *req,
+bool  atbm_internal_cmd_scan_build(struct ieee80211_local *local,struct ieee80211_internal_scan_request *req,
 											   u8* channels,int n_channels,struct cfg80211_ssid *ssids,int n_ssids,
 											   struct ieee80211_internal_mac *macs,int n_macs)
 {
@@ -87,10 +83,10 @@ bool  Sstar_internal_cmd_scan_build(struct ieee80211_local *local,struct ieee802
 	ie_len  = local->internal_scan_ie_len;
 
 	if(local_scan_ie && ie_len){
-		scan_ie = Sstar_kzalloc(ie_len,GFP_ATOMIC);
+		scan_ie = atbm_kzalloc(ie_len,GFP_ATOMIC);
 
 		if(scan_ie == NULL){
-			Sstar_printk_err("%s:alloc ie err\n",__func__);
+			atbm_printk_err("%s:alloc ie err\n",__func__);
 			rcu_read_unlock();
 			return false;
 		}
@@ -105,7 +101,7 @@ bool  Sstar_internal_cmd_scan_build(struct ieee80211_local *local,struct ieee802
 
 	return true;
 }
-bool Sstar_internal_cmd_scan_triger(struct ieee80211_sub_if_data *sdata,struct ieee80211_internal_scan_request *req)
+bool atbm_internal_cmd_scan_triger(struct ieee80211_sub_if_data *sdata,struct ieee80211_internal_scan_request *req)
 {
 	struct cfg80211_scan_request *scan_req = NULL;
 	struct ieee80211_local *local  = sdata->local;
@@ -124,13 +120,13 @@ bool Sstar_internal_cmd_scan_triger(struct ieee80211_sub_if_data *sdata,struct i
 	mutex_lock(&local->mtx);
 
 	if(!ieee80211_sdata_running(sdata)){
-		Sstar_printk_scan("%s:%d\n",__func__,__LINE__);
+		atbm_printk_scan("%s:%d\n",__func__,__LINE__);
 		goto err;
 	}
 	
 	if (local->scan_req)
 	{
-		Sstar_printk_scan("%s:%d\n",__func__,__LINE__);
+		atbm_printk_scan("%s:%d\n",__func__,__LINE__);
 		goto err;
 	}
 
@@ -141,13 +137,13 @@ bool Sstar_internal_cmd_scan_triger(struct ieee80211_sub_if_data *sdata,struct i
 
 	if (!list_empty(&local->work_list)) {
 		
-		Sstar_printk_scan("%s(%s):work_list is not empty,pend scan\n",__func__,sdata->name);
+		atbm_printk_scan("%s(%s):work_list is not empty,pend scan\n",__func__,sdata->name);
 		goto err;
 	}
 	
-	if(Sstar_ieee80211_suspend(sdata->local)==true){
+	if(atbm_ieee80211_suspend(sdata->local)==true){
 		
-		Sstar_printk_err("ieee80211_scan drop:suspend\n");
+		atbm_printk_err("ieee80211_scan drop:suspend\n");
 		goto err;
 	}
 	
@@ -158,19 +154,19 @@ bool Sstar_internal_cmd_scan_triger(struct ieee80211_sub_if_data *sdata,struct i
 	}else {
 		n_channels = req->n_channels;
 	}
-	scan_req = Sstar_kzalloc(sizeof(*scan_req)
+	scan_req = atbm_kzalloc(sizeof(*scan_req)
 			+ sizeof(*scan_req->ssids) * req->n_ssids
 			+ sizeof(*scan_req->channels) * n_channels
 			+ req->ie_len + req->n_channels + sizeof(struct ieee80211_internal_mac)*req->n_macs, GFP_KERNEL);
 	
 	if(scan_req == NULL){
-		Sstar_printk_scan("%s:Sstar_kzalloc scan_req err\n",__func__);
+		atbm_printk_scan("%s:atbm_kzalloc scan_req err\n",__func__);
 		goto err;
 	}
 	pos = (void *)&scan_req->channels[n_channels];
 	pos_end = (void*)((u8*)pos+sizeof(*scan_req->ssids) * req->n_ssids+
 			  req->ie_len + req->n_channels + sizeof(struct ieee80211_internal_mac)*req->n_macs);
-	Sstar_printk_err("%s:scan_req(%p),pos(%p),pos_end(%p)\n",__func__,scan_req,pos,pos_end);
+	atbm_printk_err("%s:scan_req(%p),pos(%p),pos_end(%p)\n",__func__,scan_req,pos,pos_end);
 	/*
 	*set channel
 	*/
@@ -184,12 +180,12 @@ bool Sstar_internal_cmd_scan_triger(struct ieee80211_sub_if_data *sdata,struct i
 				freq = 5000 + (5*req->channels[i]);
 			}
 
-			Sstar_printk_debug("%s:channel(%d),freq(%d)\n",__func__,req->channels[i],freq);
+			atbm_printk_debug("%s:channel(%d),freq(%d)\n",__func__,req->channels[i],freq);
 
 			scan_req->channels[i] = ieee80211_get_channel(wiphy,freq);
 
 			if(scan_req->channels[i] == NULL){
-				Sstar_printk_always("%s:ieee80211_get_channel err\n",__func__);
+				atbm_printk_always("%s:ieee80211_get_channel err\n",__func__);
 				goto err;
 			}
 		}
@@ -214,7 +210,7 @@ bool Sstar_internal_cmd_scan_triger(struct ieee80211_sub_if_data *sdata,struct i
 	if( req->n_ssids){
 		scan_req->ssids = (void *)pos;
 		for(i=0;i<req->n_ssids;i++){			
-			Sstar_printk_debug("%s:scan ssid(%s)(%d)\n",__func__,req->ssids[i].ssid,req->ssids[i].ssid_len);
+			atbm_printk_debug("%s:scan ssid(%s)(%d)\n",__func__,req->ssids[i].ssid,req->ssids[i].ssid_len);
 			scan_req->ssids[i].ssid_len = req->ssids[i].ssid_len;
 			memcpy(scan_req->ssids[i].ssid,req->ssids[i].ssid,req->ssids[i].ssid_len);
 		}
@@ -248,7 +244,7 @@ bool Sstar_internal_cmd_scan_triger(struct ieee80211_sub_if_data *sdata,struct i
 		memcpy(local->internal_scan.req.channels,req->channels,req->n_channels);
 	    pos = local->internal_scan.req.channels+req->n_channels;
 	}
-	Sstar_printk_err("%s:pos(%p),pos_end(%p)\n",__func__,pos,pos_end);
+	atbm_printk_err("%s:pos(%p),pos_end(%p)\n",__func__,pos,pos_end);
 	WARN_ON(pos != pos_end);
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 1, 0))
 	for (i = 0; i < IEEE80211_NUM_BANDS; i++)
@@ -272,18 +268,18 @@ bool Sstar_internal_cmd_scan_triger(struct ieee80211_sub_if_data *sdata,struct i
 	rcu_assign_pointer(local->internal_scan.req.result_handle,req->result_handle);
 	rcu_assign_pointer(local->internal_scan.req.priv,req->priv);
 
-	Sstar_common_hash_list_init(local->internal_scan.mac_hash_list,IEEE80211_INTERNAL_SCAN_HASHENTRIES);
+	atbm_common_hash_list_init(local->internal_scan.mac_hash_list,IEEE80211_INTERNAL_SCAN_HASHENTRIES);
 	
 	for(index = 0;index<local->internal_scan.req.n_macs;index++){
-		int hash_index = Sstar_hash_index(local->internal_scan.req.macs[index].mac,6,IEEE80211_INTERNAL_SCAN_HASHBITS);
+		int hash_index = atbm_hash_index(local->internal_scan.req.macs[index].mac,6,IEEE80211_INTERNAL_SCAN_HASHBITS);
 		struct hlist_head *hlist = &local->internal_scan.mac_hash_list[hash_index];
 		hlist_add_head(&local->internal_scan.req.macs[index].hnode,hlist);
 	}
 	
-	Sstar_internal_cmd_scan_dump(&local->internal_scan.req);
+	atbm_internal_cmd_scan_dump(&local->internal_scan.req);
 	
 	if(ieee80211_internal_scan_triger(sdata,scan_req) == false){
-		Sstar_printk_scan("%s scan triger err\n",__func__);
+		atbm_printk_scan("%s scan triger err\n",__func__);
 		
 		for(index = 0;index<local->internal_scan.req.n_macs;index++){
 			hlist_del(&local->internal_scan.req.macs[index].hnode);
@@ -298,11 +294,11 @@ bool Sstar_internal_cmd_scan_triger(struct ieee80211_sub_if_data *sdata,struct i
 	status = wait_event_timeout(local->internal_scan_wq,atomic_read(&local->internal_scan_status) != IEEE80211_INTERNAL_SCAN_STATUS__WAIT,status);
 
 	if(status == 0){
-		Sstar_printk_err("%s: internal scan timeout\n",__func__);
+		atbm_printk_err("%s: internal scan timeout\n",__func__);
 		return false;
 	}
 
-	Sstar_printk_debug("%s: status(%ld)\n",__func__,status);
+	atbm_printk_debug("%s: status(%ld)\n",__func__,status);
 
 	if(atomic_read(&local->internal_scan_status) == IEEE80211_INTERNAL_SCAN_STATUS__ABORT)
 		return false;
@@ -310,13 +306,13 @@ bool Sstar_internal_cmd_scan_triger(struct ieee80211_sub_if_data *sdata,struct i
 	return true;
 err:
 	if(scan_req)
-		Sstar_kfree(scan_req);
+		atbm_kfree(scan_req);
 	mutex_unlock(&local->mtx);
 
 	return false;
 }
 
-bool Sstar_internal_cmd_stainfo(struct ieee80211_local *local,struct ieee80211_internal_sta_req *sta_req)
+bool atbm_internal_cmd_stainfo(struct ieee80211_local *local,struct ieee80211_internal_sta_req *sta_req)
 {
 	struct ieee80211_internal_sta_info stainfo;
 	struct sta_info *sta;
@@ -326,7 +322,7 @@ bool Sstar_internal_cmd_stainfo(struct ieee80211_local *local,struct ieee80211_i
 	struct ieee80211_internal_mac *mac_node;
 	unsigned int hash_index = 0;
 	bool (__rcu *sta_handle)(struct ieee80211_internal_sta_info *stainfo,void *priv);	
-	struct hlist_head Sstar_sta_mac_hlist[SSTAR_COMMON_HASHENTRIES];
+	struct hlist_head atbm_sta_mac_hlist[ATBM_COMMON_HASHENTRIES];
 
 	
 	memset(&stainfo,0,sizeof(struct ieee80211_internal_sta_info));	
@@ -334,14 +330,14 @@ bool Sstar_internal_cmd_stainfo(struct ieee80211_local *local,struct ieee80211_i
 	WARN_ON(sta_req->sta_handle == NULL);
 	BUG_ON((sta_req->n_macs != 0)&&(sta_req->macs == NULL));
 	
-	Sstar_common_hash_list_init(Sstar_sta_mac_hlist,SSTAR_COMMON_HASHENTRIES);
+	atbm_common_hash_list_init(atbm_sta_mac_hlist,ATBM_COMMON_HASHENTRIES);
 
 	for(index = 0;index<sta_req->n_macs;index++){
-		hash_index = Sstar_hash_index(sta_req->macs[index].mac,
-								 6,SSTAR_COMMON_HASHBITS);
+		hash_index = atbm_hash_index(sta_req->macs[index].mac,
+								 6,ATBM_COMMON_HASHBITS);
 
-		hhead = &Sstar_sta_mac_hlist[hash_index];
-		hlist_add_head(&sta_req->macs[index].hnode,&Sstar_sta_mac_hlist[hash_index]);
+		hhead = &atbm_sta_mac_hlist[hash_index];
+		hlist_add_head(&sta_req->macs[index].hnode,&atbm_sta_mac_hlist[hash_index]);
 	}
 	
 	mutex_lock(&local->sta_mtx);
@@ -364,8 +360,8 @@ bool Sstar_internal_cmd_stainfo(struct ieee80211_local *local,struct ieee80211_i
 		if(sta_req->n_macs){
 			u8 sta_needed = false;
 			
-			hash_index = Sstar_hash_index(sta->sta.addr,6,SSTAR_COMMON_HASHBITS);
-			hhead = &Sstar_sta_mac_hlist[hash_index];
+			hash_index = atbm_hash_index(sta->sta.addr,6,ATBM_COMMON_HASHBITS);
+			hhead = &atbm_sta_mac_hlist[hash_index];
 			hlist_for_each(node,hhead){
 				mac_node = hlist_entry(node,struct ieee80211_internal_mac,hnode);
 				if (memcmp(mac_node->mac,sta->sta.addr,6) == 0){
@@ -387,7 +383,7 @@ bool Sstar_internal_cmd_stainfo(struct ieee80211_local *local,struct ieee80211_i
 		
 		if(sta_req->req_flag&IEEE80211_INTERNAL_STA_FLAGS_SIGNAL){
 			stainfo.signal = sta->last_signal2;
-			stainfo.avg_signal = (s8) -Sstar_ewma_read(&sta->avg_signal2);
+			stainfo.avg_signal = (s8) -atbm_ewma_read(&sta->avg_signal2);
 		}
 		
 		if(sta_req->req_flag&IEEE80211_INTERNAL_STA_FLAGS_TXRXBYTE){
@@ -396,12 +392,12 @@ bool Sstar_internal_cmd_stainfo(struct ieee80211_local *local,struct ieee80211_i
 		}
 
 		if(sta_req->req_flag&IEEE80211_INTERNAL_STA_FLAGS_TOPRATE){			
-			struct Sstar_common *hw_priv = (struct Sstar_common *)local->hw.priv;
-			struct Sstar_vif *priv = (struct Sstar_vif *)sta->sdata->vif.drv_priv;
+			struct atbm_common *hw_priv = (struct atbm_common *)local->hw.priv;
+			struct atbm_vif *priv = (struct atbm_vif *)sta->sdata->vif.drv_priv;
 			if(sta->sdata->vif.type == NL80211_IFTYPE_STATION){				
 				wsm_read_mib(hw_priv, WSM_MIB_ID_GET_RATE, &stainfo.top_rate, sizeof(unsigned int), priv->if_id);
 			}else if(sta->sdata->vif.type == NL80211_IFTYPE_AP){
-				struct Sstar_sta_priv *sta_priv = (struct Sstar_sta_priv *)&sta->sta.drv_priv;
+				struct atbm_sta_priv *sta_priv = (struct atbm_sta_priv *)&sta->sta.drv_priv;
 				u8 sta_id = (u8)sta_priv->link_id;
 				if(sta_id != 0){					
 					wsm_write_mib(hw_priv, WSM_MIB_ID_GET_RATE, &sta_id, 1,priv->if_id);
@@ -422,7 +418,7 @@ bool Sstar_internal_cmd_stainfo(struct ieee80211_local *local,struct ieee80211_i
 				
 				if(cbss){
 					const char *ssid = NULL;
-                    ssid = ieee80211_bss_get_ie(cbss, SSTAR_WLAN_EID_SSID);
+                    ssid = ieee80211_bss_get_ie(cbss, ATBM_WLAN_EID_SSID);
                     if(ssid){						
                         memcpy(stainfo.ssid, &ssid[2], ssid[1]);
                         stainfo.ssid_len = ssid[1];
@@ -450,10 +446,10 @@ bool Sstar_internal_cmd_stainfo(struct ieee80211_local *local,struct ieee80211_i
 
 	return true;
 }
-bool Sstar_internal_cmd_monitor_req(struct ieee80211_sub_if_data *sdata,struct ieee80211_internal_monitor_req *monitor_req)
+bool atbm_internal_cmd_monitor_req(struct ieee80211_sub_if_data *sdata,struct ieee80211_internal_monitor_req *monitor_req)
 {
 	struct ieee80211_local *local  = sdata->local;
-	struct Sstar_vif *priv = (struct Sstar_vif *)sdata->vif.drv_priv;
+	struct atbm_vif *priv = (struct atbm_vif *)sdata->vif.drv_priv;
 	bool res = false;
 	unsigned int freq;
 	struct ieee80211_sub_if_data *other_sdata;
@@ -462,12 +458,12 @@ bool Sstar_internal_cmd_monitor_req(struct ieee80211_sub_if_data *sdata,struct i
 	enum nl80211_iftype old_type = sdata->vif.type;
 	
 	if(!ieee80211_sdata_running(sdata)){
-		Sstar_printk_err("%s: sdata[%s] not running\n",__func__,sdata->name);
+		atbm_printk_err("%s: sdata[%s] not running\n",__func__,sdata->name);
 		return false;
 	}
 	
-	if(priv->join_status != SSTAR_APOLLO_JOIN_STATUS_PASSIVE){
-		Sstar_printk_err("%s: sdata[%s] in other mode,please close it\n",__func__,sdata->name);
+	if(priv->join_status != ATBM_APOLLO_JOIN_STATUS_PASSIVE){
+		atbm_printk_err("%s: sdata[%s] in other mode,please close it\n",__func__,sdata->name);
 		return false;
 	}
 
@@ -477,15 +473,15 @@ bool Sstar_internal_cmd_monitor_req(struct ieee80211_sub_if_data *sdata,struct i
 			continue;
 		}
 
-		priv = (struct Sstar_vif *)other_sdata->vif.drv_priv;
+		priv = (struct atbm_vif *)other_sdata->vif.drv_priv;
 
-		if(priv->join_status != SSTAR_APOLLO_JOIN_STATUS_PASSIVE){
-			Sstar_printk_err("%s: other_sdata[%s] in other mode,please close it\n",__func__,other_sdata->name);
+		if(priv->join_status != ATBM_APOLLO_JOIN_STATUS_PASSIVE){
+			atbm_printk_err("%s: other_sdata[%s] in other mode,please close it\n",__func__,other_sdata->name);
 			return false;
 		}
 	}
 	if(ieee8011_channel_valid(&local->hw,monitor_req->ch) == false){
-		Sstar_printk_err("%s: ch %d err\n",__func__,monitor_req->ch);
+		atbm_printk_err("%s: ch %d err\n",__func__,monitor_req->ch);
 		return false;
 	}
 	
@@ -496,7 +492,7 @@ bool Sstar_internal_cmd_monitor_req(struct ieee80211_sub_if_data *sdata,struct i
 	case NL80211_CHAN_HT40PLUS:
 		break;
 	default:
-		Sstar_printk_err("error, %d\n", monitor_req->chtype);
+		atbm_printk_err("error, %d\n", monitor_req->chtype);
 		return false;
 	}
 
@@ -508,7 +504,7 @@ bool Sstar_internal_cmd_monitor_req(struct ieee80211_sub_if_data *sdata,struct i
 	chan = ieee80211_get_channel(local->hw.wiphy, freq);
 
 	if(chan == NULL){
-		Sstar_printk_err("%s: freq(%d) get channel err\n",__func__,freq);
+		atbm_printk_err("%s: freq(%d) get channel err\n",__func__,freq);
 		return false;
 	}
 	
@@ -518,15 +514,15 @@ bool Sstar_internal_cmd_monitor_req(struct ieee80211_sub_if_data *sdata,struct i
 	rcu_assign_pointer(local->internal_monitor.req.monitor_rx,monitor_req->monitor_rx);
 	rcu_assign_pointer(local->internal_monitor.req.priv,monitor_req->priv);
 	
-	Sstar_printk_debug("%s:[%s] channel %d\n",__func__,sdata->name,local->internal_monitor.req.ch);
+	atbm_printk_debug("%s:[%s] channel %d\n",__func__,sdata->name,local->internal_monitor.req.ch);
 	if(ieee80211_if_change_type(sdata, NL80211_IFTYPE_MONITOR)){
-		Sstar_printk_err("%s:type change err\n",__func__);
+		atbm_printk_err("%s:type change err\n",__func__);
 		res  = false;
 		goto err;
 	}
 
 	if(ieee80211_set_channel(local->hw.wiphy,sdata->dev,chan,monitor_req->chtype)){
-		Sstar_printk_err("%s: set channel err\n",__func__);
+		atbm_printk_err("%s: set channel err\n",__func__);
 		goto err;
 	}
 
@@ -540,15 +536,15 @@ err:
 	return res;
 }
 
-bool Sstar_internal_cmd_stop_monitor(struct ieee80211_sub_if_data *sdata)
+bool atbm_internal_cmd_stop_monitor(struct ieee80211_sub_if_data *sdata)
 {
 	if(!ieee80211_sdata_running(sdata)){
-		Sstar_printk_err("%s: sdata[%s] not running\n",__func__,sdata->name);
+		atbm_printk_err("%s: sdata[%s] not running\n",__func__,sdata->name);
 		return false;
 	}
 
 	if(sdata->vif.type != NL80211_IFTYPE_MONITOR){
-		Sstar_printk_err("%s: sdata[%s] not in monitor mode\n",__func__,sdata->name);
+		atbm_printk_err("%s: sdata[%s] not in monitor mode\n",__func__,sdata->name);
 		return false;
 	}
 
@@ -563,338 +559,155 @@ bool Sstar_internal_cmd_stop_monitor(struct ieee80211_sub_if_data *sdata)
 	
 	return true;
 }
-bool Sstar_internal_wsm_adaptive(struct Sstar_common *hw_priv,struct ieee80211_internal_wsm_adaptive *adaptive)
+bool atbm_internal_wsm_adaptive(struct atbm_common *hw_priv,struct ieee80211_internal_wsm_adaptive *adaptive)
 {
 	char* cmd = NULL;
 	int len;
 	bool res = true;
 	
-	cmd = Sstar_kzalloc(SSTAR_WSM_CMD_LEN,GFP_KERNEL);
+	cmd = atbm_kzalloc(ATBM_WSM_CMD_LEN,GFP_KERNEL);
 
 	if(cmd == NULL){
-		Sstar_printk_err("%s:alloc cmd err\n",__func__);
+		atbm_printk_err("%s:alloc cmd err\n",__func__);
 		res = false;
 		goto err;
 	}
 	
-	len = snprintf(cmd,SSTAR_WSM_CMD_LEN,SSTAR_WSM_ADAPTIVE"%d",adaptive->enable);
+	len = snprintf(cmd,ATBM_WSM_CMD_LEN,ATBM_WSM_ADAPTIVE"%d",adaptive->enable);
 
 	if(len<=0){
-		Sstar_printk_err("%s:snprintf failed(%d). \n",__func__, len);
+		atbm_printk_err("%s:snprintf failed(%d). \n",__func__, len);
 		res = false;
 		goto err;
 	}
-	if(len+1>SSTAR_WSM_CMD_LEN){
-		Sstar_printk_err("%s:len err (%d)\n",__func__,len);
+	if(len+1>ATBM_WSM_CMD_LEN){
+		atbm_printk_err("%s:len err (%d)\n",__func__,len);
 		res = false;
 		goto err;
 	}
-	Sstar_printk_debug("%s:wsm [%s][%d]\n",__func__,cmd,len);
+	atbm_printk_debug("%s:wsm [%s][%d]\n",__func__,cmd,len);
 	
 	if( wsm_write_mib(hw_priv, WSM_MIB_ID_FW_CMD, cmd, len+1,0) < 0){
-		Sstar_printk_err("%s: write mib failed \n",__func__);
+		atbm_printk_err("%s: write mib failed \n",__func__);
 		res = false;
 	}
 	
 err:
 	if(cmd)
-		Sstar_kfree(cmd);
+		atbm_kfree(cmd);
 	return res;
 }
 
-bool Sstar_internal_wsm_txpwr_dcxo(struct Sstar_common *hw_priv,struct ieee80211_internal_wsm_txpwr_dcxo *txpwr_dcxo)
+bool atbm_internal_wsm_txpwr_dcxo(struct atbm_common *hw_priv,struct ieee80211_internal_wsm_txpwr_dcxo *txpwr_dcxo)
 {
 	int len;
 	char* cmd = NULL;
 	bool res = true;
 	
 	if(txpwr_dcxo->txpwr_L > 32 || txpwr_dcxo->txpwr_L < -32){
-		Sstar_printk_err("error, txpwr_L %d\n", txpwr_dcxo->txpwr_L);
+		atbm_printk_err("error, txpwr_L %d\n", txpwr_dcxo->txpwr_L);
 		res = false;
 		goto err;
 	}
 	
 	if(txpwr_dcxo->txpwr_M > 32 || txpwr_dcxo->txpwr_M < -32){
-		Sstar_printk_err("error, txpwr_M %d\n", txpwr_dcxo->txpwr_M);
+		atbm_printk_err("error, txpwr_M %d\n", txpwr_dcxo->txpwr_M);
 		res = false;
 		goto err;
 	}
 	
 	if(txpwr_dcxo->txpwr_H > 32 || txpwr_dcxo->txpwr_H < -32){
-		Sstar_printk_err("error, txpwr_H %d\n", txpwr_dcxo->txpwr_H);
+		atbm_printk_err("error, txpwr_H %d\n", txpwr_dcxo->txpwr_H);
 		res = false;
 		goto err;
 	}
 	
 	if(txpwr_dcxo->dcxo > 127 || txpwr_dcxo->dcxo < 0){
-		Sstar_printk_err("error, dcxo %d\n", txpwr_dcxo->dcxo);
+		atbm_printk_err("error, dcxo %d\n", txpwr_dcxo->dcxo);
 		res = false;
 		goto err;
 	}
 
-	cmd = Sstar_kzalloc(SSTAR_WSM_CMD_LEN,GFP_KERNEL);
+	cmd = atbm_kzalloc(ATBM_WSM_CMD_LEN,GFP_KERNEL);
 
 	if(cmd == NULL){
-		Sstar_printk_err("%s:alloc cmd err\n",__func__);
+		atbm_printk_err("%s:alloc cmd err\n",__func__);
 		res = false;
 		goto err;
 	}
 
-	len = snprintf(cmd, SSTAR_WSM_CMD_LEN,"set_txpwr_and_dcxo,%d,%d,%d,%d ",
+	len = snprintf(cmd, ATBM_WSM_CMD_LEN,"set_txpwr_and_dcxo,%d,%d,%d,%d ",
 		           txpwr_dcxo->txpwr_L,txpwr_dcxo->txpwr_M, txpwr_dcxo->txpwr_H, txpwr_dcxo->dcxo);
 
 	if(len<=0){
-		Sstar_printk_err("%s:len err (%d)\n",__func__,len);
+		atbm_printk_err("%s:len err (%d)\n",__func__,len);
 		res = false;
 		goto err;
 	}
-	if(len+1>SSTAR_WSM_CMD_LEN){
-		Sstar_printk_err("%s:len err (%d)\n",__func__,len);
+	if(len+1>ATBM_WSM_CMD_LEN){
+		atbm_printk_err("%s:len err (%d)\n",__func__,len);
 		res = false;
 		goto err;
 	}
-	Sstar_printk_debug("%s:wsm [%s][%d]\n",__func__,cmd,len);
+	atbm_printk_debug("%s:wsm [%s][%d]\n",__func__,cmd,len);
 	if(wsm_write_mib(hw_priv, WSM_MIB_ID_FW_CMD, cmd, len+1, 0) < 0){
-		Sstar_printk_err("%s: write mib failed \n",__func__);
+		atbm_printk_err("%s: write mib failed \n",__func__);
 		res = false;
 	}
 err:
 	if(cmd)
-		Sstar_kfree(cmd);
+		atbm_kfree(cmd);
 	return res;
 }
 
-bool Sstar_internal_wsm_txpwr(struct Sstar_common *hw_priv,struct ieee80211_internal_wsm_txpwr *txpwr)
+bool atbm_internal_wsm_txpwr(struct atbm_common *hw_priv,struct ieee80211_internal_wsm_txpwr *txpwr)
 {
 	int len;
 	char* cmd = NULL;
 	bool res = true;
 
 	if(txpwr->txpwr_indx != 0 && txpwr->txpwr_indx != 1){
-		Sstar_printk_err("error, txpwr_indx %d\n", txpwr->txpwr_indx);
+		atbm_printk_err("error, txpwr_indx %d\n", txpwr->txpwr_indx);
 		res = false;
 		goto err;
 	}
 
-	cmd = Sstar_kzalloc(SSTAR_WSM_CMD_LEN,GFP_KERNEL);
+	cmd = atbm_kzalloc(ATBM_WSM_CMD_LEN,GFP_KERNEL);
 
 	if(cmd == NULL){
-		Sstar_printk_err("%s:alloc cmd err\n",__func__);
+		atbm_printk_err("%s:alloc cmd err\n",__func__);
 		res = false;
 		goto err;
 	}
 
-	len = snprintf(cmd, SSTAR_WSM_CMD_LEN, SSTAR_WSM_TXPWR"%d",txpwr->txpwr_indx);
+	len = snprintf(cmd, ATBM_WSM_CMD_LEN, ATBM_WSM_TXPWR"%d",txpwr->txpwr_indx);
 
 	if(len<=0){
-		Sstar_printk_err("%s:len err (%d)\n",__func__,len);
+		atbm_printk_err("%s:len err (%d)\n",__func__,len);
 		res = false;
 		goto err;
 	}
 
-	if(len+1>SSTAR_WSM_CMD_LEN){
-		Sstar_printk_err("%s:len err (%d)\n",__func__,len);
+	if(len+1>ATBM_WSM_CMD_LEN){
+		atbm_printk_err("%s:len err (%d)\n",__func__,len);
 		res = false;
 		goto err;
 	}
-	Sstar_printk_debug("%s:wsm [%s][%d]\n",__func__,cmd,len);
+	atbm_printk_debug("%s:wsm [%s][%d]\n",__func__,cmd,len);
 	if(wsm_write_mib(hw_priv, WSM_MIB_ID_FW_CMD, cmd, len+1, 0) < 0){
-		Sstar_printk_err("%s: write mib failed \n",__func__);
+		atbm_printk_err("%s: write mib failed \n",__func__);
 		res = false;
 	}
 err:
 	if(cmd)
-		Sstar_kfree(cmd);
-	return res;
-}
-bool Sstar_internal_wsm_set_rate(struct Sstar_common *hw_priv,struct ieee80211_internal_rate_req *req)
-{
-	int len;
-	char* cmd = NULL;
-	bool res = true;
-
-	cmd = Sstar_kzalloc(SSTAR_WSM_CMD_LEN,GFP_KERNEL);
-
-	if(cmd == NULL){
-		Sstar_printk_err("%s:alloc cmd err\n",__func__);
-		res = false;
-		goto err;
-	}
-
-	if(req->flags & IEEE80211_INTERNAL_RATE_FLAGS_CLEAR_TX_RATE){
-		len = snprintf(cmd, SSTAR_WSM_CMD_LEN, SSTAR_WSM_FIX_RATE,0);
-
-		if(len<=0){
-			Sstar_printk_err("%s:len err (%d)\n",__func__,len);
-			res = false;
-			goto err;
-		}
-
-		if(wsm_write_mib(hw_priv, WSM_MIB_ID_FW_CMD, cmd, len+1, 0) < 0){
-			Sstar_printk_err("%s: write mib failed \n",__func__);
-			res = false;
-			goto err;
-		}
-
-		memset(cmd,0,SSTAR_WSM_CMD_LEN);
-	}
-
-	if(req->flags & IEEE80211_INTERNAL_RATE_FLAGS_CLEAE_TOP_RATE){
-		len = snprintf(cmd, SSTAR_WSM_CMD_LEN, SSTAR_WSM_TOP_RATE,0);
-
-		if(len<=0){
-			Sstar_printk_err("%s:len err (%d)\n",__func__,len);
-			res = false;
-			goto err;
-		}
-
-		if(wsm_write_mib(hw_priv, WSM_MIB_ID_FW_CMD, cmd, len+1, 0) < 0){
-			Sstar_printk_err("%s: write mib failed \n",__func__);
-			res = false;
-			goto err;
-		}
-
-		memset(cmd,0,SSTAR_WSM_CMD_LEN);
-	}
-
-	if(req->flags & IEEE80211_INTERNAL_RATE_FLAGS_CLEAR_MIN_RATE){
-		len = snprintf(cmd, SSTAR_WSM_CMD_LEN, SSTAR_WSM_MIN_RATE,0);
-
-		if(len<=0){
-			Sstar_printk_err("%s:len err (%d)\n",__func__,len);
-			res = false;
-			goto err;
-		}
-
-		if(wsm_write_mib(hw_priv, WSM_MIB_ID_FW_CMD, cmd, len+1, 0) < 0){
-			Sstar_printk_err("%s: write mib failed \n",__func__);
-			res = false;
-			goto err;
-		}
-
-		memset(cmd,0,SSTAR_WSM_CMD_LEN);
-	}
-	
-	if(req->flags & IEEE80211_INTERNAL_RATE_FLAGS_SET_TX_RATE){
-		len = snprintf(cmd, SSTAR_WSM_CMD_LEN, SSTAR_WSM_FIX_RATE,req->rate);
-
-		if(len<=0){
-			Sstar_printk_err("%s:len err (%d)\n",__func__,len);
-			res = false;
-			goto err;
-		}
-
-		if(wsm_write_mib(hw_priv, WSM_MIB_ID_FW_CMD, cmd, len+1, 0) < 0){
-			Sstar_printk_err("%s: write mib failed \n",__func__);
-			res = false;
-			goto err;
-		}
-
-		memset(cmd,0,SSTAR_WSM_CMD_LEN);
-	}
-
-	if(req->flags & IEEE80211_INTERNAL_RATE_FLAGS_SET_TOP_RATE){
-		len = snprintf(cmd, SSTAR_WSM_CMD_LEN, SSTAR_WSM_TOP_RATE,req->rate);
-
-		if(len<=0){
-			Sstar_printk_err("%s:len err (%d)\n",__func__,len);
-			res = false;
-			goto err;
-		}
-
-		if(wsm_write_mib(hw_priv, WSM_MIB_ID_FW_CMD, cmd, len+1, 0) < 0){
-			Sstar_printk_err("%s: write mib failed \n",__func__);
-			res = false;
-			goto err;
-		}
-
-		memset(cmd,0,SSTAR_WSM_CMD_LEN);
-	}
-
-	if(req->flags & IEEE80211_INTERNAL_RATE_FLAGS_SET_MIN_RATE){
-		len = snprintf(cmd, SSTAR_WSM_CMD_LEN, SSTAR_WSM_MIN_RATE,req->rate);
-
-		if(len<=0){
-			Sstar_printk_err("%s:len err (%d)\n",__func__,len);
-			res = false;
-			goto err;
-		}
-
-		if(wsm_write_mib(hw_priv, WSM_MIB_ID_FW_CMD, cmd, len+1, 0) < 0){
-			Sstar_printk_err("%s: write mib failed \n",__func__);
-			res = false;
-			goto err;
-		}
-
-		memset(cmd,0,SSTAR_WSM_CMD_LEN);
-	}
-err:
-	if(cmd)
-		Sstar_kfree(cmd);
+		atbm_kfree(cmd);
 	return res;
 }
 
-bool Sstar_internal_wsm_set_rate_power(struct Sstar_common *hw_priv,
-												   struct ieee80211_internal_rate_power_req *req)
-{
-	#define MIN_RATE_INDEX	(0)
-	#define MAX_RATE_INDEX	(10)
-	#define MIN_POWER		(-16)
-	#define MAX_POWER		(16)
-
-	bool ret = true;
-	char* cmd = NULL;
-	int len = 0;
-	
-	if((req->rate_index < MIN_RATE_INDEX) ||(req->rate_index > MAX_RATE_INDEX)){
-		Sstar_printk_err("%s:rate_index(%d) err\n",__func__,req->rate_index);
-		ret = false;
-		goto exit;
-	}
-
-	if((req->power < MIN_POWER) ||(req->power > MAX_POWER)){
-		Sstar_printk_err("%s:rate_index(%d) err\n",__func__,req->rate_index);
-		ret = false;
-		goto exit;
-	}
-	
-	cmd = Sstar_kzalloc(SSTAR_WSM_CMD_LEN,GFP_KERNEL);
-
-	if(cmd == NULL){
-		Sstar_printk_err("%s:alloc cmd err\n",__func__);
-		ret = false;
-		goto exit;
-	}
-
-	len = snprintf(cmd, SSTAR_WSM_CMD_LEN, SSTAR_WSM_SET_RATE_POWER,req->rate_index,req->power);
-
-	if(len <= 0){
-		Sstar_printk_err("%s:len(%d) err\n",__func__,len);
-		ret = false;
-		goto exit;
-	}
-
-	if(wsm_write_mib(hw_priv, WSM_MIB_ID_FW_CMD, cmd, len+1, 0) < 0){
-		Sstar_printk_err("%s: write mib failed \n",__func__);
-		ret = false;
-		goto exit;
-	}
-	
-exit:
-	if(cmd)
-		Sstar_kfree(cmd);
-
-	return ret;
-
-	#undef MIN_RATE_INDEX
-	#undef MAX_RATE_INDEX
-	#undef MIN_POWER
-	#undef MAX_POWER
-}
-bool Sstar_internal_freq_set(struct ieee80211_hw *hw,struct ieee80211_internal_set_freq_req *req)
+bool atbm_internal_freq_set(struct ieee80211_hw *hw,struct ieee80211_internal_set_freq_req *req)
 {
 	struct ieee80211_local *local = hw_to_local(hw);
-	struct Sstar_common *hw_priv = (struct Sstar_common *)hw->priv;
+	struct atbm_common *hw_priv = (struct atbm_common *)hw->priv;
 	struct ieee80211_channel *channel;
 	char* cmd = NULL;
 	int len;
@@ -906,7 +719,7 @@ bool Sstar_internal_freq_set(struct ieee80211_hw *hw,struct ieee80211_internal_s
 	channel = ieee8011_chnum_to_channel(hw,req->channel_num);
 
 	if(channel == NULL){
-		Sstar_printk_err("%s: channel is NULL(%d)\n",__func__,req->channel_num);
+		atbm_printk_err("%s: channel is NULL(%d)\n",__func__,req->channel_num);
 		res = false;
 		goto out;
 	}
@@ -916,7 +729,7 @@ bool Sstar_internal_freq_set(struct ieee80211_hw *hw,struct ieee80211_internal_s
 	}
 	
 	if((req->freq < 2300) || (req->freq>2600)){
-		Sstar_printk_err("%s: freq err(%zu)\n",__func__,req->freq);
+		atbm_printk_err("%s: freq err(%zu)\n",__func__,req->freq);
 		res = false;
 		goto out;
 	}
@@ -926,29 +739,29 @@ bool Sstar_internal_freq_set(struct ieee80211_hw *hw,struct ieee80211_internal_s
 	mutex_unlock(&local->mtx);
 
 	if((local->hw.conf.flags & IEEE80211_CONF_IDLE) == 0){
-		Sstar_printk_err("%s: please down ap or sta\n",__func__);
+		atbm_printk_err("%s: please down ap or sta\n",__func__);
 		res = false;
 		goto out;
 	}
 
-	cmd = Sstar_kzalloc(SSTAR_WSM_CMD_LEN,GFP_KERNEL);
+	cmd = atbm_kzalloc(ATBM_WSM_CMD_LEN,GFP_KERNEL);
 
 	if(cmd == NULL){
-		Sstar_printk_err("%s:alloc cmd err\n",__func__);
+		atbm_printk_err("%s:alloc cmd err\n",__func__);
 		res = false;
 		goto out;
 	}
 
-	len = snprintf(cmd, SSTAR_WSM_CMD_LEN, SSTAR_WSM_SET_FREQ,req->channel_num,(int)req->freq);
+	len = snprintf(cmd, ATBM_WSM_CMD_LEN, ATBM_WSM_SET_FREQ,req->channel_num,(int)req->freq);
 
 	if(len <= 0){
-		Sstar_printk_err("%s:len err (%d)\n",__func__,len);
+		atbm_printk_err("%s:len err (%d)\n",__func__,len);
 		res = false;
 		goto out;
 	}
 
-	if(len+1>SSTAR_WSM_CMD_LEN){
-		Sstar_printk_err("%s:len err (%d)\n",__func__,len);
+	if(len+1>ATBM_WSM_CMD_LEN){
+		atbm_printk_err("%s:len err (%d)\n",__func__,len);
 		res = false;
 		goto out;
 	}
@@ -963,20 +776,20 @@ bool Sstar_internal_freq_set(struct ieee80211_hw *hw,struct ieee80211_internal_s
 	}else {
 		ieee80211_special_freq_clear(local,&special_req);
 	}
-    Sstar_printk_err("%s:%s:%d\n",__func__,cmd,len);	
+    atbm_printk_err("%s:%s:%d\n",__func__,cmd,len);	
 	if(wsm_write_mib(hw_priv, WSM_MIB_ID_FW_CMD, cmd, len+1, 0) < 0){
-		Sstar_printk_err("%s: write mib failed \n",__func__);
+		atbm_printk_err("%s: write mib failed \n",__func__);
 		ieee80211_special_freq_clear(local,&special_req);
 		res = false;
 		goto out;
 	}
 out:
 	if(cmd)
-		Sstar_kfree(cmd);
+		atbm_kfree(cmd);
 
 	return res;
 }
-bool Sstar_internal_channel_auto_select(struct ieee80211_sub_if_data *sdata,
+bool atbm_internal_channel_auto_select(struct ieee80211_sub_if_data *sdata,
 													  struct ieee80211_internal_channel_auto_select_req *req)
 {
 	struct ieee80211_internal_scan_request scan_req;
@@ -997,10 +810,10 @@ bool Sstar_internal_channel_auto_select(struct ieee80211_sub_if_data *sdata,
 	scan_req.ssids      = NULL;
 	scan_req.n_ssids    = 0;
 
-	return Sstar_internal_cmd_scan_triger(sdata,&scan_req);
+	return atbm_internal_cmd_scan_triger(sdata,&scan_req);
 }
 
-static bool Sstar_internal_channel_auto_select_results_handle(struct ieee80211_hw *hw,struct Sstar_internal_scan_results_req *req,struct ieee80211_internal_scan_sta *sta_info)
+static bool atbm_internal_channel_auto_select_results_handle(struct ieee80211_hw *hw,struct atbm_internal_scan_results_req *req,struct ieee80211_internal_scan_sta *sta_info)
 {
 	struct ieee80211_internal_channel_auto_select_results *cca_results = (struct ieee80211_internal_channel_auto_select_results *)req->priv;
 	s8 signal = (s8)sta_info->signal;
@@ -1009,12 +822,12 @@ static bool Sstar_internal_channel_auto_select_results_handle(struct ieee80211_h
 	struct ieee80211_channel *channel;
 	
 	if(ieee8011_channel_valid(hw,cur_channel) == false){
-		Sstar_printk_err("%s:channel(%d) err\n",__func__,cur_channel);
+		atbm_printk_err("%s:channel(%d) err\n",__func__,cur_channel);
 		return false;
 	}
 
 	if(sta_info->cca == false){
-		Sstar_printk_err("%s:not in cca state\n",__func__);
+		atbm_printk_err("%s:not in cca state\n",__func__);
 		return false;
 	}
 	
@@ -1029,13 +842,13 @@ static bool Sstar_internal_channel_auto_select_results_handle(struct ieee80211_h
 	channel = ieee8011_chnum_to_channel(hw,cur_channel);
 
 	if(channel_in_special(channel) == true){
-		Sstar_printk_debug("%s:channel [%d] is in special freq\n",__func__,channel_hw_value(channel));
+		atbm_printk_debug("%s:channel [%d] is in special freq\n",__func__,channel_hw_value(channel));
 		return true;
 	}
 	/*
 	*2.4G channel
 	*/
-	Sstar_printk_debug("ssid[%s],channel[%d],signal(%d)\n",sta_info->ssid,cur_channel,signal);
+	atbm_printk_debug("ssid[%s],channel[%d],signal(%d)\n",sta_info->ssid,cur_channel,signal);
 	/*
 	*channel 1-13
 	*weight[x] +=  val[x] + val[x-1] + val[x-2] + val[x-3] + val[x+1] + val[x+2] + val[x+3]
@@ -1053,7 +866,7 @@ static bool Sstar_internal_channel_auto_select_results_handle(struct ieee80211_h
 			*skip special freq
 			*/
 			if(channel_in_special(channel) == true){
-				Sstar_printk_debug("%s:skip special freq(%d)\n",__func__,channel_hw_value(channel));
+				atbm_printk_debug("%s:skip special freq(%d)\n",__func__,channel_hw_value(channel));
 				continue;
 			}
 			
@@ -1069,7 +882,7 @@ static bool Sstar_internal_channel_auto_select_results_handle(struct ieee80211_h
 			*skip special freq
 			*/
 			if(channel_in_special(channel) == true){
-				Sstar_printk_debug("%s:skip special freq(%d)\n",__func__,channel_hw_value(channel));
+				atbm_printk_debug("%s:skip special freq(%d)\n",__func__,channel_hw_value(channel));
 				continue;
 			}
 			if(cca_results->version == 1)
@@ -1091,16 +904,16 @@ static bool Sstar_internal_channel_auto_select_results_handle(struct ieee80211_h
 		
 	}
 
-	for(index = 0;index<IEEE80211_SSTAR_MAX_SCAN_CHANNEL_INDEX;index++){
-		Sstar_printk_debug("weight[%d]=[%d]\n",index,cca_results->weight[index]);
+	for(index = 0;index<IEEE80211_ATBM_MAX_SCAN_CHANNEL_INDEX;index++){
+		atbm_printk_debug("weight[%d]=[%d]\n",index,cca_results->weight[index]);
 	}
 	return true;
 }
-bool Sstar_internal_channel_auto_select_results(struct ieee80211_sub_if_data *sdata,
+bool atbm_internal_channel_auto_select_results(struct ieee80211_sub_if_data *sdata,
 												struct ieee80211_internal_channel_auto_select_results *results)
 {
-	#define SSTAR_BUSY_RATIO_MIN		100
-	struct Sstar_internal_scan_results_req results_req;
+	#define ATBM_BUSY_RATIO_MIN		100
+	struct atbm_internal_scan_results_req results_req;
 	struct ieee80211_local *local = sdata->local;
 	u8 *busy_ratio;
 	u8 i;
@@ -1111,49 +924,49 @@ bool Sstar_internal_channel_auto_select_results(struct ieee80211_sub_if_data *sd
 	int band;
 	u32 ignore_flags = IEEE80211_CHAN_DISABLED;
 	struct ieee80211_supported_band *sband;
-	u8 ignor_channel_mask[IEEE80211_SSTAR_MAX_SCAN_CHANNEL_INDEX];
-	u8 channel_mask[IEEE80211_SSTAR_MAX_SCAN_CHANNEL_INDEX];
+	u8 ignor_channel_mask[IEEE80211_ATBM_MAX_SCAN_CHANNEL_INDEX];
+	u8 channel_mask[IEEE80211_ATBM_MAX_SCAN_CHANNEL_INDEX];
 
 	results_req.n_stas = 0;
 	results_req.flush = true;
 	results_req.priv = results;
-	results_req.result_handle = Sstar_internal_channel_auto_select_results_handle;
+	results_req.result_handle = atbm_internal_channel_auto_select_results_handle;
 	busy_ratio = ieee80211_scan_cca_val_get(&local->hw);
 	
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0))
 	ignore_flags |= IEEE80211_CHAN_NO_OFDM;
 #endif
 	if(ieee80211_scan_internal_req_results(local,&results_req) == false){
-		Sstar_printk_err("%s:get results\n",__func__);
+		atbm_printk_err("%s:get results\n",__func__);
 		goto err;
 	}
 	
 	for(i = 0;i<14;i++){
-		Sstar_printk_debug("busy_ratio[%d]=[%d]\n",i,busy_ratio[i]);
+		atbm_printk_debug("busy_ratio[%d]=[%d]\n",i,busy_ratio[i]);
 	}
 	
-	memset(ignor_channel_mask,0,IEEE80211_SSTAR_MAX_SCAN_CHANNEL_INDEX);
-	memset(channel_mask,1,IEEE80211_SSTAR_MAX_SCAN_CHANNEL_INDEX);
+	memset(ignor_channel_mask,0,IEEE80211_ATBM_MAX_SCAN_CHANNEL_INDEX);
+	memset(channel_mask,1,IEEE80211_ATBM_MAX_SCAN_CHANNEL_INDEX);
 
 	for(i= 0;i<results->ignore_n_channels;i++){
 		
 		BUG_ON(results->ignore_channels == NULL);
 		
 		if(ieee8011_channel_valid(&local->hw,results->ignore_channels[i]) == false){
-			Sstar_printk_err("%s:ignore channel %d err\n",__func__,results->ignore_channels[i]);
+			atbm_printk_err("%s:ignore channel %d err\n",__func__,results->ignore_channels[i]);
 			goto err;
 		}
 		ignor_channel_mask[results->ignore_channels[i]-1] = 1;
 		
-		Sstar_printk_debug("%s channel %d ignored\n",__func__,results->ignore_channels[i]);
+		atbm_printk_debug("%s channel %d ignored\n",__func__,results->ignore_channels[i]);
 	}
 
 	if(results->n_channels){
-		memset(channel_mask,0,IEEE80211_SSTAR_MAX_SCAN_CHANNEL_INDEX);
+		memset(channel_mask,0,IEEE80211_ATBM_MAX_SCAN_CHANNEL_INDEX);
 		for(i = 0;i<results->n_channels;i++){
 			BUG_ON(results->channels == NULL);
 			if(ieee8011_channel_valid(&local->hw,results->channels[i]) == false){
-				Sstar_printk_err("%s:ignore channel %d err\n",__func__,results->channels[i]);
+				atbm_printk_err("%s:ignore channel %d err\n",__func__,results->channels[i]);
 				goto err;
 			}
 
@@ -1188,18 +1001,18 @@ bool Sstar_internal_channel_auto_select_results(struct ieee80211_sub_if_data *sd
 			*special freq must be skiped
 			*/
 			if(channel_in_special(&sband->channels[i])){
-				Sstar_printk_debug("%s:skip special freq(%d)\n",__func__,channel_hw_value(&sband->channels[i]));
+				atbm_printk_debug("%s:skip special freq(%d)\n",__func__,channel_hw_value(&sband->channels[i]));
 				continue;
 			}
 			/*
 			*some disabled channel must be skiped
 			*/
 			if(ignore_flags&sband->channels[i].flags){
-				Sstar_printk_debug("%s: channel[%d] not support ofdm\n",__func__,channel_hw_value(&sband->channels[i]));
+				atbm_printk_debug("%s: channel[%d] not support ofdm\n",__func__,channel_hw_value(&sband->channels[i]));
 				continue;
 			}
 			
-			if(busy_ratio[channel_hw_value(&sband->channels[i])-1]<SSTAR_BUSY_RATIO_MIN){
+			if(busy_ratio[channel_hw_value(&sband->channels[i])-1]<ATBM_BUSY_RATIO_MIN){
 
 				if(results->weight[channel_hw_value(&sband->channels[i])-1]<=min_ap_num){
 					if(results->weight[channel_hw_value(&sband->channels[i])-1]==min_ap_num){
@@ -1228,8 +1041,8 @@ bool Sstar_internal_channel_auto_select_results(struct ieee80211_sub_if_data *sd
 		WARN_ON(channel == 0);
 		goto err;
 	}
-	Sstar_printk_always("%s channel %d\n",__func__,channel);
-	memcpy(results->busy_ratio,busy_ratio,IEEE80211_SSTAR_MAX_SCAN_CHANNEL_INDEX);
+	atbm_printk_always("%s channel %d\n",__func__,channel);
+	memcpy(results->busy_ratio,busy_ratio,IEEE80211_ATBM_MAX_SCAN_CHANNEL_INDEX);
 	results->susgest_channel = channel;
 	ieee80211_scan_cca_val_put(&local->hw);
 	return true;
@@ -1238,9 +1051,9 @@ err:
 	return false;
 }
 
-bool Sstar_internal_request_chip_cap(struct ieee80211_hw *hw,struct ieee80211_internal_req_chip *req)
+bool atbm_internal_request_chip_cap(struct ieee80211_hw *hw,struct ieee80211_internal_req_chip *req)
 {
-	struct Sstar_common *hw_priv = (struct Sstar_common *)hw->priv;
+	struct atbm_common *hw_priv = (struct atbm_common *)hw->priv;
 
 	if(req->flags & IEEE80211_INTERNAL_REQ_CHIP_FLAGS__CHIP_VER){
 		if(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_EFUSE8){
@@ -1259,12 +1072,12 @@ bool Sstar_internal_request_chip_cap(struct ieee80211_hw *hw,struct ieee80211_in
 	return true;
 }
 
-bool Sstar_internal_update_ap_conf(struct ieee80211_sub_if_data *sdata,
+bool atbm_internal_update_ap_conf(struct ieee80211_sub_if_data *sdata,
 									     struct ieee80211_internal_ap_conf *conf_req,bool clear)
 {
 	
 	if(!ieee80211_sdata_running(sdata)){
-		Sstar_printk_scan("%s:%d\n",__func__,__LINE__);
+		atbm_printk_scan("%s:%d\n",__func__,__LINE__);
 		goto err;
 	}
 

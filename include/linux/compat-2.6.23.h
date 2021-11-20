@@ -58,7 +58,7 @@ static inline void tcf_destroy_chain_compat(struct tcf_proto **fl)
 		*fl = tp->next;
 		tp->ops->destroy(tp);
 		module_put(tp->ops->owner);
-		Sstar_kfree(tp);
+		atbm_kfree(tp);
 	}
 }
 

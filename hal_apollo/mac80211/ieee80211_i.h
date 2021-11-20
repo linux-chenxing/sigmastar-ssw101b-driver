@@ -27,35 +27,34 @@
 #include <linux/leds.h>
 #include <net/ieee80211_radiotap.h>
 #include <net/cfg80211.h>
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include "key.h"
 #include "sta_info.h"
-#include "ieee80211_Sstar_mem.h"
-#include "ieee80211_Sstar_skb.h"
+#include "ieee80211_atbm_mem.h"
+#include "ieee80211_atbm_skb.h"
 
-#define CHANNEL_NUM 14
 
-enum SSTAR_TEST_TYPE{
+enum ATBM_TEST_TYPE{
 	TXRX_TEST_REQ,
 	TXRX_TEST_RSP,
 	TXRX_TEST_RESULT,
 };
 
-enum SSTAR_TEST_RESULT{
+enum ATBM_TEST_RESULT{
 	TXRX_TEST_NONE,
 	TXRX_TEST_PASS,
 	TXRX_TEST_FAIL,
 };
 
 
-struct SSTAR_TEST_IE {
+struct ATBM_TEST_IE {
 	u8 ie_id;//D11_WIFI_ELT_ID
 	u8 len;
-	u8 oui[3]; //SSTAR_OUI
-	u8 oui_type; //WIFI_SSTAR_IE_OUI_TYPE
+	u8 oui[3]; //ATBM_OUI
+	u8 oui_type; //WIFI_ATBM_IE_OUI_TYPE
 	u8 test_type;
 	u8 resverd;	
-#ifdef SSTAR_PRODUCT_TEST_USE_FEATURE_ID
+#ifdef ATBM_PRODUCT_TEST_USE_FEATURE_ID
 	u32 featureid;
 #endif
 	s32 result[16];
@@ -95,12 +94,12 @@ struct rxstatus_signed{
 /* OUI's */
 #define WIFI_OUI			{0x00, 0x50, 0xF2}
 #define WFA_OUI			 {0x50, 0x6F, 0x9A}
-#define SSTAR_OUI			{0x00, 0xAA, 0xBB}
+#define ATBM_OUI			{0x00, 0xAA, 0xBB}
 #define WIFI_WPA_OUI_TYPE	       0x01
 #define WIFI_WME_OUI_TYPE	       0x02
 #define WIFI_WPS_OUI_TYPE	       0x04
 #define WIFI_P2P_IE_OUI_TYPE	    0x09
-#define WIFI_SSTAR_IE_OUI_TYPE	    0x0a
+#define WIFI_ATBM_IE_OUI_TYPE	    0x0a
 
 #define D11_WIFI_ELT_ID		0xDD 
 
@@ -164,7 +163,7 @@ struct ieee80211_fragment_entry {
 };
 
 /* Parsed Information Elements */
-struct ieee802_Sstar_11_elems {
+struct ieee802_atbm_11_elems {
 	u8 *ie_start;
 	size_t total_len;
 
@@ -203,7 +202,7 @@ struct ieee802_Sstar_11_elems {
 	const u8 *wps_ie;
 	u8 *extended_ch_switch_elem;
 	u8 * secondary_ch_elem;
-	u8 *Sstar_special;
+	u8 *atbm_special;
 	/* length of them, respectively */
 	u8 ssid_len;
 	u8 supp_rates_len;
@@ -235,11 +234,10 @@ struct ieee802_Sstar_11_elems {
 	u8 wps_ie_len;	
 	u8 extended_ch_switch_elem_len;
 	u8 secondary_ch_elem_len;
-	u8 Sstar_special_len;
+	u8 atbm_special_len;
 };
 struct ieee80211_bss {
 	/* don't want to look up all the time */
-	s8 noise_floor;
 	size_t ssid_len;
 	u8 ssid[IEEE80211_MAX_SSID_LEN];
 
@@ -250,7 +248,7 @@ struct ieee80211_bss {
 
 	unsigned long last_probe_resp;
 
-#ifdef CONFIG_MAC80211_SSTAR_MESH
+#ifdef CONFIG_MAC80211_ATBM_MESH
 	u8 *mesh_id;
 	size_t mesh_id_len;
 	u8 *mesh_cfg;
@@ -272,7 +270,7 @@ struct ieee80211_bss {
 
 static inline u8 *bss_mesh_cfg(struct ieee80211_bss *bss)
 {
-#ifdef CONFIG_MAC80211_SSTAR_MESH
+#ifdef CONFIG_MAC80211_ATBM_MESH
 	return bss->mesh_cfg;
 #endif
 	return NULL;
@@ -280,7 +278,7 @@ static inline u8 *bss_mesh_cfg(struct ieee80211_bss *bss)
 
 static inline u8 *bss_mesh_id(struct ieee80211_bss *bss)
 {
-#ifdef CONFIG_MAC80211_SSTAR_MESH
+#ifdef CONFIG_MAC80211_ATBM_MESH
 	return bss->mesh_id;
 #endif
 	return NULL;
@@ -288,7 +286,7 @@ static inline u8 *bss_mesh_id(struct ieee80211_bss *bss)
 
 static inline u8 bss_mesh_id_len(struct ieee80211_bss *bss)
 {
-#ifdef CONFIG_MAC80211_SSTAR_MESH
+#ifdef CONFIG_MAC80211_ATBM_MESH
 	return bss->mesh_id_len;
 #endif
 	return 0;
@@ -317,22 +315,22 @@ struct ieee80211_tx_data {
 };
 
 /* TDLS action codes */
-struct Sstar_ieee802_1x_hdr {
+struct atbm_ieee802_1x_hdr {
 	u8 version;
 	u8 type;
 	__le16 length;
 	/* followed by length octets of data */
 } __attribute__ ((packed));
 
-struct Sstar_wpa_eapol_key {
+struct atbm_wpa_eapol_key {
 	u8 type;
 	/* Note: key_info, key_length, and key_data_length are unaligned */
 	u8 key_info[2]; /* big endian */
 	u8 key_length[2]; /* big endian */
-	u8 replay_counter[SSTAR_WPA_REPLAY_COUNTER_LEN];
-	u8 key_nonce[SSTAR_WPA_NONCE_LEN];
+	u8 replay_counter[ATBM_WPA_REPLAY_COUNTER_LEN];
+	u8 key_nonce[ATBM_WPA_NONCE_LEN];
 	u8 key_iv[16];
-	u8 key_rsc[SSTAR_WPA_KEY_RSC_LEN];
+	u8 key_rsc[ATBM_WPA_KEY_RSC_LEN];
 	u8 key_id[8]; /* Reserved in IEEE 802.11i/RSN */
 	/* variable length Key MIC field */
 	/* big endian 2-octet Key Data Length field */
@@ -416,7 +414,7 @@ struct beacon_data {
 	struct rcu_head rcu_head;
 };
 
-#ifdef SSTAR_PROBE_RESP_EXTRA_IE
+#ifdef ATBM_PROBE_RESP_EXTRA_IE
 struct proberesp_data {
 	u8 *head, *tail;
 	int head_len, tail_len;
@@ -424,7 +422,7 @@ struct proberesp_data {
 	int proberesp_data_ies_len;
 };
 #endif
-#ifdef SSTAR_AP_SME
+#ifdef ATBM_AP_SME
 struct associate_data{
 	u8 *associate_ies;
 	int associate_ies_len;
@@ -454,10 +452,10 @@ union iee80211_extra_ie{
 };
 struct ieee80211_if_ap {
 	struct beacon_data __rcu *beacon;
-#ifdef SSTAR_PROBE_RESP_EXTRA_IE
+#ifdef ATBM_PROBE_RESP_EXTRA_IE
 	struct proberesp_data __rcu *proberesp;
 #endif
-#ifdef SSTAR_AP_SME
+#ifdef ATBM_AP_SME
 	struct associate_data __rcu *associate_ie;
 #endif
 	struct beacon_extra __rcu *beacon_extra;
@@ -726,7 +724,7 @@ struct ieee80211_if_managed {
 	 */
 	int rssi_min_thold, rssi_max_thold;
 	int last_ave_beacon_signal;
-#ifdef CONFIG_MAC80211_SSTAR_ROAMING_CHANGES
+#ifdef CONFIG_MAC80211_ATBM_ROAMING_CHANGES
 	/*
 	 * Set during reassociation to enable faster key removal.
 	 */
@@ -814,7 +812,7 @@ struct ieee80211_if_mesh {
 	} security;
 };
 
-#ifdef CONFIG_MAC80211_SSTAR_MESH
+#ifdef CONFIG_MAC80211_ATBM_MESH
 #define IEEE80211_IFSTA_MESH_CTR_INC(msh, name)	\
 	do { (msh)->mshstats.name++; } while (0)
 #else
@@ -868,7 +866,7 @@ enum ieee80211_sdata_state_bits {
 	SDATA_STATE_RUNNING,
 	SDATA_STATE_OFFCHANNEL,
 };
-#ifdef SSTAR_AP_SME
+#ifdef ATBM_AP_SME
 enum ap_sme_event_id{
 	STA_EVENT__ASSOCED,
 	STA_EVENT__DEAUTHEN,
@@ -889,9 +887,9 @@ struct ap_sme_event{
 #include "mac80211_bridge.h"
 #endif	// CONFIG_MAC80211_BRIDGE
 
-#define IEEE80211_SSTAR_CONNECT_DONE (0)
-#define IEEE80211_SSTAR_CONNECT_SET  (1)
-#define IEEE80211_SSTAR_CONNECT_RUN	(2)
+#define IEEE80211_ATBM_CONNECT_DONE (0)
+#define IEEE80211_ATBM_CONNECT_SET  (1)
+#define IEEE80211_ATBM_CONNECT_RUN	(2)
 
 struct ieee80211_internal_ap_conf{
 	u8 bssid[ETH_ALEN];
@@ -920,7 +918,7 @@ struct ieee80211_sub_if_data {
 	unsigned long state;
 
 	int drop_unencrypted;
-#ifdef CONFIG_MAC80211_SSTAR_ROAMING_CHANGES
+#ifdef CONFIG_MAC80211_ATBM_ROAMING_CHANGES
 	int queues_locked;
 #endif
 
@@ -996,7 +994,7 @@ struct ieee80211_sub_if_data {
 		u32 mntr_flags;
 	} u;
 
-#ifdef CONFIG_MAC80211_SSTAR_DEBUGFS
+#ifdef CONFIG_MAC80211_ATBM_DEBUGFS
 	struct {
 		struct dentry *dir;
 		struct dentry *subdir_stations;
@@ -1019,7 +1017,7 @@ struct ieee80211_sub_if_data {
 	int mc_count;
 #endif
 
-#ifdef SSTAR_AP_SME
+#ifdef ATBM_AP_SME
 	struct list_head ap_sme_event;
 	struct mutex ap_sme_event_lock;
 	struct mutex ap_sme_mlme_lock;
@@ -1034,7 +1032,7 @@ struct ieee80211_sub_if_data {
 #endif //
 	u8 *last_scan_ie;
 	u32 last_scan_ie_len;
-#ifdef CONFIG_SSTAR_5G_PRETEND_2G
+#ifdef CONFIG_ATBM_5G_PRETEND_2G
 	bool radar_required;
 	struct delayed_work dfs_cac_timer_work;
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(3, 9, 0))
@@ -1043,7 +1041,7 @@ struct ieee80211_sub_if_data {
 #endif
 
 
-#ifdef CONFIG_SSTAR_AP_CHANNEL_CHANGE_EVENT
+#ifdef CONFIG_ATBM_AP_CHANNEL_CHANGE_EVENT
 		struct delayed_work ap_channel_event_work;
 #endif
 	struct ieee80211_internal_ap_conf *__rcu internal_ap_conf;
@@ -1120,7 +1118,7 @@ enum queue_stop_reason {
 	IEEE80211_QUEUE_STOP_REASON_CHTYPE_CHANGE,
 };
 
-#ifdef CONFIG_MAC80211_SSTAR_LEDS
+#ifdef CONFIG_MAC80211_ATBM_LEDS
 struct tpt_led_trigger {
 	struct led_trigger trig;
 	char name[32];
@@ -1185,13 +1183,6 @@ enum ieee80211_ch_reqtype{
 	MULT_CH_ASSOC,
 	MULT_CH_P2P,
 };
-enum ieee80211_enc_type{
-	IEEE80211_ENC_OPEN,
-	IEEE80211_ENC_WPA,
-	IEEE80211_ENC_WPA2,
-	IEEE80211_ENC_WPA_WPA2,
-	IEEE80211_ENC_WEP,
-};
 struct ieee80211_mult_channel_req{
 	struct list_head list;
 	struct ieee80211_sub_if_data *req_sdata;
@@ -1209,7 +1200,6 @@ struct ieee80211_internal_scan_sta{
 	u8 ssid_len;
 	u8 channel;
 	u8 signal;
-	enum ieee80211_enc_type enc_type;
 	bool beacon;
 	bool cca;
 	u8 ie_len;
@@ -1225,12 +1215,12 @@ struct ieee80211_internal_mac{
 	struct hlist_node hnode;
 };
 
-struct Sstar_internal_scan_sta_node{
+struct atbm_internal_scan_sta_node{
 	struct ieee80211_internal_scan_sta sta;
 	struct hlist_node hnode;
 };
-struct Sstar_internal_scan_results_req{	
-	bool (__rcu *result_handle)(struct ieee80211_hw *hw,struct Sstar_internal_scan_results_req *req,struct ieee80211_internal_scan_sta *sta);
+struct atbm_internal_scan_results_req{	
+	bool (__rcu *result_handle)(struct ieee80211_hw *hw,struct atbm_internal_scan_results_req *req,struct ieee80211_internal_scan_sta *sta);
 	bool flush;
 	size_t n_stas;
 	void *priv;
@@ -1281,9 +1271,9 @@ struct ieee80211_internal_channel_auto_select_req{
 };
 
 struct ieee80211_internal_channel_auto_select_results{
-	unsigned int n_aps[IEEE80211_SSTAR_MAX_SCAN_CHANNEL_INDEX];
-	unsigned int weight[IEEE80211_SSTAR_MAX_SCAN_CHANNEL_INDEX];
-	u8 busy_ratio[IEEE80211_SSTAR_MAX_SCAN_CHANNEL_INDEX];
+	unsigned int n_aps[IEEE80211_ATBM_MAX_SCAN_CHANNEL_INDEX];
+	unsigned int weight[IEEE80211_ATBM_MAX_SCAN_CHANNEL_INDEX];
+	u8 busy_ratio[IEEE80211_ATBM_MAX_SCAN_CHANNEL_INDEX];
 	u8 susgest_channel;
 	u8 *ignore_channels;
 	u8 ignore_n_channels;
@@ -1351,23 +1341,6 @@ struct ieee80211_internal_wsm_adaptive{
 	int enable;
 };
 
-#define IEEE80211_INTERNAL_RATE_FLAGS_SET_TX_RATE		BIT(0)
-#define IEEE80211_INTERNAL_RATE_FLAGS_SET_TOP_RATE		BIT(1)
-#define IEEE80211_INTERNAL_RATE_FLAGS_CLEAR_TX_RATE		BIT(2)
-#define IEEE80211_INTERNAL_RATE_FLAGS_CLEAE_TOP_RATE	BIT(3)
-#define IEEE80211_INTERNAL_RATE_FLAGS_SET_MIN_RATE		BIT(4)
-#define IEEE80211_INTERNAL_RATE_FLAGS_CLEAR_MIN_RATE	BIT(5)
-
-
-
-struct ieee80211_internal_rate_req{
-	int rate;
-	int flags;
-};
-struct ieee80211_internal_rate_power_req{
-	char rate_index;
-	char power;
-};
 struct ieee80211_internal_set_freq_req{
 	u16 	channel_num;
 	size_t	freq;
@@ -1542,7 +1515,7 @@ struct ieee80211_local {
 	struct ieee80211_scan_req_wrap scan_req_wrap;
 	/* internal scan parmas */
 	struct ieee80211_internal_scan internal_scan;
-	struct hlist_head internal_scan_list[SSTAR_COMMON_HASHENTRIES];
+	struct hlist_head internal_scan_list[ATBM_COMMON_HASHENTRIES];
 	spinlock_t	internal_scan_list_lock;
 	wait_queue_head_t internal_scan_wq;
 	atomic_t internal_scan_status;
@@ -1574,7 +1547,7 @@ struct ieee80211_local {
 	u32 dot11MulticastReceivedFrameCount;
 	u32 dot11TransmittedFrameCount;
 
-#ifdef CONFIG_MAC80211_SSTAR_LEDS
+#ifdef CONFIG_MAC80211_ATBM_LEDS
 	int tx_led_counter, rx_led_counter;
 	struct led_trigger *tx_led, *rx_led, *assoc_led, *radio_led;
 	struct tpt_led_trigger *tpt_led_trigger;
@@ -1582,7 +1555,7 @@ struct ieee80211_local {
 	     assoc_led_name[32], radio_led_name[32];
 #endif
 
-#ifdef CONFIG_MAC80211_SSTAR_DEBUG_COUNTERS
+#ifdef CONFIG_MAC80211_ATBM_DEBUG_COUNTERS
 	/* TX/RX handler statistics */
 	unsigned int tx_handlers_drop;
 	unsigned int tx_handlers_queued;
@@ -1604,9 +1577,9 @@ struct ieee80211_local {
 	unsigned int rx_handlers_fragments;
 	unsigned int tx_status_drop;
 #define I802_DEBUG_INC(c) (c)++
-#else /* CONFIG_MAC80211_SSTAR_DEBUG_COUNTERS */
+#else /* CONFIG_MAC80211_ATBM_DEBUG_COUNTERS */
 #define I802_DEBUG_INC(c) do { } while (0)
-#endif /* CONFIG_MAC80211_SSTAR_DEBUG_COUNTERS */
+#endif /* CONFIG_MAC80211_ATBM_DEBUG_COUNTERS */
 
 
 	int total_ps_buffered; /* total number of all buffered unicast and
@@ -1615,9 +1588,9 @@ struct ieee80211_local {
 	int wifi_wme_noack_test;
 	unsigned int wmm_acm; /* bit field of ACM bits (BIT(802.1D tag)) */
 
-#ifdef CONFIG_SSTAR_APOLLO_TESTMODE
+#ifdef CONFIG_ATBM_APOLLO_TESTMODE
 	unsigned int wmm_admitted_ups; /* bit field of admitted priorities */
-#endif /*CONFIG_SSTAR_APOLLO_TESTMODE*/
+#endif /*CONFIG_ATBM_APOLLO_TESTMODE*/
 	/*
 	 * Bitmask of enabled u-apsd queues,
 	 * IEEE80211_WMM_IE_STA_QOSINFO_AC_BE & co. Needs a new association
@@ -1631,7 +1604,7 @@ struct ieee80211_local {
 	 * Needs a new association to take effect.
 	 */
 	unsigned int uapsd_max_sp_len;
-#ifdef CONFIG_SSTAR_PM_QOS
+#ifdef CONFIG_ATBM_PM_QOS
 	struct notifier_block network_latency_notifier;
 #endif
 	struct notifier_block ifa_notifier;
@@ -1654,7 +1627,7 @@ struct ieee80211_local {
 #endif
 #endif /*IPV6_FILTERING*/
 
-#ifdef CONFIG_MAC80211_SSTAR_DEBUGFS
+#ifdef CONFIG_MAC80211_ATBM_DEBUGFS
 	struct local_debugfsdentries {
 		struct dentry *rcdir;
 		struct dentry *keys;
@@ -1678,7 +1651,7 @@ struct ieee80211_local {
 	/*
 	*Sta in listen state support
 	*/
-#ifdef CONFIG_SSTAR_STA_LISTEN
+#ifdef CONFIG_ATBM_STA_LISTEN
 	struct ieee80211_channel *listen_channel;
 	struct ieee80211_sub_if_data *listen_sdata;
 	bool listen_started;
@@ -1691,7 +1664,7 @@ struct ieee80211_local {
 	struct napi_struct napi;
 #endif
 	u64 roc_cookie;
-	#ifdef SSTAR_CONNECT_WITHOUT_SCAN
+	#ifdef ATBM_CONNECT_WITHOUT_SCAN
 	atomic_t connectting;
 	unsigned long con_start_time;
 	#endif
@@ -1705,12 +1678,11 @@ struct ieee80211_local {
 	/*
 	*special channel params
 	*/
-	struct hlist_head special_freq_list[SSTAR_COMMON_HASHENTRIES];
+	struct hlist_head special_freq_list[ATBM_COMMON_HASHENTRIES];
 
 	char *ieee80211_name_base;
 	int  ieee80211_name_len;
 	spinlock_t ieee80211_name_lock;
-	s8 noise_floor[CHANNEL_NUM];
 };
 
 /*
@@ -1778,12 +1750,12 @@ static inline struct ieee80211_hw *local_to_hw(
 
 static inline int ieee80211_bssid_match(const u8 *raddr, const u8 *addr)
 {
-	return Sstar_compare_ether_addr(raddr, addr) == 0 ||
+	return atbm_compare_ether_addr(raddr, addr) == 0 ||
 	       is_broadcast_ether_addr(raddr);
 }
 
-//#define SSTAR_CONNECT_WITHOUT_SCAN
-#ifdef SSTAR_CONNECT_WITHOUT_SCAN
+//#define ATBM_CONNECT_WITHOUT_SCAN
+#ifdef ATBM_CONNECT_WITHOUT_SCAN
 #define LOCAL_CONNECT_INIT(local)			\
 	do{										\
 		atomic_set(&local->connectting,0);		\
@@ -1793,7 +1765,7 @@ static inline int ieee80211_bssid_match(const u8 *raddr, const u8 *addr)
 #define LOCAL_CONNECT_INIT(local)
 #endif
 
-#ifdef SSTAR_CONNECT_WITHOUT_SCAN
+#ifdef ATBM_CONNECT_WITHOUT_SCAN
 #define LOCAL_SET_CONNECT_RUNNING(local) 		\
 	do{											\
 		atomic_set(&(local)->connectting,1);		\
@@ -1803,7 +1775,7 @@ static inline int ieee80211_bssid_match(const u8 *raddr, const u8 *addr)
 #define LOCAL_SET_CONNECT_RUNNING(local)
 #endif
 
-#ifdef SSTAR_CONNECT_WITHOUT_SCAN
+#ifdef ATBM_CONNECT_WITHOUT_SCAN
 
 #define LOCAL_SET_CONNECT_STOP(local)			\
 	do{											\
@@ -1814,7 +1786,7 @@ static inline int ieee80211_bssid_match(const u8 *raddr, const u8 *addr)
 #define LOCAL_SET_CONNECT_STOP(local)
 #endif
 
-#ifdef SSTAR_CONNECT_WITHOUT_SCAN
+#ifdef ATBM_CONNECT_WITHOUT_SCAN
 #define LOCAL_IS_CONNECTTING(local)							\
 	((atomic_read(&(local)->connectting)&&time_is_after_jiffies((local)->con_start_time+10*HZ))?1:(atomic_xchg(&(local)->connectting, 0),0))
 #else
@@ -1848,10 +1820,10 @@ void ieee80211_recalc_ps(struct ieee80211_local *local, s32 latency);
 int ieee80211_max_network_latency(struct notifier_block *nb,
 				  unsigned long data, void *dummy);
 int ieee80211_set_arp_filter(struct ieee80211_sub_if_data *sdata);
-#ifdef SSTAR_SUPPORT_WIDTH_40M
+#ifdef ATBM_SUPPORT_WIDTH_40M
 
 void ieee80211_sta_process_chanswitch(struct ieee80211_sub_if_data *sdata,
-                                          struct Sstar_ieee80211_channel_sw_packed_ie *sw_packed_ie,
+                                          struct atbm_ieee80211_channel_sw_packed_ie *sw_packed_ie,
                                           struct ieee80211_bss *bss,
                                           u64 timestamp);
 #else
@@ -1898,7 +1870,7 @@ int ieee80211_request_scan(struct ieee80211_sub_if_data *sdata,
 bool ieee80211_internal_scan_triger(struct ieee80211_sub_if_data *sdata,struct cfg80211_scan_request *req);
 void ieee80211_scan_internal_deinit(struct ieee80211_local *local);
 void ieee80211_scan_internal_int(struct ieee80211_local *local);
-bool  ieee80211_scan_internal_req_results(struct ieee80211_local *local,struct Sstar_internal_scan_results_req *req);
+bool  ieee80211_scan_internal_req_results(struct ieee80211_local *local,struct atbm_internal_scan_results_req *req);
 bool ieee80211_update_ap_config(struct ieee80211_sub_if_data *sdata,struct ieee80211_internal_ap_conf *conf,bool clear);
 void ieee80211_scan_cancel(struct ieee80211_local *local);
 ieee80211_rx_result
@@ -1912,9 +1884,9 @@ void ieee80211_mlme_notify_scan_completed(struct ieee80211_local *local);
 struct ieee80211_bss *
 ieee80211_bss_info_update(struct ieee80211_local *local,
 			  struct ieee80211_rx_status *rx_status,
-			  struct Sstar_ieee80211_mgmt *mgmt,
+			  struct atbm_ieee80211_mgmt *mgmt,
 			  size_t len,
-			  struct ieee802_Sstar_11_elems *elems,
+			  struct ieee802_atbm_11_elems *elems,
 			  struct ieee80211_channel *channel,
 			  bool beacon);
 struct ieee80211_bss *
@@ -1982,7 +1954,7 @@ static inline u8 *ieee8011_get_channel_list(struct ieee80211_hw *hw,size_t *n_ch
 		goto exit;
 	}
 	
-	channels = Sstar_kzalloc(i, GFP_ATOMIC);
+	channels = atbm_kzalloc(i, GFP_ATOMIC);
 
 	if(channels == NULL){
 		*n_channels = 0;
@@ -2019,10 +1991,10 @@ static inline struct ieee80211_channel_state *ieee80211_get_channel_state(
 		return &local->chan_state;
 	}
 }
-static inline bool Sstar_ieee80211_suspend(struct ieee80211_local *local)
+static inline bool atbm_ieee80211_suspend(struct ieee80211_local *local)
 {
 	if ((local->quiescing == true)||(local->suspended && !local->resuming)||(atomic_read(&local->resume_timer_start))){
-		pr_warn("Sstar_ieee80211_suspend can not process cfg cmd\n");
+		pr_warn("atbm_ieee80211_suspend can not process cfg cmd\n");
 		return true;
 	}
 	return false;
@@ -2055,14 +2027,14 @@ void __ieee80211_stop_rx_ba_session(struct sta_info *sta, u16 tid,
 void ieee80211_sta_tear_down_BA_sessions(struct sta_info *sta, bool tx);
 void ieee80211_process_delba(struct ieee80211_sub_if_data *sdata,
 			     struct sta_info *sta,
-			     struct Sstar_ieee80211_mgmt *mgmt, size_t len);
+			     struct atbm_ieee80211_mgmt *mgmt, size_t len);
 void ieee80211_process_addba_resp(struct ieee80211_local *local,
 				  struct sta_info *sta,
-				  struct Sstar_ieee80211_mgmt *mgmt,
+				  struct atbm_ieee80211_mgmt *mgmt,
 				  size_t len);
 void ieee80211_process_addba_request(struct ieee80211_local *local,
 				     struct sta_info *sta,
-				     struct Sstar_ieee80211_mgmt *mgmt,
+				     struct atbm_ieee80211_mgmt *mgmt,
 				     size_t len);
 
 int __ieee80211_stop_tx_ba_session(struct sta_info *sta, u16 tid,
@@ -2079,7 +2051,7 @@ void ieee80211_release_reorder_timeout(struct sta_info *sta, int tid);
 
 /* Spectrum management */
 void ieee80211_process_measurement_req(struct ieee80211_sub_if_data *sdata,
-				       struct Sstar_ieee80211_mgmt *mgmt,
+				       struct atbm_ieee80211_mgmt *mgmt,
 				       size_t len);
 
 /* Suspend/resume and hw reconfiguration */
@@ -2126,11 +2098,11 @@ void ieee80211_set_wmm_default(struct ieee80211_sub_if_data *sdata);
 void ieee80211_xmit(struct ieee80211_sub_if_data *sdata, struct sk_buff *skb);
 void ieee80211_tx_skb(struct ieee80211_sub_if_data *sdata, struct sk_buff *skb);
 void ieee802_11_parse_elems(u8 *start, size_t len,
-			    struct ieee802_Sstar_11_elems *elems);
-u32 Sstar_ieee802_11_parse_elems_crc(u8 *start, size_t len,
-			       struct ieee802_Sstar_11_elems *elems,
+			    struct ieee802_atbm_11_elems *elems);
+u32 atbm_ieee802_11_parse_elems_crc(u8 *start, size_t len,
+			       struct ieee802_atbm_11_elems *elems,
 			       u64 filter, u32 crc);
-u32 ieee80211_Sstar_mandatory_rates(struct ieee80211_local *local,
+u32 ieee80211_atbm_mandatory_rates(struct ieee80211_local *local,
 			      enum ieee80211_band band);
 
 void ieee80211_dynamic_ps_enable_work(struct work_struct *work);
@@ -2184,13 +2156,13 @@ void ieee80211_sta_def_wmm_params(struct ieee80211_sub_if_data *sdata,
 				  const size_t supp_rates_len,
 				  const u8 *supp_rates);
 u32 ieee80211_sta_get_rates(struct ieee80211_local *local,
-			    struct ieee802_Sstar_11_elems *elems,
+			    struct ieee802_atbm_11_elems *elems,
 			    enum ieee80211_band band);
 int __ieee80211_request_smps(struct ieee80211_sub_if_data *sdata,
 			     enum ieee80211_smps_mode smps_mode);
 void ieee80211_recalc_smps(struct ieee80211_local *local);
 
-size_t Sstar_ieee80211_ie_split(const u8 *ies, size_t ielen,
+size_t atbm_ieee80211_ie_split(const u8 *ies, size_t ielen,
 			  const u8 *ids, int n_ids, size_t offset);
 size_t ieee80211_ie_split_vendor(const u8 *ies, size_t ielen, size_t offset);
 
@@ -2215,7 +2187,7 @@ void ieee80211_assign_authen_bss(struct ieee80211_sub_if_data *sdata,struct cfg8
 void ieee80211_free_authen_bss(struct ieee80211_sub_if_data *sdata);
 void ieee80211_ap_rx_queued_mgmt_special(struct ieee80211_sub_if_data *sdata,
 				  struct sk_buff *skb);
-#ifdef CONFIG_SSTAR_STA_LISTEN
+#ifdef CONFIG_ATBM_STA_LISTEN
 void ieee80211_sta_rx_queued_mgmt_special(struct ieee80211_sub_if_data *sdata,
 				  struct sk_buff *skb);
 #endif
@@ -2233,7 +2205,7 @@ bool ieee80211_updata_extra_ie(struct ieee80211_sub_if_data *sdata,enum ieee8021
 		union iee80211_extra_ie *extra);
 bool ieee80211_special_freq_update(struct ieee80211_local *local,struct ieee80211_special_freq *special);
 void ieee80211_special_freq_clear(struct ieee80211_local *local,struct ieee80211_special_freq *special);
-#ifdef CONFIG_SSTAR_STA_LISTEN
+#ifdef CONFIG_ATBM_STA_LISTEN
 int ieee80211_set_sta_channel(struct ieee80211_sub_if_data *sdata,int channel);
 #endif
 bool ieee80211_sta_triger_passive_scan(struct ieee80211_sub_if_data *sdata,
@@ -2260,17 +2232,17 @@ bool ieee80211_rx_sta_cook_deauthen(struct sta_info *sta);
 bool ieee80211_tx_multicast_deauthen(struct ieee80211_sub_if_data *sdata);
 bool ieee80211_tx_sta_deauthen(struct sta_info *sta);
 
-#ifdef CONFIG_MAC80211_SSTAR_NOINLINE
+#ifdef CONFIG_MAC80211_ATBM_NOINLINE
 #define debug_noinline noinline
 #else
 #define debug_noinline
 #endif
 
-void SSTARWIFI_DBG_PRINT2(const char * func,const int line,unsigned int data);
-void SSTARWIFI_DBG_PRINT(const char * func,const int line);
-void SSTARWIFI_DBG_DUMP(char *prefix, u8 *data, int len);
+void ATBMWIFI_DBG_PRINT2(const char * func,const int line,unsigned int data);
+void ATBMWIFI_DBG_PRINT(const char * func,const int line);
+void ATBMWIFI_DBG_DUMP(char *prefix, u8 *data, int len);
 
-#ifdef SSTAR_AP_SME
+#ifdef ATBM_AP_SME
 void ieee80211_ap_sme_queue_mgmt_init(struct ieee80211_sub_if_data *sdata);
 void ieee80211_ap_sme_event_free(struct ieee80211_sub_if_data *sdata,
 	struct list_head *);
@@ -2297,7 +2269,7 @@ void ieee80211_ap_sme_event_purge(struct ieee80211_sub_if_data *sdata);
 #define IEEE80211_AP_SME_STA_LOCK
 
 #endif
-#ifdef CONFIG_SSTAR_5G_PRETEND_2G
+#ifdef CONFIG_ATBM_5G_PRETEND_2G
 void ieee80211_dfs_cac_timer_work(struct work_struct *work);
 void ieee80211_dfs_cac_abort(struct ieee80211_sub_if_data *sdata);
 #endif
@@ -2306,7 +2278,7 @@ void ieee80211_ap_channel_event_work(struct work_struct *work);
 #define DEBUG_BOOTP(__flag)				\
 	do{									\
 		if(__flag&RX_FLAG_BOOTP)		\
-			Sstar_printk_err("%s:rx boot(%d)\n",__func__,__LINE__);	\
+			atbm_printk_err("%s:rx boot(%d)\n",__func__,__LINE__);	\
 	}while(0)
 
 #endif /* IEEE80211_I_H */

@@ -1,6 +1,6 @@
 /*
  * Software WAPI encryption implementation
- * Copyright (c) 2011, sigmastar
+ * Copyright (c) 2011, altobeam
  * Author: Janusz Dziedzic <janusz.dziedzic@tieto.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -20,7 +20,7 @@
 #include <linux/slab.h>
 #include <asm/unaligned.h>
 
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include "ieee80211_i.h"
 #include "wapi.h"
 
@@ -46,11 +46,11 @@ static int ieee80211_wapi_decrypt(struct ieee80211_local *local,
 		return RX_DROP_UNUSABLE;
 
 	/* Trim ICV */
-	Sstar_skb_trim(skb, skb->len - WAPI_ICV_LEN);
+	atbm_skb_trim(skb, skb->len - WAPI_ICV_LEN);
 
 	/* Remove IV */
 	memmove(skb->data + WAPI_IV_LEN, skb->data, hdrlen);
-	Sstar_skb_pull(skb, WAPI_IV_LEN);
+	atbm_skb_pull(skb, WAPI_IV_LEN);
 
 	return RX_CONTINUE;
 }

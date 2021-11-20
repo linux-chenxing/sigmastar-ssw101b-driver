@@ -15,7 +15,7 @@
 
 #include <linux/ieee80211.h>
 #include <linux/export.h>
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include "ieee80211_i.h"
 #include "rate.h"
 
@@ -110,7 +110,7 @@ void ieee80211_ht_cap_to_sta_channel_type(struct sta_info *sta)
 	char vif_channel_type = 0;
 	char sta_channel_type = !!(sta->sta.ht_cap.cap&IEEE80211_HT_CAP_SUP_WIDTH_20_40);
 	if(sdata == NULL){
-		Sstar_printk_err(KERN_ERR "%s:sdata==NULL\n",__func__);
+		atbm_printk_err(KERN_ERR "%s:sdata==NULL\n",__func__);
 		return;
 	}
 	switch (vif_chw(&sdata->vif)) {
@@ -129,15 +129,15 @@ void ieee80211_ht_cap_to_sta_channel_type(struct sta_info *sta)
 		if(vif_channel_type){
 			set_sta_flag(sta,WLAN_STA_40M_CH);
 			clear_sta_flag(sta,WLAN_STA_40M_CH_SEND_20M);
-			Sstar_printk_always("[%pM]:40M channel\n",sta->sta.addr);
+			atbm_printk_always("[%pM]:40M channel\n",sta->sta.addr);
 		}
 		else {
 			clear_sta_flag(sta,WLAN_STA_40M_CH);
-			Sstar_printk_always("[%pM]:20M channel\n",sta->sta.addr);
+			atbm_printk_always("[%pM]:20M channel\n",sta->sta.addr);
 		}
 	}else {
 		clear_sta_flag(sta,WLAN_STA_40M_CH);
-		Sstar_printk_always("[%pM]:20M channel\n",sta->sta.addr);
+		atbm_printk_always("[%pM]:20M channel\n",sta->sta.addr);
 	}
 }
 void ieee80211_sta_tear_down_BA_sessions(struct sta_info *sta, bool tx)
@@ -193,7 +193,7 @@ void ieee80211_ba_session_work(struct work_struct *work)
 			sta->ampdu_mlme.tid_start_tx[tid] = NULL;
 			/* could there be a race? */
 			if (sta->ampdu_mlme.tid_tx[tid])
-				Sstar_kfree(tid_tx);
+				atbm_kfree(tid_tx);
 			else
 				ieee80211_assign_tid_tx(sta, tid, tid_tx);
 			spin_unlock_bh(&sta->lock);
@@ -218,15 +218,15 @@ void ieee80211_send_delba(struct ieee80211_sub_if_data *sdata,
 {
 	struct ieee80211_local *local = sdata->local;
 	struct sk_buff *skb;
-	struct Sstar_ieee80211_mgmt *mgmt;
+	struct atbm_ieee80211_mgmt *mgmt;
 	u16 params;
 
-	skb = Sstar_dev_alloc_skb(sizeof(*mgmt) + local->hw.extra_tx_headroom);
+	skb = atbm_dev_alloc_skb(sizeof(*mgmt) + local->hw.extra_tx_headroom);
 	if (!skb)
 		return;
 
-	Sstar_skb_reserve(skb, local->hw.extra_tx_headroom);
-	mgmt = (struct Sstar_ieee80211_mgmt *) Sstar_skb_put(skb, 24);
+	atbm_skb_reserve(skb, local->hw.extra_tx_headroom);
+	mgmt = (struct atbm_ieee80211_mgmt *) atbm_skb_put(skb, 24);
 	memset(mgmt, 0, 24);
 	memcpy(mgmt->da, da, ETH_ALEN);
 	memcpy(mgmt->sa, sdata->vif.addr, ETH_ALEN);
@@ -239,7 +239,7 @@ void ieee80211_send_delba(struct ieee80211_sub_if_data *sdata,
 	mgmt->frame_control = cpu_to_le16(IEEE80211_FTYPE_MGMT |
 					  IEEE80211_STYPE_ACTION);
 
-	Sstar_skb_put(skb, 1 + sizeof(mgmt->u.action.u.delba));
+	atbm_skb_put(skb, 1 + sizeof(mgmt->u.action.u.delba));
 
 	mgmt->u.action.category = WLAN_CATEGORY_BACK;
 	mgmt->u.action.u.delba.action_code = WLAN_ACTION_DELBA;
@@ -254,7 +254,7 @@ void ieee80211_send_delba(struct ieee80211_sub_if_data *sdata,
 
 void ieee80211_process_delba(struct ieee80211_sub_if_data *sdata,
 			     struct sta_info *sta,
-			     struct Sstar_ieee80211_mgmt *mgmt, size_t len)
+			     struct atbm_ieee80211_mgmt *mgmt, size_t len)
 {
 	u16 tid, params;
 	u16 initiator;
@@ -263,12 +263,12 @@ void ieee80211_process_delba(struct ieee80211_sub_if_data *sdata,
 	tid = (params & IEEE80211_DELBA_PARAM_TID_MASK) >> 12;
 	initiator = (params & IEEE80211_DELBA_PARAM_INITIATOR_MASK) >> 11;
 
-#ifdef CONFIG_MAC80211_SSTAR_HT_DEBUG
+#ifdef CONFIG_MAC80211_ATBM_HT_DEBUG
 	if (net_ratelimit())
-		Sstar_printk_always("delba from %pM (%s) tid %d reason code %d\n",
+		atbm_printk_always("delba from %pM (%s) tid %d reason code %d\n",
 			mgmt->sa, initiator ? "initiator" : "recipient", tid,
 			le16_to_cpu(mgmt->u.action.u.delba.reason_code));
-#endif /* CONFIG_MAC80211_SSTAR_HT_DEBUG */
+#endif /* CONFIG_MAC80211_ATBM_HT_DEBUG */
 
 	if (initiator == WLAN_BACK_INITIATOR)
 		__ieee80211_stop_rx_ba_session(sta, tid, WLAN_BACK_INITIATOR, 0,
@@ -284,15 +284,15 @@ int ieee80211_send_smps_action(struct ieee80211_sub_if_data *sdata,
 {
 	struct ieee80211_local *local = sdata->local;
 	struct sk_buff *skb;
-	struct Sstar_ieee80211_mgmt *action_frame;
+	struct atbm_ieee80211_mgmt *action_frame;
 
 	/* 27 = header + category + action + smps mode */
-	skb = Sstar_dev_alloc_skb(27 + local->hw.extra_tx_headroom);
+	skb = atbm_dev_alloc_skb(27 + local->hw.extra_tx_headroom);
 	if (!skb)
 		return -ENOMEM;
 
-	Sstar_skb_reserve(skb, local->hw.extra_tx_headroom);
-	action_frame = (void *)Sstar_skb_put(skb, 27);
+	atbm_skb_reserve(skb, local->hw.extra_tx_headroom);
+	action_frame = (void *)atbm_skb_put(skb, 27);
 	memcpy(action_frame->da, da, ETH_ALEN);
 	memcpy(action_frame->sa, sdata->dev->dev_addr, ETH_ALEN);
 	memcpy(action_frame->bssid, bssid, ETH_ALEN);

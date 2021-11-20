@@ -13,13 +13,13 @@
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/string.h>
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include "wme.h"
 #include "ieee80211_i.h"
 #include "mesh.h"
 
-#ifdef CONFIG_MAC80211_SSTAR_VERBOSE_MPATH_DEBUG
-#define mpath_dbg(fmt, args...)	Sstar_printk_always(fmt, ##args)
+#ifdef CONFIG_MAC80211_ATBM_VERBOSE_MPATH_DEBUG
+#define mpath_dbg(fmt, args...)	atbm_printk_always(fmt, ##args)
 #else
 #define mpath_dbg(fmt, args...)	do { (void)(0); } while (0)
 #endif
@@ -87,23 +87,23 @@ static struct mesh_table *mesh_table_alloc(int size_order)
 	int i;
 	struct mesh_table *newtbl;
 
-	newtbl = Sstar_kmalloc(sizeof(struct mesh_table), GFP_ATOMIC);
+	newtbl = atbm_kmalloc(sizeof(struct mesh_table), GFP_ATOMIC);
 	if (!newtbl)
 		return NULL;
 
-	newtbl->hash_buckets = Sstar_kzalloc(sizeof(struct hlist_head) *
+	newtbl->hash_buckets = atbm_kzalloc(sizeof(struct hlist_head) *
 			(1 << size_order), GFP_ATOMIC);
 
 	if (!newtbl->hash_buckets) {
-		Sstar_kfree(newtbl);
+		atbm_kfree(newtbl);
 		return NULL;
 	}
 
-	newtbl->hashwlock = Sstar_kmalloc(sizeof(spinlock_t) *
+	newtbl->hashwlock = atbm_kmalloc(sizeof(spinlock_t) *
 			(1 << size_order), GFP_ATOMIC);
 	if (!newtbl->hashwlock) {
-		Sstar_kfree(newtbl->hash_buckets);
-		Sstar_kfree(newtbl);
+		atbm_kfree(newtbl->hash_buckets);
+		atbm_kfree(newtbl);
 		return NULL;
 	}
 
@@ -121,9 +121,9 @@ static struct mesh_table *mesh_table_alloc(int size_order)
 
 static void __mesh_table_free(struct mesh_table *tbl)
 {
-	Sstar_kfree(tbl->hash_buckets);
-	Sstar_kfree(tbl->hashwlock);
-	Sstar_kfree(tbl);
+	atbm_kfree(tbl->hash_buckets);
+	atbm_kfree(tbl->hashwlock);
+	atbm_kfree(tbl);
 }
 
 static void mesh_table_free(struct mesh_table *tbl, bool free_leafs)
@@ -147,9 +147,9 @@ static void mesh_table_free(struct mesh_table *tbl, bool free_leafs)
 		hlist_for_each_entry_safe(gate, p, q,
 					 tbl->known_gates, list) {
 			hlist_del(&gate->list);
-			Sstar_kfree(gate);
+			atbm_kfree(gate);
 		}
-		Sstar_kfree(tbl->known_gates);
+		atbm_kfree(tbl->known_gates);
 		spin_unlock_bh(&tbl->gates_lock);
 	}
 
@@ -217,19 +217,19 @@ void mesh_path_assign_nexthop(struct mesh_path *mpath, struct sta_info *sta)
 
 	rcu_assign_pointer(mpath->next_hop, sta);
 
-	__Sstar_skb_queue_head_init(&tmpq);
+	__atbm_skb_queue_head_init(&tmpq);
 
 	spin_lock_irqsave(&mpath->frame_queue.lock, flags);
 
-	while ((skb = __Sstar_skb_dequeue(&mpath->frame_queue)) != NULL) {
+	while ((skb = __atbm_skb_dequeue(&mpath->frame_queue)) != NULL) {
 		hdr = (struct ieee80211_hdr *) skb->data;
 		memcpy(hdr->addr1, sta->sta.addr, ETH_ALEN);
-		Sstar_skb_set_queue_mapping(skb, ieee80211_select_queue(sdata, skb));
+		atbm_skb_set_queue_mapping(skb, ieee80211_select_queue(sdata, skb));
 		ieee80211_set_qos_hdr(sdata, skb);
-		__Sstar_skb_queue_tail(&tmpq, skb);
+		__atbm_skb_queue_tail(&tmpq, skb);
 	}
 
-	Sstar_skb_queue_splice(&tmpq, &mpath->frame_queue);
+	atbm_skb_queue_splice(&tmpq, &mpath->frame_queue);
 	spin_unlock_irqrestore(&mpath->frame_queue.lock, flags);
 }
 
@@ -250,7 +250,7 @@ static void prepare_for_gate(struct sk_buff *skb, char *dst_addr,
 		mesh_hdrlen = 6;
 
 		/* make room for the two extended addresses */
-		Sstar_skb_push(skb, 2 * ETH_ALEN);
+		atbm_skb_push(skb, 2 * ETH_ALEN);
 		memmove(skb->data, hdr, hdrlen + mesh_hdrlen);
 
 		hdr = (struct ieee80211_hdr *) skb->data;
@@ -302,39 +302,39 @@ static void mesh_path_move_to_queue(struct mesh_path *gate_mpath,
 	BUG_ON(gate_mpath == from_mpath);
 	BUG_ON(!gate_mpath->next_hop);
 
-	__Sstar_skb_queue_head_init(&gateq);
-	__Sstar_skb_queue_head_init(&failq);
+	__atbm_skb_queue_head_init(&gateq);
+	__atbm_skb_queue_head_init(&failq);
 
 	spin_lock_irqsave(&from_mpath->frame_queue.lock, flags);
-	Sstar_skb_queue_splice_init(&from_mpath->frame_queue, &failq);
+	atbm_skb_queue_splice_init(&from_mpath->frame_queue, &failq);
 	spin_unlock_irqrestore(&from_mpath->frame_queue.lock, flags);
 
-	num_skbs = Sstar_skb_queue_len(&failq);
+	num_skbs = atbm_skb_queue_len(&failq);
 
 	while (num_skbs--) {
-		skb = __Sstar_skb_dequeue(&failq);
+		skb = __atbm_skb_dequeue(&failq);
 		if (copy) {
-			cp_skb = Sstar_skb_copy(skb, GFP_ATOMIC);
+			cp_skb = atbm_skb_copy(skb, GFP_ATOMIC);
 			if (cp_skb)
-				__Sstar_skb_queue_tail(&failq, cp_skb);
+				__atbm_skb_queue_tail(&failq, cp_skb);
 		}
 
 		prepare_for_gate(skb, gate_mpath->dst, gate_mpath);
-		__Sstar_skb_queue_tail(&gateq, skb);
+		__atbm_skb_queue_tail(&gateq, skb);
 	}
 
 	spin_lock_irqsave(&gate_mpath->frame_queue.lock, flags);
-	Sstar_skb_queue_splice(&gateq, &gate_mpath->frame_queue);
+	atbm_skb_queue_splice(&gateq, &gate_mpath->frame_queue);
 	mpath_dbg("Mpath queue for gate %pM has %d frames\n",
 			gate_mpath->dst,
-			Sstar_skb_queue_len(&gate_mpath->frame_queue));
+			atbm_skb_queue_len(&gate_mpath->frame_queue));
 	spin_unlock_irqrestore(&gate_mpath->frame_queue.lock, flags);
 
 	if (!copy)
 		return;
 
 	spin_lock_irqsave(&from_mpath->frame_queue.lock, flags);
-	Sstar_skb_queue_splice(&failq, &from_mpath->frame_queue);
+	atbm_skb_queue_splice(&failq, &from_mpath->frame_queue);
 	spin_unlock_irqrestore(&from_mpath->frame_queue.lock, flags);
 }
 
@@ -419,7 +419,7 @@ struct mesh_path *mesh_path_lookup_by_idx(int idx, struct ieee80211_sub_if_data 
 static void mesh_gate_node_reclaim(struct rcu_head *rp)
 {
 	struct mpath_node *node = container_of(rp, struct mpath_node, rcu);
-	Sstar_kfree(node);
+	atbm_kfree(node);
 }
 
 /**
@@ -445,7 +445,7 @@ static int mesh_gate_add(struct mesh_table *tbl, struct mesh_path *mpath)
 			goto err_rcu;
 		}
 
-	new_gate = Sstar_kzalloc(sizeof(struct mpath_node), GFP_ATOMIC);
+	new_gate = atbm_kzalloc(sizeof(struct mpath_node), GFP_ATOMIC);
 	if (!new_gate) {
 		err = -ENOMEM;
 		goto err_rcu;
@@ -552,11 +552,11 @@ int mesh_path_add(u8 *dst, struct ieee80211_sub_if_data *sdata)
 		return -ENOSPC;
 
 	err = -ENOMEM;
-	new_mpath = Sstar_kzalloc(sizeof(struct mesh_path), GFP_ATOMIC);
+	new_mpath = atbm_kzalloc(sizeof(struct mesh_path), GFP_ATOMIC);
 	if (!new_mpath)
 		goto err_path_alloc;
 
-	new_node = Sstar_kmalloc(sizeof(struct mpath_node), GFP_ATOMIC);
+	new_node = atbm_kmalloc(sizeof(struct mpath_node), GFP_ATOMIC);
 	if (!new_node)
 		goto err_node_alloc;
 
@@ -564,7 +564,7 @@ int mesh_path_add(u8 *dst, struct ieee80211_sub_if_data *sdata)
 	memcpy(new_mpath->dst, dst, ETH_ALEN);
 	new_mpath->sdata = sdata;
 	new_mpath->flags = 0;
-	Sstar_skb_queue_head_init(&new_mpath->frame_queue);
+	atbm_skb_queue_head_init(&new_mpath->frame_queue);
 	new_node->mpath = new_mpath;
 	new_mpath->timer.data = (unsigned long) new_mpath;
 	new_mpath->timer.function = mesh_path_timer;
@@ -604,9 +604,9 @@ int mesh_path_add(u8 *dst, struct ieee80211_sub_if_data *sdata)
 err_exists:
 	spin_unlock_bh(&tbl->hashwlock[hash_idx]);
 	read_unlock_bh(&pathtbl_resize_lock);
-	Sstar_kfree(new_node);
+	atbm_kfree(new_node);
 err_node_alloc:
-	Sstar_kfree(new_mpath);
+	atbm_kfree(new_mpath);
 err_path_alloc:
 	atomic_dec(&sdata->u.mesh.mpaths);
 	return err;
@@ -681,11 +681,11 @@ int mpp_path_add(u8 *dst, u8 *mpp, struct ieee80211_sub_if_data *sdata)
 		return -ENOTSUPP;
 
 	err = -ENOMEM;
-	new_mpath = Sstar_kzalloc(sizeof(struct mesh_path), GFP_ATOMIC);
+	new_mpath = atbm_kzalloc(sizeof(struct mesh_path), GFP_ATOMIC);
 	if (!new_mpath)
 		goto err_path_alloc;
 
-	new_node = Sstar_kmalloc(sizeof(struct mpath_node), GFP_ATOMIC);
+	new_node = atbm_kmalloc(sizeof(struct mpath_node), GFP_ATOMIC);
 	if (!new_node)
 		goto err_node_alloc;
 
@@ -694,7 +694,7 @@ int mpp_path_add(u8 *dst, u8 *mpp, struct ieee80211_sub_if_data *sdata)
 	memcpy(new_mpath->mpp, mpp, ETH_ALEN);
 	new_mpath->sdata = sdata;
 	new_mpath->flags = 0;
-	Sstar_skb_queue_head_init(&new_mpath->frame_queue);
+	atbm_skb_queue_head_init(&new_mpath->frame_queue);
 	new_node->mpath = new_mpath;
 	init_timer(&new_mpath->timer);
 	new_mpath->exp_time = jiffies;
@@ -730,9 +730,9 @@ int mpp_path_add(u8 *dst, u8 *mpp, struct ieee80211_sub_if_data *sdata)
 err_exists:
 	spin_unlock_bh(&tbl->hashwlock[hash_idx]);
 	read_unlock_bh(&pathtbl_resize_lock);
-	Sstar_kfree(new_node);
+	atbm_kfree(new_node);
 err_node_alloc:
-	Sstar_kfree(new_mpath);
+	atbm_kfree(new_mpath);
 err_path_alloc:
 	return err;
 }
@@ -783,8 +783,8 @@ static void mesh_path_node_reclaim(struct rcu_head *rp)
 
 	del_timer_sync(&node->mpath->timer);
 	atomic_dec(&sdata->u.mesh.mpaths);
-	Sstar_kfree(node->mpath);
-	Sstar_kfree(node);
+	atbm_kfree(node->mpath);
+	atbm_kfree(node);
 }
 
 /* needs to be called with the corresponding hashwlock taken */
@@ -1023,7 +1023,7 @@ void mesh_path_discard_frame(struct sk_buff *skb,
 				   cpu_to_le32(sn), reason, ra, sdata);
 	}
 
-	Sstar_kfree_skb(skb);
+	atbm_kfree_skb(skb);
 	sdata->u.mesh.mshstats.dropped_frames_no_route++;
 }
 
@@ -1038,7 +1038,7 @@ void mesh_path_flush_pending(struct mesh_path *mpath)
 {
 	struct sk_buff *skb;
 
-	while ((skb = Sstar_skb_dequeue(&mpath->frame_queue)) != NULL)
+	while ((skb = atbm_skb_dequeue(&mpath->frame_queue)) != NULL)
 		mesh_path_discard_frame(skb, mpath->sdata);
 }
 
@@ -1072,9 +1072,9 @@ static void mesh_path_node_free(struct hlist_node *p, bool free_leafs)
 	hlist_del_rcu(p);
 	if (free_leafs) {
 		del_timer_sync(&mpath->timer);
-		Sstar_kfree(mpath);
+		atbm_kfree(mpath);
 	}
-	Sstar_kfree(node);
+	atbm_kfree(node);
 }
 
 static int mesh_path_node_copy(struct hlist_node *p, struct mesh_table *newtbl)
@@ -1083,7 +1083,7 @@ static int mesh_path_node_copy(struct hlist_node *p, struct mesh_table *newtbl)
 	struct mpath_node *node, *new_node;
 	u32 hash_idx;
 
-	new_node = Sstar_kmalloc(sizeof(struct mpath_node), GFP_ATOMIC);
+	new_node = atbm_kmalloc(sizeof(struct mpath_node), GFP_ATOMIC);
 	if (new_node == NULL)
 		return -ENOMEM;
 
@@ -1107,7 +1107,7 @@ int mesh_pathtbl_init(void)
 	tbl_path->free_node = &mesh_path_node_free;
 	tbl_path->copy_node = &mesh_path_node_copy;
 	tbl_path->mean_chain_len = MEAN_CHAIN_LEN;
-	tbl_path->known_gates = Sstar_kzalloc(sizeof(struct hlist_head), GFP_ATOMIC);
+	tbl_path->known_gates = atbm_kzalloc(sizeof(struct hlist_head), GFP_ATOMIC);
 	if (!tbl_path->known_gates) {
 		ret = -ENOMEM;
 		goto free_path;
@@ -1123,7 +1123,7 @@ int mesh_pathtbl_init(void)
 	tbl_mpp->free_node = &mesh_path_node_free;
 	tbl_mpp->copy_node = &mesh_path_node_copy;
 	tbl_mpp->mean_chain_len = MEAN_CHAIN_LEN;
-	tbl_mpp->known_gates = Sstar_kzalloc(sizeof(struct hlist_head), GFP_ATOMIC);
+	tbl_mpp->known_gates = atbm_kzalloc(sizeof(struct hlist_head), GFP_ATOMIC);
 	if (!tbl_mpp->known_gates) {
 		ret = -ENOMEM;
 		goto free_mpp;

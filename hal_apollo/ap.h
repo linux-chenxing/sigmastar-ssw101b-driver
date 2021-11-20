@@ -1,7 +1,7 @@
 /*
- * mac80211 STA and AP API for mac80211 sigmastar APOLLO drivers
+ * mac80211 STA and AP API for mac80211 altobeam APOLLO drivers
  * *
- * Copyright (c) 2016, sigmastar
+ * Copyright (c) 2016, altobeam
  * Author:
  *
  *Based on apollo code
@@ -16,43 +16,43 @@
 #ifndef AP_H_INCLUDED
 #define AP_H_INCLUDED
 
-#define SSTAR_APOLLO_NOA_NOTIFICATION_DELAY 10
+#define ATBM_APOLLO_NOA_NOTIFICATION_DELAY 10
 
-int Sstar_set_tim(struct ieee80211_hw *dev, struct ieee80211_sta *sta,
+int atbm_set_tim(struct ieee80211_hw *dev, struct ieee80211_sta *sta,
 		   bool set);
-int Sstar_sta_add(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+int atbm_sta_add(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 		   struct ieee80211_sta *sta);
-int Sstar_sta_remove(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+int atbm_sta_remove(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 		      struct ieee80211_sta *sta);
-void Sstar_sta_notify(struct ieee80211_hw *dev, struct ieee80211_vif *vif,
+void atbm_sta_notify(struct ieee80211_hw *dev, struct ieee80211_vif *vif,
 		       enum sta_notify_cmd notify_cmd,
 		       struct ieee80211_sta *sta);
-void Sstar_bss_info_changed(struct ieee80211_hw *dev,
+void atbm_bss_info_changed(struct ieee80211_hw *dev,
 			     struct ieee80211_vif *vif,
 			     struct ieee80211_bss_conf *info,
 			     u32 changed);
-int Sstar_ampdu_action(struct ieee80211_hw *hw,
+int atbm_ampdu_action(struct ieee80211_hw *hw,
 			struct ieee80211_vif *vif,
 			enum ieee80211_ampdu_mlme_action action,
 			struct ieee80211_sta *sta, u16 tid, u16 *ssn,
 			u8 buf_size);
 
-void Sstar_suspend_resume(struct Sstar_vif *priv,
+void atbm_suspend_resume(struct atbm_vif *priv,
 			  struct wsm_suspend_resume *arg);
-void Sstar_set_tim_work(struct work_struct *work);
-void Sstar_set_cts_work(struct work_struct *work);
-void Sstar_multicast_start_work(struct work_struct *work);
-void Sstar_multicast_stop_work(struct work_struct *work);
-void Sstar_mcast_timeout(unsigned long arg);
-int Sstar_find_link_id(struct Sstar_vif *priv, const u8 *mac);
-int Sstar_alloc_link_id(struct Sstar_vif *priv, const u8 *mac);
-void Sstar_link_id_work(struct work_struct *work);
-void Sstar_link_id_gc_work(struct work_struct *work);
-void Sstar_notify_noa(struct Sstar_vif *priv, int delay);
-int ABwifi_unmap_link(struct Sstar_vif *priv, int link_id);
-void Sstar_ht_info_update_work(struct work_struct *work);
-int Sstar_start_monitor_mode(struct Sstar_vif *priv,
+void atbm_set_tim_work(struct work_struct *work);
+void atbm_set_cts_work(struct work_struct *work);
+void atbm_multicast_start_work(struct work_struct *work);
+void atbm_multicast_stop_work(struct work_struct *work);
+void atbm_mcast_timeout(unsigned long arg);
+int atbm_find_link_id(struct atbm_vif *priv, const u8 *mac);
+int atbm_alloc_link_id(struct atbm_vif *priv, const u8 *mac);
+void atbm_link_id_work(struct work_struct *work);
+void atbm_link_id_gc_work(struct work_struct *work);
+void atbm_notify_noa(struct atbm_vif *priv, int delay);
+int ABwifi_unmap_link(struct atbm_vif *priv, int link_id);
+void atbm_ht_info_update_work(struct work_struct *work);
+int atbm_start_monitor_mode(struct atbm_vif *priv,
 				struct ieee80211_channel *chan);
-int Sstar_stop_monitor_mode(struct Sstar_vif *priv);
+int atbm_stop_monitor_mode(struct atbm_vif *priv);
 
 #endif

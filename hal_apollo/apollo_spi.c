@@ -1,7 +1,7 @@
 /*
- * Mac80211 spi driver for sigmastar APOLLO device
+ * Mac80211 spi driver for altobeam APOLLO device
  * *
- * Copyright (c) 2016, sigmastar
+ * Copyright (c) 2016, altobeam
  * Author:
  *
  * Based on apollo code Copyright (c) 2010, ST-Ericsson
@@ -18,7 +18,7 @@
 #include <linux/gpio.h>
 #include <linux/delay.h>
 #include <linux/spinlock.h>
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include <linux/kthread.h>
 #include <linux/notifier.h>
 #include <linux/reboot.h>
@@ -30,9 +30,9 @@
 #include "hwio_spi.h"
 #include "svn_version.h"
 
-MODULE_DESCRIPTION("mac80211 sigmastar apollo wifi spi driver");
+MODULE_DESCRIPTION("mac80211 altobeam apollo wifi spi driver");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("Sstar_wlan");
+MODULE_ALIAS("atbm_wlan");
 struct build_info{
 	int ver;
 	int dpll;
@@ -49,20 +49,20 @@ static int driver_build_info(void)
 	else
 		build.dpll=26;
 	memcpy(build.driver_info,(void*)DRIVER_INFO,sizeof(DRIVER_INFO));
-	Sstar_printk_init("SVN_VER=%d,DPLL_CLOCK=%d,BUILD_TIME=%s\n",build.ver,build.dpll,build.driver_info);
+	atbm_printk_init("SVN_VER=%d,DPLL_CLOCK=%d,BUILD_TIME=%s\n",build.ver,build.dpll,build.driver_info);
 
 #if (OLD_RATE_POLICY==0)
-	Sstar_printk_init("----drvier RATEPOLCIY=NEW\n");
+	atbm_printk_init("----drvier RATEPOLCIY=NEW\n");
 #else
-	Sstar_printk_init("----drvier RATEPOLCIY=OLD\n");
+	atbm_printk_init("----drvier RATEPOLCIY=OLD\n");
 #endif
 
 #if (PROJ_TYPE==APOLLO_1601)
-	Sstar_printk_init("----drvier support chip APOLLOB 1601\n");
+	atbm_printk_init("----drvier support chip APOLLOB 1601\n");
 #elif (PROJ_TYPE==APOLLO_1606)
-	Sstar_printk_init("----drvier support chip APOLLOB 1606\n");
+	atbm_printk_init("----drvier support chip APOLLOB 1606\n");
 #elif (PROJ_TYPE==APOLLO_C)
-	Sstar_printk_init("----drvier support chip APOLLOC \n");
+	atbm_printk_init("----drvier support chip APOLLOC \n");
 #endif
 
 	return 0;
@@ -71,8 +71,8 @@ static int driver_build_info(void)
 #define SELF_BUFLEN (512)
 struct sbus_priv {
 	struct spi_device	*spi;
-	struct Sstar_common	*core;
-	const struct Sstar_platform_data *pdata;
+	struct atbm_common	*core;
+	const struct atbm_platform_data *pdata;
 	spinlock_t		lock;
 	
 	spinlock_t		spi_rwlock;
@@ -88,11 +88,11 @@ struct sbus_wtd {
 	atomic_t				wtd_run;
 	atomic_t				wtd_probe;
 	atomic_t				wtd_spi_read_ready;
-	struct Sstar_common		*core;
+	struct atbm_common		*core;
 };
 
-static int  Sstar_spi_init(void);
-static void  Sstar_spi_exit(void);
+static int  atbm_spi_init(void);
+static void  atbm_spi_exit(void);
 static struct sbus_wtd         g_wtd={
 	.wtd_init  = 0,
 	.wtd_thread = NULL,
@@ -165,7 +165,7 @@ spidev_sync_write_then_read(struct sbus_priv *self, u8 *cmd, size_t cmd_len, u8 
 }
 
 /* Read-only message with current device setup */
-static int	Sstar_spi_read_data(struct sbus_priv *self, void *rx, size_t rx_len)
+static int	atbm_spi_read_data(struct sbus_priv *self, void *rx, size_t rx_len)
 {
 	ssize_t			status = 0;
 	u8 cmdbuff[2] = {0x0b, 0};
@@ -176,7 +176,7 @@ static int	Sstar_spi_read_data(struct sbus_priv *self, void *rx, size_t rx_len)
 }
 
 /* Write-only message with current device setup */
-static int	Sstar_spi_write_data(struct sbus_priv *self,const void *tx, size_t tx_len)
+static int	atbm_spi_write_data(struct sbus_priv *self,const void *tx, size_t tx_len)
 {
 	ssize_t			status = 0;
 	u8 cmdbuff[2] = {0x51, 0};
@@ -186,7 +186,7 @@ static int	Sstar_spi_write_data(struct sbus_priv *self,const void *tx, size_t tx
 	return status;
 }
 
-static int Sstar_spi_read_status(struct sbus_priv *self, u32 *status, size_t tx_len)
+static int atbm_spi_read_status(struct sbus_priv *self, u32 *status, size_t tx_len)
 {
 	ssize_t			ret = 0;
 	u8 cmdbuff[2] = {0x05, 0};
@@ -195,13 +195,13 @@ static int Sstar_spi_read_status(struct sbus_priv *self, u32 *status, size_t tx_
 	
 	return ret;	
 }
-static int Sstar_spi_read_channelflag(struct sbus_priv *self, u32 *channelflag)
+static int atbm_spi_read_channelflag(struct sbus_priv *self, u32 *channelflag)
 {
 	ssize_t			ret = 0;
 	u32 status = 0;
 	unsigned long flags;
 
-	ret = Sstar_spi_read_status(self, &status, sizeof(status));
+	ret = atbm_spi_read_status(self, &status, sizeof(status));
 	if (ret == 0)
 	{
 	
@@ -219,13 +219,13 @@ static int Sstar_spi_read_channelflag(struct sbus_priv *self, u32 *channelflag)
 	
 	return ret;	
 }
-static int  Sstar_spi_update_channelflag(struct sbus_priv *self)
+static int  atbm_spi_update_channelflag(struct sbus_priv *self)
 {
 	ssize_t			ret = 0;
 	u32 status = 0;
 	unsigned long flags;
 
-	ret = Sstar_spi_read_status(self, &status, sizeof(status));
+	ret = atbm_spi_read_status(self, &status, sizeof(status));
 	if (ret == 0)
 	{
 		spin_lock_irqsave(&self->lock, flags);
@@ -234,12 +234,12 @@ static int  Sstar_spi_update_channelflag(struct sbus_priv *self)
 	}
 	return ret;	
 }
-static int Sstar_spi_read_ready(struct sbus_priv *self, u32 *ready)
+static int atbm_spi_read_ready(struct sbus_priv *self, u32 *ready)
 {
 	ssize_t			ret = 0;
 	u32 status = 0;
 
-	ret = Sstar_spi_read_status(self, &status, sizeof(status));
+	ret = atbm_spi_read_status(self, &status, sizeof(status));
 	if (ret == 0)
 	{
 		if (status & SPI_STATUS_READY)
@@ -253,7 +253,7 @@ static int Sstar_spi_read_ready(struct sbus_priv *self, u32 *ready)
 	
 	return ret;	
 }
-static int Sstar_spi_reset_cpu(struct sbus_priv *self)
+static int atbm_spi_reset_cpu(struct sbus_priv *self)
 {
 	ssize_t			ret = 0;
 	u8 cmdbuff[4] = {0xaa, 0, 0, 0xaa};
@@ -262,7 +262,7 @@ static int Sstar_spi_reset_cpu(struct sbus_priv *self)
 	
 	return ret;	
 }
-static int Sstar_spi_shutdown_wlan(struct sbus_priv *self)
+static int atbm_spi_shutdown_wlan(struct sbus_priv *self)
 {
 	ssize_t			ret = 0;
 	u8 cmdbuff[4] = {0xaa, 0, 2, 0xac};
@@ -271,7 +271,7 @@ static int Sstar_spi_shutdown_wlan(struct sbus_priv *self)
 	
 	return ret;	
 }
-static int Sstar_spi_reset_chip(struct sbus_priv *self)
+static int atbm_spi_reset_chip(struct sbus_priv *self)
 {
 	ssize_t			ret = 0;
 	u8 cmdbuff[4] = {0xaa, 0, 1, 0xab};
@@ -282,7 +282,7 @@ static int Sstar_spi_reset_chip(struct sbus_priv *self)
 }
 
 
-static int Sstar_spi_write_firmware(struct sbus_priv *self,unsigned int addr, const void *src, int count)
+static int atbm_spi_write_firmware(struct sbus_priv *self,unsigned int addr, const void *src, int count)
 {
 	ssize_t			ret = 0;
 	u32 status = 0;
@@ -303,61 +303,61 @@ static int Sstar_spi_write_firmware(struct sbus_priv *self,unsigned int addr, co
 		return -1;
 	}
 
-	ret = Sstar_spi_read_status(self, &status, sizeof(status));
+	ret = atbm_spi_read_status(self, &status, sizeof(status));
 	if ((ret) || (status & SPI_OVERRUN))//overrun
 	{
-		Sstar_dbg(SSTAR_APOLLO_DBG_ERROR,"[Sstar_load_fw]:SPI_STATUS_OVERRUN\n");
+		atbm_dbg(ATBM_APOLLO_DBG_ERROR,"[atbm_load_fw]:SPI_STATUS_OVERRUN\n");
 		ret = -2;
 	}
 	
 	return ret;
 }
 
-static u32 Sstar_spi_align_size(struct sbus_priv *self, u32 size)
+static u32 atbm_spi_align_size(struct sbus_priv *self, u32 size)
 {
 	u32 aligned = size;
 	return aligned;
 }
 
-static int Sstar_spi_reset(struct sbus_priv *self)
+static int atbm_spi_reset(struct sbus_priv *self)
 {
 	return 0;
 }
 
-static int Sstar_spi_set_block_size(struct sbus_priv *self, u32 size)
+static int atbm_spi_set_block_size(struct sbus_priv *self, u32 size)
 {
 	return 0;
 }
 
-static void Sstar_spi_lock(struct sbus_priv *self)
+static void atbm_spi_lock(struct sbus_priv *self)
 {
 	
 
 }
 
-static void Sstar_spi_unlock(struct sbus_priv *self)
+static void atbm_spi_unlock(struct sbus_priv *self)
 {
 	
 }
 
-static int Sstar_spi_irq_subscribe(struct sbus_priv *self, sbus_irq_handler handler,void *priv)
+static int atbm_spi_irq_subscribe(struct sbus_priv *self, sbus_irq_handler handler,void *priv)
 {
 	int ret = 0;
 	return ret;
 }
-static int Sstar_spi_irq_unsubscribe(struct sbus_priv *self)
+static int atbm_spi_irq_unsubscribe(struct sbus_priv *self)
 {
 	int ret = 0;
 	return ret;
 }
-static int Sstar_spi_pm(struct sbus_priv *self, bool  suspend)
+static int atbm_spi_pm(struct sbus_priv *self, bool  suspend)
 {
 	int ret = 0;
 	return ret;
 }
-void Sstar_spi_read_rdy_start(void)
+void atbm_spi_read_rdy_start(void)
 {
-#ifdef CONFIG_SSTARWIFI_WDT
+#ifdef CONFIG_ATBMWIFI_WDT
 		if(g_wtd.wtd_init == 0)
 			return;
 
@@ -365,28 +365,28 @@ void Sstar_spi_read_rdy_start(void)
 			return;
 		atomic_set(&g_wtd.wtd_spi_read_ready, 1);
 		wake_up(&g_wtd.wtd_evt_wq);
-		Sstar_printk_bus("[Sstar_wtd] wakeup.\n");
-#endif //CONFIG_SSTARWIFI_WDT
+		atbm_printk_bus("[atbm_wtd] wakeup.\n");
+#endif //CONFIG_ATBMWIFI_WDT
 }
 
-void Sstar_spi_read_rdy_end(void)
+void atbm_spi_read_rdy_end(void)
 {
-#ifdef CONFIG_SSTARWIFI_WDT
+#ifdef CONFIG_ATBMWIFI_WDT
 		if(g_wtd.wtd_init == 0)
 			return;
 
 		atomic_set(&g_wtd.wtd_spi_read_ready, 0);
-#endif //CONFIG_SSTARWIFI_WDT
+#endif //CONFIG_ATBMWIFI_WDT
 }
 
-void Sstar_spi_status_rx_ready(struct Sstar_common *priv)
+void atbm_spi_status_rx_ready(struct atbm_common *priv)
 {
 	int ret = 0;
 	u32 ready =0 ;
 	BUG_ON(!priv->sbus_ops);
 
-	ret = Sstar_spi_read_ready(priv->sbus_priv, &ready);
-	Sstar_printk_bus("[wtd] ready %d\n", ready);
+	ret = atbm_spi_read_ready(priv->sbus_priv, &ready);
+	atbm_printk_bus("[wtd] ready %d\n", ready);
 	if ((ready == 1))
 	{
 		if (atomic_add_return(1, &priv->bh_rx) == 1){
@@ -398,26 +398,26 @@ void Sstar_spi_status_rx_ready(struct Sstar_common *priv)
 }
 
 
-void Sstar_wtd_wakeup( struct sbus_priv *self)
+void atbm_wtd_wakeup( struct sbus_priv *self)
 {
-#ifdef CONFIG_SSTARWIFI_WDT
+#ifdef CONFIG_ATBMWIFI_WDT
 	if(atomic_read(&self->wtd->wtd_term))
 		return;
 	atomic_set(&g_wtd.wtd_run, 1);
-	Sstar_printk_bus( "[Sstar_wtd] wakeup.\n");
+	atbm_printk_bus( "[atbm_wtd] wakeup.\n");
 	wake_up(&self->wtd->wtd_evt_wq);
-#endif //CONFIG_SSTARWIFI_WDT
+#endif //CONFIG_ATBMWIFI_WDT
 }
-static int Sstar_wtd_process(void *arg)
+static int atbm_wtd_process(void *arg)
 {
-#ifdef CONFIG_SSTARWIFI_WDT
+#ifdef CONFIG_ATBMWIFI_WDT
 	int status=0;
 	int term=0;
 	int wtd_run=0;
 	int waittime = 20;
 	int wtd_probe=0;
 	int spi_read_ready = 0;
-	Sstar_printk_bus("[Sstar_wtd]:Sstar_wtd_process start++\n");
+	atbm_printk_bus("[atbm_wtd]:atbm_wtd_process start++\n");
 
 	while(1){
 		status = wait_event_interruptible(g_wtd.wtd_evt_wq, ({
@@ -426,7 +426,7 @@ static int Sstar_wtd_process(void *arg)
 				spi_read_ready = atomic_read(&g_wtd.wtd_spi_read_ready);
 				(term || wtd_run || spi_read_ready);}));
 		if (status < 0 || term ){
-			Sstar_printk_exit("[Sstar_wtd]:1 thread break %d %d\n",status,term);
+			atbm_printk_exit("[atbm_wtd]:1 thread break %d %d\n",status,term);
 			goto __stop;
 		}
 		
@@ -434,7 +434,7 @@ static int Sstar_wtd_process(void *arg)
 		{		
 			do
 			{
-				Sstar_spi_status_rx_ready(g_wtd.core);
+				atbm_spi_status_rx_ready(g_wtd.core);
 				if (atomic_read(&g_wtd.wtd_term))
 				{
 					atomic_set(&g_wtd.wtd_spi_read_ready, 0);
@@ -443,7 +443,7 @@ static int Sstar_wtd_process(void *arg)
 				msleep(1000);
 			}while(atomic_read(&g_wtd.wtd_spi_read_ready));
 			
-			Sstar_printk_exit("[Sstar_wtd]:Sstar_spi_status_rx_ready end++\n");
+			atbm_printk_exit("[atbm_wtd]:atbm_spi_status_rx_ready end++\n");
 			continue;
 		}
 		
@@ -454,8 +454,8 @@ static int Sstar_wtd_process(void *arg)
 			*must make sure that g_hw_priv->bh_error is 0 when hmac is
 			*in reset state,but........
 			*/
-			Sstar_hw_priv_dereference()->bh_error = 0;
-			err = Sstar_reset_driver(Sstar_hw_priv_dereference());
+			atbm_hw_priv_dereference()->bh_error = 0;
+			err = atbm_reset_driver(atbm_hw_priv_dereference());
 			mdelay(5);
 		}
 	while(err == -1);
@@ -463,26 +463,26 @@ static int Sstar_wtd_process(void *arg)
 __stop:
 	while(term){
 		
-		Sstar_printk_bus("[Sstar_wtd]:kthread_should_stop\n");
+		atbm_printk_bus("[atbm_wtd]:kthread_should_stop\n");
 		if(kthread_should_stop()){
 			break;
 		}
 		schedule_timeout_uninterruptible(msecs_to_jiffies(100));
 	}
-#endif //CONFIG_SSTARWIFI_WDT
+#endif //CONFIG_ATBMWIFI_WDT
 	return 0;
 }
-static void Sstar_wtd_init(void)
+static void atbm_wtd_init(void)
 {
-#ifdef CONFIG_SSTARWIFI_WDT
+#ifdef CONFIG_ATBMWIFI_WDT
 	int err = 0;
 	struct sched_param param = { .sched_priority = 1 };
 	if(g_wtd.wtd_init)
 		return;
-	Sstar_printk_init( "[wtd] register.\n");
+	atbm_printk_init( "[wtd] register.\n");
 	init_waitqueue_head(&g_wtd.wtd_evt_wq);
 	atomic_set(&g_wtd.wtd_term, 0);
-	g_wtd.wtd_thread = kthread_create(&Sstar_wtd_process, &g_wtd, "Sstar_wtd");
+	g_wtd.wtd_thread = kthread_create(&atbm_wtd_process, &g_wtd, "atbm_wtd");
 	if (IS_ERR(g_wtd.wtd_thread)) {
 		err = PTR_ERR(g_wtd.wtd_thread);
 		g_wtd.wtd_thread = NULL;
@@ -495,18 +495,18 @@ static void Sstar_wtd_init(void)
 		wake_up_process(g_wtd.wtd_thread);
 	}
 	g_wtd.wtd_init = 1;
-#endif //CONFIG_SSTARWIFI_WDT
+#endif //CONFIG_ATBMWIFI_WDT
 }
-static void Sstar_wtd_exit(void)
+static void atbm_wtd_exit(void)
 {
-#ifdef CONFIG_SSTARWIFI_WDT
+#ifdef CONFIG_ATBMWIFI_WDT
 	struct task_struct *thread = g_wtd.wtd_thread;
 	if (WARN_ON(!thread))
 		return;
 	if(atomic_read(&g_wtd.wtd_term)==0)
 		return;
 	g_wtd.wtd_thread = NULL;
-	Sstar_printk_exit("[wtd] unregister.\n");
+	atbm_printk_exit("[wtd] unregister.\n");
 	atomic_add(1, &g_wtd.wtd_term);
 	wake_up(&g_wtd.wtd_evt_wq);
 	kthread_stop(thread);
@@ -514,44 +514,44 @@ static void Sstar_wtd_exit(void)
 	put_task_struct(thread);
 #endif
 	g_wtd.wtd_init = 0;
-#endif //CONFIG_SSTARWIFI_WDT
+#endif //CONFIG_ATBMWIFI_WDT
 }
-static struct sbus_ops Sstar_spi_sbus_ops = {
-	.sbus_read_data = Sstar_spi_read_data,
-	.sbus_write_data = Sstar_spi_write_data,
-	.sbus_read_status = Sstar_spi_read_status,
-	.sbus_read_ready = Sstar_spi_read_ready,
-	.sbus_update_channelflag = Sstar_spi_update_channelflag,
-	.sbus_read_channelflag = Sstar_spi_read_channelflag,
-	.sbus_reset_cpu = Sstar_spi_reset_cpu,
-	.sbus_reset_chip = Sstar_spi_reset_chip,
-	.sbus_shutdown_wlan = Sstar_spi_shutdown_wlan,
-	.sbus_write_firmware = Sstar_spi_write_firmware,
-	.align_size			= Sstar_spi_align_size,
-	.reset				= Sstar_spi_reset,
-	.set_block_size		= Sstar_spi_set_block_size,
-	.lock 				= Sstar_spi_lock,
-	.unlock 				= Sstar_spi_unlock,
-	.irq_unsubscribe	= Sstar_spi_irq_unsubscribe,
-	.irq_subscribe	= Sstar_spi_irq_subscribe,
-	.power_mgmt			= Sstar_spi_pm,
+static struct sbus_ops atbm_spi_sbus_ops = {
+	.sbus_read_data = atbm_spi_read_data,
+	.sbus_write_data = atbm_spi_write_data,
+	.sbus_read_status = atbm_spi_read_status,
+	.sbus_read_ready = atbm_spi_read_ready,
+	.sbus_update_channelflag = atbm_spi_update_channelflag,
+	.sbus_read_channelflag = atbm_spi_read_channelflag,
+	.sbus_reset_cpu = atbm_spi_reset_cpu,
+	.sbus_reset_chip = atbm_spi_reset_chip,
+	.sbus_shutdown_wlan = atbm_spi_shutdown_wlan,
+	.sbus_write_firmware = atbm_spi_write_firmware,
+	.align_size			= atbm_spi_align_size,
+	.reset				= atbm_spi_reset,
+	.set_block_size		= atbm_spi_set_block_size,
+	.lock 				= atbm_spi_lock,
+	.unlock 				= atbm_spi_unlock,
+	.irq_unsubscribe	= atbm_spi_irq_unsubscribe,
+	.irq_subscribe	= atbm_spi_irq_subscribe,
+	.power_mgmt			= atbm_spi_pm,
 };
 
 /* Probe Function to be called by spi stack when device is discovered */
-static int  Sstar_spi_probe(struct spi_device *spi)
+static int  atbm_spi_probe(struct spi_device *spi)
 {
 	struct sbus_priv *self;
 	int status;
 
-	Sstar_dbg(SSTAR_APOLLO_DBG_INIT, "Probe called\n");
+	atbm_dbg(ATBM_APOLLO_DBG_INIT, "Probe called\n");
 	
 	atomic_set(&g_wtd.wtd_probe, 0);
 	
 	atomic_set(&g_wtd.wtd_spi_read_ready, 0);
 
-	self = Sstar_kzalloc(sizeof(*self), GFP_KERNEL);
+	self = atbm_kzalloc(sizeof(*self), GFP_KERNEL);
 	if (!self) {
-		Sstar_dbg(SSTAR_APOLLO_DBG_ERROR, "Can't allocate spi sbus_priv.");
+		atbm_dbg(ATBM_APOLLO_DBG_ERROR, "Can't allocate spi sbus_priv.");
 		return -ENOMEM;
 	}
 
@@ -560,28 +560,28 @@ static int  Sstar_spi_probe(struct spi_device *spi)
 	self->spi = spi;
 	self->old_channelFlag = 0;
 
-	status = Sstar_core_probe(&Sstar_spi_sbus_ops,
+	status = atbm_core_probe(&atbm_spi_sbus_ops,
 			      self, &spi->dev, &g_wtd.core);
 	if (status) {
 		goto err_status;
-		//printk("[Sstar_wtd]:set wtd_probe = -1\n");
+		//printk("[atbm_wtd]:set wtd_probe = -1\n");
 	}
 	self->core = g_wtd.core;
 
 	atomic_set(&g_wtd.wtd_probe, 1);
-	Sstar_printk_init("[Sstar_wtd]:set wtd_probe = 1\n");	
+	atbm_printk_init("[atbm_wtd]:set wtd_probe = 1\n");	
 	spi_set_drvdata(spi, self);
 	return 0;
 	
 err_status:
-	Sstar_kfree(self);
+	atbm_kfree(self);
 	atomic_set(&g_wtd.wtd_probe, -1);
 	return status;
 }
 
 /* Disconnect Function to be called by spi stack when
  * device is disconnected */
-static int Sstar_spi_disconnect(struct spi_device *spi)
+static int atbm_spi_disconnect(struct spi_device *spi)
 {
 	struct sbus_priv *self = spi_get_drvdata(spi);
 
@@ -593,21 +593,21 @@ static int Sstar_spi_disconnect(struct spi_device *spi)
 		spin_unlock_irq(&self->lock);
 		atomic_set(&g_wtd.wtd_probe, 0);
 		if (self->core) {
-			Sstar_core_release(self->core);
+			atbm_core_release(self->core);
 			self->core = NULL;
 		}
-		Sstar_kfree(self);
+		atbm_kfree(self);
 	}
 	return 0;
 }
 
 static struct spi_driver spi_driver = {
 	.driver = {
-		.name  = "SSTARWIFI",
+		.name  = "ATBMWIFI",
 		.owner = THIS_MODULE,
 	},
-	.probe =	Sstar_spi_probe,
-	.remove = (Sstar_spi_disconnect),
+	.probe =	atbm_spi_probe,
+	.remove = (atbm_spi_disconnect),
 
 	/* NOTE:  suspend/resume methods are not necessary here.
 	 * We don't do anything except pass the requests to/from
@@ -616,32 +616,32 @@ static struct spi_driver spi_driver = {
 	 */
 };
 
-static int Sstar_reboot_notifier(struct notifier_block *nb,
+static int atbm_reboot_notifier(struct notifier_block *nb,
 				unsigned long action, void *unused)
 {
-	Sstar_printk_exit("Sstar_reboot_notifier\n");
+	atbm_printk_exit("atbm_reboot_notifier\n");
 	atomic_set(&g_wtd.wtd_term, 1);
 	atomic_set(&g_wtd.wtd_run, 0);
-	Sstar_spi_exit();
-	Sstar_ieee80211_exit();
-	Sstar_release_firmware();
+	atbm_spi_exit();
+	atbm_ieee80211_exit();
+	atbm_release_firmware();
 	return NOTIFY_DONE;
 }
 
 /* Probe Function to be called by USB stack when device is discovered */
-static struct notifier_block Sstar_reboot_nb = {
-	.notifier_call = Sstar_reboot_notifier,
+static struct notifier_block atbm_reboot_nb = {
+	.notifier_call = atbm_reboot_notifier,
 	.priority=1,
 };
 
 /* Init Module function -> Called by insmod */
-static int  Sstar_spi_init(void)
+static int  atbm_spi_init(void)
 {
 	int ret;
 
 	ret=driver_build_info();
 	
-	Sstar_wtd_init();
+	atbm_wtd_init();
 	ret=spi_register_driver(&spi_driver);
 	if (ret)
 		goto err_reg;
@@ -653,33 +653,33 @@ err_reg:
 }
 
 /* Called at Driver Unloading */
-static void  Sstar_spi_exit(void)
+static void  atbm_spi_exit(void)
 {
-	Sstar_wtd_exit();
+	atbm_wtd_exit();
 	spi_unregister_driver(&spi_driver);
 }
 
 
 static int __init apollo_spi_module_init(void)
 {
-	ieee80211_Sstar_mem_int();
-	ieee80211_Sstar_skb_int();
-	register_reboot_notifier(&Sstar_reboot_nb);
-	Sstar_init_firmware();
-	Sstar_ieee80211_init();
+	ieee80211_atbm_mem_int();
+	ieee80211_atbm_skb_int();
+	register_reboot_notifier(&atbm_reboot_nb);
+	atbm_init_firmware();
+	atbm_ieee80211_init();
 
-	return Sstar_spi_init();
+	return atbm_spi_init();
 }
 static void  apollo_spi_module_exit(void)
 {	
 	atomic_set(&g_wtd.wtd_term, 1);
 	atomic_set(&g_wtd.wtd_run, 0);
-	Sstar_spi_exit();
-	Sstar_ieee80211_exit();
-	Sstar_release_firmware();
-	unregister_reboot_notifier(&Sstar_reboot_nb);
-	ieee80211_Sstar_mem_exit();
-	ieee80211_Sstar_skb_exit();
+	atbm_spi_exit();
+	atbm_ieee80211_exit();
+	atbm_release_firmware();
+	unregister_reboot_notifier(&atbm_reboot_nb);
+	ieee80211_atbm_mem_exit();
+	ieee80211_atbm_skb_exit();
 }
 
 

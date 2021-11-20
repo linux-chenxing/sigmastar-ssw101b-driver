@@ -2,10 +2,10 @@
 #define __MAC80211_DRIVER_TRACE
 
 #include <linux/tracepoint.h>
-#include <net/Sstar_mac80211.h>
+#include <net/atbm_mac80211.h>
 #include "ieee80211_i.h"
 
-#if !defined(CONFIG_MAC80211_SSTAR_DRIVER_API_TRACER) || defined(__CHECKER__)
+#if !defined(CONFIG_MAC80211_ATBM_DRIVER_API_TRACER) || defined(__CHECKER__)
 #undef TRACE_EVENT
 #define TRACE_EVENT(name, proto, ...) \
 static inline void trace_ ## name(proto) {}

@@ -1,7 +1,7 @@
 /*
- * Mac80211 power management interface for sigmastar APOLLO mac80211 drivers
+ * Mac80211 power management interface for altobeam APOLLO mac80211 drivers
  * *
- * Copyright (c) 2016, sigmastar
+ * Copyright (c) 2016, altobeam
  * Author:
  *
  * Based on apollo code
@@ -25,17 +25,17 @@
 
 #ifdef CONFIG_PM
 
-/* extern */  struct Sstar_common;
-/* private */ struct Sstar_suspend_state;
-struct Sstar_pm_stayawake_lock{
-	struct Sstar_common *hw_priv;
+/* extern */  struct atbm_common;
+/* private */ struct atbm_suspend_state;
+struct atbm_pm_stayawake_lock{
+	struct atbm_common *hw_priv;
 	int stayawak_cnt;
 	spinlock_t stayawak_spinlock;
 	#ifdef CONFIG_WAKELOCK
 	struct wake_lock stayawak_lock;
 	#endif
 };
-struct Sstar_pm_state {
+struct atbm_pm_state {
 	struct platform_driver pm_driver;
 #ifdef CONFIG_WAKELOCK
 	struct wake_lock wakelock;
@@ -44,23 +44,23 @@ struct Sstar_pm_state {
 #endif
 	struct platform_device *pm_dev;
 	spinlock_t lock;
-	struct Sstar_pm_stayawake_lock stayawake_lock;
+	struct atbm_pm_stayawake_lock stayawake_lock;
 	int b_init;
 };
 
-struct Sstar_pm_state_vif {
-	struct Sstar_suspend_state *suspend_state;
+struct atbm_pm_state_vif {
+	struct atbm_suspend_state *suspend_state;
 };
 
-int Sstar_pm_init(struct Sstar_pm_state *pm,
-		    struct Sstar_common *priv);
-void Sstar_pm_deinit(struct Sstar_pm_state *pm);
-void Sstar_pm_stay_awake(struct Sstar_pm_state *pm,
+int atbm_pm_init(struct atbm_pm_state *pm,
+		    struct atbm_common *priv);
+void atbm_pm_deinit(struct atbm_pm_state *pm);
+void atbm_pm_stay_awake(struct atbm_pm_state *pm,
 			  unsigned long tmo);
-int Sstar_wow_suspend(struct ieee80211_hw *hw,
+int atbm_wow_suspend(struct ieee80211_hw *hw,
 		       struct cfg80211_wowlan *wowlan);
-int Sstar_wow_resume(struct ieee80211_hw *hw);
-void Sstar_pm_stay_awake_lock(struct Sstar_pm_state *pm);
-void Sstar_pm_stay_awake_unlock(struct Sstar_pm_state *pm);
+int atbm_wow_resume(struct ieee80211_hw *hw);
+void atbm_pm_stay_awake_lock(struct atbm_pm_state *pm);
+void atbm_pm_stay_awake_unlock(struct atbm_pm_state *pm);
 #endif
 #endif

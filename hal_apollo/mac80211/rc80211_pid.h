@@ -213,7 +213,7 @@ struct rc_pid_sta_info {
 	/* Sharpening needed. */
 	u8 sharp_cnt;
 
-#ifdef CONFIG_MAC80211_SSTAR_DEBUGFS
+#ifdef CONFIG_MAC80211_ATBM_DEBUGFS
 	/* Event buffer */
 	struct rc_pid_event_buffer events;
 
@@ -269,7 +269,7 @@ struct rc_pid_info {
 	/* Index of the last used rate. */
 	int oldrate;
 
-#ifdef CONFIG_MAC80211_SSTAR_DEBUGFS
+#ifdef CONFIG_MAC80211_ATBM_DEBUGFS
 	/* Debugfs entries created for the parameters above. */
 	struct rc_pid_debugfs_entries dentries;
 #endif
