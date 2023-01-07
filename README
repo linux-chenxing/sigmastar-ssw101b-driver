@@ -1,21 +1,19 @@
-内核中不需要配置，直接编译内核即可.
-1.注意修改顶层目录下Makefile中的内核路径：
-搜索PLATFORM_INGENIC找到内核路径定义：
-KERDIR:=/home_c/tyu/isvp/opensource/kernel修改成你当前内核的路径.
-直接编译生成atbm603x_wifi_usb.ko在目录atbm6032i_wifi/driver_install/下.
+AltoBeam 60xx wifi driver
 
-2.安装驱动。
-（1）将atbm603x_wifi_usb.ko复制到开发板上
-（2）直接运行insmod atbm603x_wifi_usb.ko
+1. Setup path to kernel source and toolchan. Select ATBM601x, ATBM602x or ATBM603x and platform. Run make
 
-3.开发板上STA模式操作命令：
-（1）insmod atbm603x_wifi_usb.ko
-（2）ifconfig wlan0 up
-（3）./wpa_supplicant -Dnl80211 -iwlan0 -c ./wpa_supplicant.conf -B
-（4）udhcpc -i wlan0
+2. Install driver
+(1) copy atbm603x_wifi.ko from output dir to board
+(2) insmod atbm603x_wifi.ko
 
-4.开发板上AP模式操作命令：
-（1）insmod atbm603x_wifi_usb.ko fw=/PATH/fw.bin
-（2）ifconfig wlan0 193.169.4.10 up
-（3）./hostapd ./hostapd.conf -B
-（4）udhcpd ./udhcpd.conf
+3. STA mode:
+(1) insmod atbm603x_wifi.ko
+(2) ifconfig wlan0 up
+(3) ./wpa_supplicant -Dnl80211 -iwlan0 -c ./wpa_supplicant.conf -B
+(4) udhcpc -i wlan0
+
+4. AP mode (not tested):
+(1) insmod atbm603x_wifi.ko fw=/PATH/fw.bin
+(2) ifconfig wlan0 193.169.4.10 up
+(3) ./hostapd ./hostapd.conf -B
+(4) udhcpd ./udhcpd.conf
