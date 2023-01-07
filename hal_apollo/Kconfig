@@ -11,11 +11,11 @@ config ATBM_APOLLO
 
 if ATBM_APOLLO
 choice
-      prompt "select which atbm Wi-Fi product  will be used:ATBM601x,ATBM602x,default:ATBM602x"
-      default ATBM602x
+      prompt "select which atbm Wi-Fi product  will be used:ATBM601x,ATBM602x,ATBM603x,default:ATBM603x"
+      default ATBM603x
       depends on ATBM_APOLLO
       help
-        Here,you must make sure which atbm Wi-Fi product you will want to use,ATBM601x,ATBM602x
+        Here,you must make sure which atbm Wi-Fi product you will want to use,ATBM601x,ATBM602x,ATBM603x
 config ATBM601x
       bool "ATBM601x chip"
       depends on ATBM_APOLLO

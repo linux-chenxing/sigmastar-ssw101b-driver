@@ -1,6 +1,6 @@
-#############################################################################
-#               Makefile For Kernel
-############################################################################
+###################################################
+#             Makefile For Kernel
+###################################################
 
 NOSTDINC_FLAGS := -I$(src)/include/ \
 	-include $(src)/include/linux/compat-2.6.h \
@@ -32,7 +32,6 @@ ifeq ($(MULT_NAME),y)
 MODULES_NAME = atbm603x_wifi
 endif
 endif
-
 ifeq ($(CONFIG_ATBM_USB_BUS),y)
 USB_BUS=y
 SPI_BUS=n
@@ -52,8 +51,6 @@ SDIO_BUS=n
 USB_BUS=n
 SPI_BUS=y
 endif
-
 endif
  
 obj-$(CONFIG_ATBM_APOLLO) += hal_apollo/
-

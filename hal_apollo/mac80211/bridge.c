@@ -540,7 +540,7 @@ int ieee80211_brigde_hash_update(struct ieee80211_sub_if_data *sdata, struct sk_
 			if (iph->saddr == 0)
 				break;
 			//record source IP address and , source mac address into db
-			ieee80211_brigde_network_insert(sdata, skb->data+ETH_ALEN, &iph->saddr);
+			ieee80211_brigde_network_insert(sdata, skb->data+ETH_ALEN, (char*)&iph->saddr);
 
 			break;			
 		}
@@ -575,7 +575,7 @@ int ieee80211_brigde_hash_update(struct ieee80211_sub_if_data *sdata, struct sk_
 		        memcpy(src_devaddr, NETDEV_HWADDR(sdata), ETH_ALEN);	
 				//frame_hexdump("\nafter replace ARP:", ((char *)(arp + 1))-2,22);
 			//}
-			ieee80211_brigde_network_insert(sdata, skb->data+ETH_ALEN, &src_ipaddr);
+			ieee80211_brigde_network_insert(sdata, skb->data+ETH_ALEN, (char*)&src_ipaddr);
 
 			break;
 		}
@@ -833,7 +833,7 @@ int ieee80211_brigde_change_txhdr(struct ieee80211_sub_if_data *sdata, struct sk
 					}
 				}
 				else {
-					br0_priv->fast_entry = (struct NET_BR0_INFO_ENTRY *)ieee80211_brigde_updata_fast_info(sdata,ehdr->h_source,&iph->saddr);
+					br0_priv->fast_entry = (struct NET_BR0_INFO_ENTRY *)ieee80211_brigde_updata_fast_info(sdata,ehdr->h_source,(char*)&iph->saddr);
 					if (br0_priv->fast_entry != NULL) {
 						memcpy(br0_priv->fast_mac, ehdr->h_source, ETH_ALEN);
 						memcpy(br0_priv->fast_ip, &iph->saddr, 4);

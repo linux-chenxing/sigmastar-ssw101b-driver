@@ -2,24 +2,29 @@
 #			ATBM WiFi Product Select
 #CONFIG_ATBM601x: 1T1R 80211b/g/n, HT20
 #CONFIG_ATBM602x: 1T1R 80211b/g/n, HT20,HT40
-#default CONFIG_ATBM602x
+#default CONFIG_ATBM603x
 ############################################################################
+
 export
 CONFIG_ATBM601x = n
 CONFIG_ATBM602x = n
 CONFIG_ATBM603x = y
+
 ############################################################################
 #			ATBM WiFi Interface Select
 #default CONFIG_ATBM_USB_BUS
 ############################################################################
+
 export
 CONFIG_ATBM_USB_BUS = y
 CONFIG_ATBM_SDIO_BUS = n
 CONFIG_ATBM_SPI_BUS = n
+
 ############################################################################
 #		       ATBM WiFi SDIO Interface DPLL Freq Select
 #default 40M
 ############################################################################
+
 export
 CONFIG_ATBM_SDIO_40M = y
 CONFIG_ATBM_SDIO_24M = n
@@ -29,8 +34,9 @@ CONFIG_ATBM_SDIO_24M = n
 #	The Follow Code Of The Makefile Should Not Be Changed 
 #
 ############################################################################
+
 PWD:=$(shell pwd)
-WIFI_INSTALL_DIR := $(PWD)/driver_install/
+WIFI_INSTALL_DIR := $(PWD)/output
 
 NOSTDINC_FLAGS := -I$(src)/include/ \
 	-include $(src)/include/linux/compat-2.6.h \
@@ -102,27 +108,18 @@ ifeq ($(SPI_BUS),y)
 HIF:=spi
 endif
 
-all: get_ver modules install
-get_ver:
-	@echo "**************************************"
-	@echo "driver version"
-	@cat hal_apollo/svn_version.h | awk '{print $3}'
-	@echo "**************************************"
-modules:clean
-	@echo "arch=$(ARCH)"						
-	$(MAKE) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) -C $(KDIR) M=$(shell pwd)  modules -j8
-#	$(MAKE) -C $(KDIR) M=$(PWD) modules
-	
-strip:
-	$(CROSS_COMPILE)strip $(WIFI_INSTALL_DIR)/atbm_wifi.ko --strip-unneeded
+all: modules install
 
-install:modules
+modules: clean
+	$(MAKE) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) -C $(KDIR) M=$(shell pwd) modules -j8
+
+strip:
+	$(CROSS_COMPILE)strip $(WIFI_INSTALL_DIR)/*.ko --strip-unneeded
+
+install: modules
 	mkdir -p $(WIFI_INSTALL_DIR)
 	chmod 777 $(WIFI_INSTALL_DIR)
-	cp hal_apollo/*.ko         $(WIFI_INSTALL_DIR)
-
-uninstall:
-#	rm -f/wifihome/tftpboot/wuping/hmac/*.ko
+	cp hal_apollo/*.ko $(WIFI_INSTALL_DIR)
 
 clean:
 	rm -rf hal_apollo/*.o
