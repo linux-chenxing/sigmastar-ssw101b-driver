@@ -1,15 +1,15 @@
 #############################################################################
 #               Makefile For Kernel
 ############################################################################
-k-dir:=$(if $(filter /%,$(src)),$(src),$(srctree)/$(src))
-NOSTDINC_FLAGS := -I$(k-dir)/include/ \
-	-include $(k-dir)/include/linux/compat-2.6.h \
+
+NOSTDINC_FLAGS := -I$(srctree)/$(src)/include/ \
+	-include $(srctree)/$(src)/include/linux/compat-2.6.h \
 	-DCOMPAT_STATIC 
 		
 
 KBUILD_CFLAGS += -Wno-error \
 	-Wno-error=vla \
-	-Wno-error=unused-function 
+	-Wno-error=unused-function  -g
 
 ifneq ($(ATBM_MAKEFILE_SUB),y)
 export

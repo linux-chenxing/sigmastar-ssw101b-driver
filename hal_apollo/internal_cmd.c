@@ -125,7 +125,41 @@ int str2mac(char *dst_mac, char *src_str)
 
 	return 0;	
 }
+/*
+	add by yuzhihuang
+	
+	20220224 xiongmai_question
+*/
 
+#include <linux/sched.h>
+#include <asm/siginfo.h>
+#include <linux/pid_namespace.h>
+#include <linux/pid.h>
+
+void send_signal(int sig_num,int user_pid)
+{
+	   struct task_struct *current_task = NULL;
+       struct siginfo info;
+       int ret;
+       
+
+       printk("%s,%d.sending signal %d to owner %d\n",__func__, __LINE__, sig_num, user_pid);
+
+       memset(&info, 0, sizeof(struct siginfo));
+       info.si_signo = sig_num;
+       info.si_code = 0;
+       info.si_int = 1234;
+       if (current_task == NULL){
+               rcu_read_lock();
+               current_task = pid_task(find_vpid(user_pid), PIDTYPE_PID);
+               rcu_read_unlock();
+       }
+       ret = send_sig_info(sig_num, &info, current_task);
+       if (ret < 0) {
+               printk("error sending signal\n");
+       }
+
+}
 
 int ieee80211_set_channel(struct wiphy *wiphy,
 				 struct net_device *netdev,

@@ -1440,7 +1440,7 @@ void ieee80211_ap_rx_queued_mgmt_special(struct ieee80211_sub_if_data *sdata,
 
 }
 static bool ieee80211_update_special_ie(struct ieee80211_sub_if_data *sdata,enum ieee80211_special_work_type type,
-												enum atbm_ieee80211_eid eid, const u8 *special_ie, size_t special_ie_len)
+												  const u8 *special_ie, size_t special_ie_len)
 {
 	bool res = true;
 	struct sk_buff *skb;
@@ -1467,7 +1467,7 @@ static bool ieee80211_update_special_ie(struct ieee80211_sub_if_data *sdata,enum
 			goto exit;
 		}
 		special = skb->data;
-		special[0] = eid;
+		special[0] = ATBM_WLAN_EID_PRIVATE;
 		special[1] = special_ie_len;
 
 		memcpy(&special[2],special_ie,special_ie_len);
@@ -1487,7 +1487,7 @@ static bool ieee80211_update_special_ie(struct ieee80211_sub_if_data *sdata,enum
 			goto exit;
 		}
 		special = skb->data;
-		special[0] = eid;
+		special[0] = ATBM_WLAN_EID_PRIVATE;
 		special[1] = 0;
 
 	
@@ -1526,7 +1526,7 @@ bool ieee80211_ap_update_special_beacon(struct ieee80211_sub_if_data *sdata,
 		goto exit;
 	}
 
-	res = ieee80211_update_special_ie(sdata,IEEE80211_SPECIAL_AP_SPECIAL_BEACON,ATBM_WLAN_EID_PRIVATE,special_ie,special_ie_len);
+	res = ieee80211_update_special_ie(sdata,IEEE80211_SPECIAL_AP_SPECIAL_BEACON,special_ie,special_ie_len);
 exit:
 	return res;
 }
@@ -1551,7 +1551,7 @@ bool ieee80211_ap_update_special_probe_response(struct ieee80211_sub_if_data *sd
 		goto exit;
 	}
 
-	res = ieee80211_update_special_ie(sdata,IEEE80211_SPECIAL_AP_SPECIAL_PROBRSP,ATBM_WLAN_EID_PRIVATE,special_ie,special_ie_len);
+	res = ieee80211_update_special_ie(sdata,IEEE80211_SPECIAL_AP_SPECIAL_PROBRSP,special_ie,special_ie_len);
 exit:
 	return res;
 }
@@ -1576,36 +1576,10 @@ bool ieee80211_ap_update_special_probe_request(struct ieee80211_sub_if_data *sda
 		goto exit;
 	}
 
-	res = ieee80211_update_special_ie(sdata,IEEE80211_SPECIAL_STA_SPECIAL_PROBR,ATBM_WLAN_EID_PRIVATE,special_ie,special_ie_len);
+	res = ieee80211_update_special_ie(sdata,IEEE80211_SPECIAL_STA_SPECIAL_PROBR,special_ie,special_ie_len);
 exit:
 	return res;
 }
-
-bool ieee80211_ap_update_vendor_probe_request(struct ieee80211_sub_if_data *sdata,
-		const u8 *special_ie, size_t special_ie_len)
-{
-	bool res = true;
-	/*
-	*only sta mode can update beacon
-	*/
-	if(sdata->vif.type != NL80211_IFTYPE_STATION){
-		res = false;
-		goto exit;
-	}
-	/*
-	*make sure that ,sta mode is running now
-	*/
-	
-	if (!ieee80211_sdata_running(sdata)){
-		res = false;
-		goto exit;
-	}
-
-	res = ieee80211_update_special_ie(sdata,IEEE80211_SPECIAL_STA_SPECIAL_PROBR,ATBM_WLAN_EID_VENDOR_SPECIFIC,special_ie,special_ie_len);
-exit:
-	return res;
-}
-
 
 /*
 *ieee80211_sta_triger_passive_scan - triger sta into passive scan mode

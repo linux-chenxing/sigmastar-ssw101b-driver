@@ -75,7 +75,7 @@ const char chip_str[7][CHIP_NAME_LEN]={
 "6032(i)",
 "6032is",
 "6032it",
-"NULL",
+"6012B",
 "NULL",
 "NULL",
 "NULL"

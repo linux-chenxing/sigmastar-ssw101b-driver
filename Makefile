@@ -6,7 +6,7 @@
 # when release to customer ,the CUSTOMER_SUPPORT_USED must set to y!!!!!!!!!!!!!
 #
 ###############################################################################
-CUSTOMER_SUPPORT_USED=n
+CUSTOMER_SUPPORT_USED=y
 ###############################################################################
 #PLATFORM_XUNWEI    		1
 #PLATFORM_SUN6I					2
@@ -28,16 +28,16 @@ CUSTOMER_SUPPORT_USED=n
 #PLATFORM_SIGMASTAR                           18
 #PLATFORM_HI3516EV200                         19
 #PLATFORM_XUNWEI_2G                            20
-#PLATFORM_NVT98517       					21
-#PLATFORM_AK_IPC       						22
-#PLATFORM_SUN8I       						23
+#PLATFORM_NVT98517       21
+#PLATFORM_ANYKA_3916V330			22
+#PLATFORM_INGENIC_X2000			29
 export
-platform ?=PLATFORM_SUN8I
+platform ?= PLATFORM_INGENIC_X2000
 #Android
 #Linux
 sys ?= linux
 #arch:arm or arm64 or mips(NVT98517)
-arch ?= arm
+arch ?= mips
 #export 
 #ATBM_WIFI__EXT_CCFLAGS = -DATBM_WIFI_PLATFORM=$(platform)
 
@@ -113,10 +113,18 @@ arch = arm
 ATBM_WIFI__EXT_CCFLAGS = -DATBM_WIFI_PLATFORM=11
 endif
 
+ifeq ($(platform),PLATFORM_ANYKA_3916V330)
+KERDIR:=/usr/lchome/yuzhihuang/ankai/Linux/anyka37E/AK37E_SDK_V1.01_1/os/bd
+CROSS_COMPILE:=/usr/lchome/yuzhihuang/ankai/Linux/anyka37E/AK37E_SDK_V1.01_1/tools/arm-anykav500-linux-uclibcgnueabi/bin/arm-anykav500-linux-uclibcgnueabi-
+export
+arch = arm
+ATBM_WIFI__EXT_CCFLAGS = -DATBM_WIFI_PLATFORM=22
+endif
+
 ifeq ($(platform),PLATFORM_SIGMASTAR)
-ifeq ($(sys),Linux)
-KERDIR:=/wifi_prj/staff/futianhuang/sigma_star/linux-3.18/
-CROSS_COMPILE:=/wifi_prj/staff/futianhuang/sigma_star/arm-linux-gnueabihf-4.8.3-201404/bin/arm-linux-gnueabihf-
+ifeq ($(sys),linux)
+KERDIR:=/usr/lchome/yuzhihuang/ankai/Linux/anyka3918ev330/AnyCloud39EV330_PDK_V1.01/PDK/SDK/sdk_release_dir/os/bd
+CROSS_COMPILE:=/usr/lchome/yuzhihuang/ankai/Linux/anyka3918ev330/AnyCloud39EV330_PDK_V1.01/PDK/SDK/sdk_release_dir/tools/arm-anykav500-linux-uclibcgnueabi/bin/arm-anykav500-linux-uclibcgnueabi-
 else
 #KERDIR:=/wifi_prj/staff/zhouzhanchao/iTop4412_Kernel_3.0/
 #KERDIR:=/wifi_prj/wuping/project/linux/iTop4412_Kernel_3.0/
@@ -281,34 +289,6 @@ ATBM_WIFI__EXT_CCFLAGS = -DATBM_WIFI_PLATFORM=19
 #ATBM_WIFI__EXT_CCFLAGS += -mcpu=cortex-a7 -mfloat-abi=softfp -mfpu=neon-vfpv4 -fno-aggressive-loop-optimizations
 endif
 
-ifeq ($(platform),PLATFORM_AK_IPC)
-KERDIR := ${KSRC)
-KVER := ${shell uname -r)
-CROSS_COMPILE:=arm-anykav500-linux-uclibcgnueabi-
-arch = arm
-ATBM_WIFI__EXT_CCFLAGS = -DATBM_WIFI_PLATFORM=22
-#ATBM_WIFI__EXT_CCFLAGS += -mcpu=cortex-a7 -mfloat-abi=softfp -mfpu=neon-vfpv4 -fno-aggressive-loop-optimizations
-endif
-
-#
-#allwinner a33 platform params
-#
-ifeq ($(platform),PLATFORM_SUN8I)
-ifeq ($(sys),Android)
-else
-KERDIR:=/wifi_prj/staff/songningning/lichee/linux-3.4/
-CROSS_COMPILE:=/wifi_prj/staff/songningning/lichee/out/sun8iw5p1/linux/common/buildroot/external-toolchain/bin/arm-linux-gnueabi-
-endif
-export
-ATBM_WIFI__EXT_CCFLAGS = -DATBM_WIFI_PLATFORM=23
-endif
-
-ifeq ($(platform),PLATFORM_CDLINUX)
-KERDIR:=/lib/modules/3.2.11_cdl0/build
-export
-ATBM_WIFI__EXT_CCFLAGS = -DATBM_WIFI_PLATFORM=11
-endif
-
 ifeq ($(platform),PLATFORM_PCX86)
 all:install
 
@@ -318,20 +298,11 @@ install:
 clean:
 	$(MAKE) -f Makefile.build.local KDIR=$(KERDIR) clean
 else
-ifeq ($(platform),PLATFORM_CDLINUX)
-all:install
-
-install:
-	@echo "make PLATFORM_CDLINUX"
-	$(MAKE) all -f Makefile.build KDIR=$(KERDIR) ARCH=i386
-clean:
-	$(MAKE) -f Makefile.build KDIR=$(KERDIR) clean
-else
 all:install
 
 install:
 	@echo "make PLATFORM_CROSS=$(platform)"
-	$(MAKE) all -f $(MAKEFILE_SUB) ARCH=$(arch)  CROSS_COMPILE=$(CROSS_COMPILE) KDIR=$(KERDIR) SYS=$(sys) PLAT=$(platform) -j8
+	$(MAKE) all -f $(MAKEFILE_SUB) ARCH=$(arch)  CROSS_COMPILE=$(CROSS_COMPILE) KDIR=$(KERDIR) SYS=$(sys) PLAT=$(platform) -j32
 clean:
 	$(MAKE) -f $(MAKEFILE_SUB) KDIR=$(KERDIR) ARCH=$(arch) clean
 strip:	
@@ -339,11 +310,9 @@ strip:
 get_ver:
 	$(MAKE) -f $(MAKEFILE_SUB) KDIR=$(KERDIR) ARCH=$(arch) SYS=$(sys) PLAT=$(platform) get_ver
 buid_config:
-	$(MAKE) -C atbm_kconf clean
 	$(MAKE) -C atbm_kconf mconf -f Makefile
 menuconfig:buid_config
 	@./atbm_kconf/mconf ./atbm_kconf/Kconfig
-endif
 endif
 else
 ifeq ($(platform),PLATFORM_XUNWEI)
@@ -393,6 +362,20 @@ endif
 ifeq ($(platform),PLATFORM_NVT98517)
 export
 ATBM_WIFI__EXT_CCFLAGS = -DATBM_WIFI_PLATFORM=14
+endif
+
+ifeq ($(platform),PLATFORM_SIGMASTAR)
+export
+ATBM_WIFI__EXT_CCFLAGS = -DATBM_WIFI_PLATFORM=18
+endif
+
+ifeq ($(platform),PLATFORM_ANYKA_3916V330)
+export
+ATBM_WIFI__EXT_CCFLAGS = -DATBM_WIFI_PLATFORM=22
+endif
+ifeq ($(platform),PLATFORM_INGENIC_X2000)
+export
+ATBM_WIFI__EXT_CCFLAGS = -DATBM_WIFI_PLATFORM=29
 endif
 export 
 include $(src)/Makefile.build.kernel

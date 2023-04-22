@@ -1557,9 +1557,9 @@ struct ieee80211_hw *ieee80211_alloc_hw(size_t priv_data_len,
 #endif
 			;
 #ifdef CONFIG_ATBM_SUPPORT_SAE
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 0))
+//#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 0))
 	wiphy->features |= NL80211_FEATURE_SAE;
-#endif
+//#endif
 #endif
 	if (!ops->set_key)
 		wiphy->flags |= WIPHY_FLAG_IBSS_RSN;

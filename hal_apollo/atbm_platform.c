@@ -54,13 +54,6 @@
 #include <mach/sys_config.h>
 
 #endif
-#if (ATBM_WIFI_PLATFORM == PLATFORM_SUN8I)
-#define PLATFORMINF	"sun8i"
-
-#include <mach/sys_config.h>
-
-#endif
-
 #if (ATBM_WIFI_PLATFORM == 10)
 extern int rockchip_wifi_power(int on);
 extern int rockchip_wifi_set_carddetect(int val);
@@ -123,6 +116,14 @@ u32 atbm_wlan_get_oob_irq(void)
 }
 #endif
 
+
+#if (ATBM_WIFI_PLATFORM == PLATFORM_INGENIC_X2000)
+#define INGENIC_RESET  0
+#define INGENIC_NORMAL 1
+extern int ingenic_sdio_wlan_atbm_power_onoff(int onoff, int flag);
+static int poweroff_num = 0;
+static int poweron_num = 0;
+#endif
 static int atbm_platform_power_ctrl(const struct atbm_platform_data *pdata,bool enabled)
 {
 	int ret = 0; 
@@ -216,6 +217,24 @@ extern void extern_wifi_set_enable(int is_on);
     rockchip_wifi_power(enabled);
 #endif
 
+#if (ATBM_WIFI_PLATFORM == PLATFORM_INGENIC_X2000)
+    if(enabled){
+        if(poweron_num){
+            ingenic_sdio_wlan_atbm_power_onoff(1, INGENIC_RESET);
+        }else{
+            poweron_num = 1;
+            ingenic_sdio_wlan_atbm_power_onoff(1, INGENIC_NORMAL);
+        }
+    }else{
+        if(poweroff_num){
+            ingenic_sdio_wlan_atbm_power_onoff(0, INGENIC_RESET);
+        }else{
+            poweroff_num = 1;
+            ingenic_sdio_wlan_atbm_power_onoff(0, INGENIC_NORMAL);
+        }
+    }
+#endif
+
 #endif
 	atbm_printk_platform("[%s]:platform set power [%d]\n",platform,enabled);
 	return ret;
@@ -282,19 +301,6 @@ static int atbm_platform_insert_crtl(const struct atbm_platform_data *pdata,bool
 #if (ATBM_WIFI_PLATFORM == 10)
      mdelay(100);
      rockchip_wifi_set_carddetect(enabled);
-#endif
-#if (ATBM_WIFI_PLATFORM == PLATFORM_SUN8I)
-	{
-		extern void sunxi_mci_rescan_card(unsigned id, unsigned insert);
-		script_item_u val;
-		script_item_value_type_e type;
-		static int sdc_id = -1;
-		pdata = pdata;
-		type = script_get_item("wifi_para", "wifi_sdc_id", &val);
-		sdc_id = val.val;
-		atbm_printk_platform("scan scd_id(%d)\n",sdc_id);
-		sunxi_mci_rescan_card(sdc_id, enabled);
-	}
 #endif
 #endif
 	 atbm_printk_platform("[%s]:platform insert ctrl [%d]\n",platform,enabled);

@@ -2379,7 +2379,8 @@ static void atbm_usb_receive_data_complete(struct urb *urb)
 	struct atbm_common *hw_priv=NULL;
 	int RecvLength=urb->actual_length;
 	struct wsm_hdr *wsm;
-	
+	struct ieee80211_hw *hw = NULL;
+	struct ieee80211_local *local = NULL;
 	usb_printk( "rxend  Len %d\n",RecvLength);
 	
 	if(rx_urb != NULL){
@@ -2392,6 +2393,10 @@ static void atbm_usb_receive_data_complete(struct urb *urb)
 	
 	if(!hw_priv)
 		goto __free;
+
+	hw = hw_priv->hw;
+	local = hw_to_local(hw);
+	
 	if (!skb){
 		WARN_ON(1);
 		goto __free;
@@ -2462,7 +2467,21 @@ static void atbm_usb_receive_data_complete(struct urb *urb)
 				u8 *data = skb->data;
 				atbm_printk_err("actual_length(%d),max_len(%d),transfer_buffer_length(%d)\n",
 								urb->actual_length,RX_BUFFER_SIZE,urb->transfer_buffer_length);
-					
+				/*
+					add by yuzhihuang
+					usb recive packet loss ,  reload wifi driver
+					must set upper deal SIGUSR1 signal process pid when send signal befor
+				*/
+				if(urb->actual_length < urb->transfer_buffer_length){
+					atbm_printk_err("%s:need reload wifi driver! \n",__FUNCTION__);
+					if(local->upper_pid != 0)
+						send_signal(SIGUSR1,local->upper_pid);
+					else
+						atbm_printk_err("%s:not set upper process pid , not send signal\n",__FUNCTION__);
+				}
+				/*
+					end add
+				*/				
 				while(actual_length > 0){
 					wsm = (struct wsm_hdr *)data;
 					atbm_printk_err("rx id (%x),len(%d)\n",wsm->id,wsm->len);

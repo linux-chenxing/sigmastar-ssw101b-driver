@@ -220,7 +220,7 @@ void atbm_pm_stay_awake(struct atbm_pm_state *pm,
 	if(pm->b_init==0)
 		return ;
 	spin_lock_irqsave(&pm->lock,flags);
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(3,4,39))
+#if (LINUX_VERSION_CODE >=KERNEL_VERSION(3,4,0))
 	cur_tmo = pm->wakelock.ws.timer_expires - jiffies;
 #else
  	cur_tmo = pm->wakelock.expires - jiffies;

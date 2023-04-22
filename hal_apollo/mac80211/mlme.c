@@ -2187,7 +2187,7 @@ static bool ieee80211_assoc_success(struct ieee80211_work *wk,
 	if (!elems.supp_rates) {
 		atbm_printk_err("%s: no SuppRates element in AssocResp\n",
 		       sdata->name);
-		return false;
+	//	return false;
 	}
 
 	ifmgd->aid = aid;
@@ -3286,18 +3286,20 @@ int ieee80211_mgd_auth(struct ieee80211_sub_if_data *sdata,
 		auth_alg = WLAN_AUTH_LEAP;
 		break;
 #ifdef CONFIG_ATBM_SUPPORT_SAE
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 0))
+//#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 0))
 	case NL80211_AUTHTYPE_SAE:
 		auth_alg = WLAN_AUTH_SAE;
 		break;
-#endif
+//#endif
 #endif
 	default:
 		return -EOPNOTSUPP;
 	}
 	ie_len = req->ie_len;
 #ifdef CONFIG_ATBM_SUPPORT_SAE
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0))
+//#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0))
+#if	(LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0))
+
 	ie_len += req->sae_data_len;
 #endif
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
@@ -3318,7 +3320,9 @@ int ieee80211_mgd_auth(struct ieee80211_sub_if_data *sdata,
 	
 	memcpy(wk->filter_ta, req->bss->bssid, ETH_ALEN);
 #ifdef CONFIG_ATBM_SUPPORT_SAE
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0))
+//#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0))
+
 	if (req->sae_data_len >= 4) {
 		__le16 *pos = (__le16 *) req->sae_data;
 		wk->probe_auth.sae_trans = le16_to_cpu(pos[0]);

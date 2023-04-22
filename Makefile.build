@@ -4,8 +4,8 @@ WIFI_USER_DIR := $(USER)
 WIFI_INSTALL_DIR := /wifi_prj/tftpboot/$(WIFI_USER_DIR)/$(PLAT)_$(SYS)
 
 
-NOSTDINC_FLAGS := -I$(src)/include/ \
-	-include $(src)/include/linux/compat-2.6.h \
+NOSTDINC_FLAGS := -I$(srctree)/$(src)/include/ \
+	-include $(srctree)/$(src)/include/linux/compat-2.6.h \
 	-DCOMPAT_STATIC
 #####################################################
 export

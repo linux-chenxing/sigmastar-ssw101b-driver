@@ -1812,8 +1812,8 @@ static int atbm_start_ap(struct atbm_vif *priv)
 	};
 
 	struct wsm_inactivity inactivity = {
-		.min_inactivity = 4,//50,
-		.max_inactivity = 1,//10,
+		.min_inactivity = 10,//50,
+		.max_inactivity = 5,//10,
 	};
 
 	struct wsm_operational_mode mode = {

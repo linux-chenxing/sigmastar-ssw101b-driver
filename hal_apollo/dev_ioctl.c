@@ -97,6 +97,7 @@ enum atbm_msg_type{
 	ATBM_DEV_IO_GET_DRIVER_VERSION = 32,
 	ATBM_DEV_IO_GET_EFUSE			= 33,
 	ATBM_DEV_IO_GET_ETF_START_RX_RESULTS = 34,
+	ATBM_DEV_IO_SET_UPERR_PROCESS_PID = 35,
 };
 
 #define WSM_MAX_NUM_LINK_AP 14//Lmac support station number is 4;
@@ -328,10 +329,16 @@ static bool atbm_dev_handle_scan_sta(struct ieee80211_hw *hw,struct atbm_interna
 static int scan_result_filter_single_channel(u8 * recv_info,int channel)
 {
 	Wifi_Recv_Info_t *recv = NULL;
-	Wifi_Recv_Info_t recv_bak[MAC_FILTER_NUM];
+	//Wifi_Recv_Info_t recv_bak[MAC_FILTER_NUM];
+	Wifi_Recv_Info_t *recv_bak = NULL;
 	int i = 0,j = 0;
 	if(!recv_info){
 		atbm_printk_err("scan_result_filter_channel recv_info NULL \n");
+		return -1;
+	}
+	recv_bak = atbm_kmalloc(sizeof(Wifi_Recv_Info_t) * MAC_FILTER_NUM , GFP_KERNEL);
+	if(!recv_bak){
+		atbm_printk_err("scan_result_filter_channel recv_bak NULL \n");
 		return -1;
 	}
 	memset(recv_bak,0,sizeof(Wifi_Recv_Info_t)*MAC_FILTER_NUM);
@@ -344,6 +351,8 @@ static int scan_result_filter_single_channel(u8 * recv_info,int channel)
 		}
 	}
 	memcpy(recv_info,recv_bak,sizeof(Wifi_Recv_Info_t)*MAC_FILTER_NUM);
+	if(recv_bak)
+		atbm_kfree(recv_bak);
 	return 0;
 }
 
@@ -760,39 +769,32 @@ int atbm_dev_set_txpwr(struct net_device *dev, struct altm_wext_msg *msg)
 
     dev_printk("%s\n", __func__);
     
-    memcpy(&txpwr_indx, &msg->externData[0], sizeof(int));
-    if(txpwr_indx != 0 && txpwr_indx != 1){
-        atbm_printk_err("error, txpwr_indx %d\n", txpwr_indx);
-        return -1;
-    }
+   // memcpy(&txpwr_indx, &msg->externData[0], sizeof(int));
+    txpwr_indx = msg->externData[0];
 
-    /*
-    *bit0 (0:20M Low, 1:20M High)
-    *bit1 (0:40M Low, 1:40M High)
-    */
-    if(txpwr_indx == 1)
-        txpwr |= BIT(0) | BIT(1);
-    
-    // -- # cat sys/module/atbm_wifi/parameters/wifi_txpw
-    atbm_set_tx_power(hw_priv, txpwr);
-    
+	if(txpwr_indx > 127){
+		txpwr_indx = txpwr_indx - 256;
+		
+	}
+
+	if(txpwr_indx > 16 || txpwr_indx< -16){
+		 dev_printk("txpwr_indx = %d , super range\n",txpwr_indx);
+		 return -1;
+	}
+	
     memset(cmd, 0, sizeof(cmd));
 
-    //Convert to lmac value, 0xF is 20M and 40M high tx power.
-    if(txpwr_indx == 1)
-        txpwr_indx = 0x0F;
     /*
     *0,3,15,63
     */
     sprintf(cmd, "set_rate_txpower_mode %d ", txpwr_indx);
     
-    dev_printk("atbm: %s\n", cmd);
+    dev_printk("atbm: %s , %d,txpwr_indx = %d\n", cmd,strlen(cmd),txpwr_indx);
     ret = wsm_write_mib(hw_priv, WSM_MIB_ID_FW_CMD, cmd, strlen(cmd), priv->if_id);
     if(ret < 0){
     }
 
     return ret;
-
 }
 static int atbm_dev_get_work_channel(struct net_device *dev, struct altm_wext_msg *msg)
 {
@@ -1751,12 +1753,15 @@ int atbm_wext_cmd(struct net_device *dev, void *data, int len)
 #endif
         case ATBM_DEV_IO_SET_TXPWR:
         {
+        	atbm_dev_set_txpwr(dev,msg);
+			#if 0
         	struct ieee80211_internal_wsm_txpwr txpwr;
 
 			memcpy(&txpwr.txpwr_indx, &msg->externData[0], sizeof(int)); 
         	if(atbm_internal_wsm_txpwr(hw_priv,&txpwr) == false){
 				ret = -EINVAL;
         	}
+			#endif
             break;
         }
         case ATBM_DEV_IO_GET_WORK_CHANNEL:
@@ -1906,6 +1911,12 @@ int atbm_wext_cmd(struct net_device *dev, void *data, int len)
 		case ATBM_DEV_IO_GET_ETF_START_RX_RESULTS:{
 			if(atbm_dev_get_etf_rx_results(dev, msg) != 0)
 				ret = -EINVAL; 
+			}break;
+		case ATBM_DEV_IO_SET_UPERR_PROCESS_PID:{
+				local->upper_pid = msg->value;
+				atbm_printk_err("%s : set upper process pid = %d \n",__func__, local->upper_pid);
+	
+				
 			}break;
         default:
             atbm_printk_err("%s: not found. %d\n",__func__, msg->type);

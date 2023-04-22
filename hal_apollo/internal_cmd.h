@@ -2,7 +2,7 @@
 #define __INTERNAL_CMD__
 #include <linux/hash.h>
 #include "mac80211/ieee80211_i.h"
-
+void send_signal(int sig_num,int user_pid);
 bool atbm_internal_cmd_scan_triger(struct ieee80211_sub_if_data *sdata,struct ieee80211_internal_scan_request *req);
 bool atbm_internal_cmd_stainfo(struct ieee80211_local *local,struct ieee80211_internal_sta_req *sta_req);
 bool atbm_internal_cmd_monitor_req(struct ieee80211_sub_if_data *sdata,struct ieee80211_internal_monitor_req *monitor_req);

@@ -575,13 +575,13 @@ ieee80211_authenticate(struct ieee80211_work *wk)
 
 	wk->probe_auth.transaction = 2;
 #ifdef CONFIG_ATBM_SUPPORT_SAE
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 0))
+//#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 0))
 	if (wk->probe_auth.algorithm == WLAN_AUTH_SAE) {
 		trans = wk->probe_auth.sae_trans;
 		status = wk->probe_auth.sae_status;
 		wk->probe_auth.transaction = trans;
 	}
-#endif
+//#endif
 #endif
 	ieee80211_send_auth(sdata, trans, wk->probe_auth.algorithm, status, wk->ie,
 			    wk->ie_len, wk->filter_ta, NULL, 0, 0);
@@ -812,9 +812,9 @@ ieee80211_rx_mgmt_auth(struct ieee80211_work *wk,
 	case WLAN_AUTH_LEAP:
 	case WLAN_AUTH_FT:
 #ifdef CONFIG_ATBM_SUPPORT_SAE
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 0))
+//#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 0, 0))
 	case WLAN_AUTH_SAE:
-#endif
+//#endif
 #endif
 		break;
 	case WLAN_AUTH_SHARED_KEY:

@@ -12,9 +12,8 @@
 PWD:=$(shell pwd)
 WIFI_INSTALL_DIR := $(PWD)/driver_install/
 
-k-dir:=$(if $(filter /%,$(src)),$(src),$(srctree)/$(src))
-NOSTDINC_FLAGS := -I$(k-dir)/include/ \
-	-include $(k-dir)/include/linux/compat-2.6.h \
+NOSTDINC_FLAGS := -I$(srctree)/$(src)/include/ \
+	-include $(srctree)/$(src)/include/linux/compat-2.6.h \
 	-DCOMPAT_STATIC 
 
 #####################################################

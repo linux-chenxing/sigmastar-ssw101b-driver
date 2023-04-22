@@ -1819,6 +1819,12 @@ struct ieee80211_local {
 #endif  //SIGMSTAR_SCAN_FEATURE
 	bool adaptive_started; // adaptive mode stop scan and beacon lost
 	unsigned long   adaptive_started_time;
+
+	/*
+	 * add by yuzhihuang
+	 * Notify the upper process wifi of some anomalies
+	 */
+	int upper_pid;
 	
 };
 
@@ -2371,9 +2377,6 @@ bool ieee80211_ap_update_special_probe_response(struct ieee80211_sub_if_data *sd
 		const u8 *special_ie, size_t special_ie_len);
 bool ieee80211_ap_update_special_probe_request(struct ieee80211_sub_if_data *sdata,
 		const u8 *special_ie, size_t special_ie_len);
-bool ieee80211_ap_update_vendor_probe_request(struct ieee80211_sub_if_data *sdata,
-		const u8 *special_ie, size_t special_ie_len);
-
 
 bool ieee80211_updata_extra_ie(struct ieee80211_sub_if_data *sdata,enum ieee80211_special_work_type type,
 		union iee80211_extra_ie *extra);

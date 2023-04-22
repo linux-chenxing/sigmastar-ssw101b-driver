@@ -433,7 +433,7 @@ ifeq ($(USB_BUS),y)
 ccflags-y += -DUSB_BUS
 ccflags-y += -DUSB_USE_TASTLET_TXRX
 ccflags-y += -DUSB_BUS_BUG
-ccflags-y += -DCONFIG_USB_URB_RX_SUBMIT_DIRECTLY
+#ccflags-y += -DCONFIG_USB_URB_RX_SUBMIT_DIRECTLY
 #ccflags-y += -DCONFIG_WSM_CMD_XMIT_DIRECTLY
 #ccflags-y += -DCONFIG_USB_DATA_XMIT_DIRECTLY
 #ccflags-y += -DCONFIG_USE_DMA_ADDR_BUFFER

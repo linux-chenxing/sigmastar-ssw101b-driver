@@ -315,7 +315,6 @@ static int atbm_ioctl_set_all_efuse(struct net_device *dev, struct iw_request_in
 static int atbm_ioctl_associate_sta_status(struct net_device *dev, struct iw_request_info *info, union iwreq_data *wrqu, char *extra);
 #ifdef ATBM_PRIVATE_IE
 static int atbm_ioctl_ie_ipc_clear_insert_data(struct net_device *dev, struct iw_request_info *info, union iwreq_data *wrqu, char *extra);
-static int atbm_ioctl_ie_insert_vendor_ie(struct net_device *dev, struct iw_request_info *info, union iwreq_data *wrqu, char *ext);
 #endif/*ATBM_PRIVATE_IE*/
 static int atbm_set_power_save_mode(struct net_device *dev, struct iw_request_info *info, union iwreq_data *wrqu, char *ext);
 static int atbm_ioctl_gpio_config(struct net_device *dev, struct iw_request_info *info, union iwreq_data *wrqu, char *extra);
@@ -383,7 +382,6 @@ iwripv_common_cmd_t common_cmd[]={
 	{"set_all_efuse",13,atbm_ioctl_set_all_efuse,"set all efuse,including:dcxo ,efuse,macaddr"},
 #ifdef ATBM_PRIVATE_IE
 	{"ipc_reset",9,atbm_ioctl_ie_ipc_clear_insert_data,"clear ipc private ie"},
-	{"vendor_ie",9,atbm_ioctl_ie_insert_vendor_ie,"insert vendor IE to (Probe Req)"},
 #endif	
 #ifdef SSTAR_FUNCTION
 		{"getSigmstarEfuse",16,atbm_ioctl_get_SIGMSTAR_256BITSEFUSE,"get private efuse space value"},
@@ -1207,7 +1205,7 @@ static int atbm_ioctl_stop_tx(struct net_device *dev, struct iw_request_info *in
 	struct atbm_common *hw_priv=local->hw.priv;
 
 	struct atbm_vif *vif;
-
+	msleep(500);
 	if(0 == ETF_bStartTx){
 		atbm_printk_err("please start start_rx first,then stop_rx\n");
 		return -EINVAL;
@@ -1858,119 +1856,6 @@ exit:
 		atbm_kfree(special);
 	return ret;
 }
-
-int hex2digit(int c)
-{
-	if('0'<=c && c<='9')
-		return c-'0';
-	if('A'<=c && c<='F')
-		return c-('A'-10);
-	if('a'<=c && c<='f')
-		return c-('a'-10);
-	return -1;
-}
-
-/*
-*1, SSTAR_INSERT_USERDATA_CMD    	
-*	ioctl(global->ioctl_sock, SSTAR_INSERT_USERDATA_CMD, &user_data)
-*	
-*   update special ie to beacon,probe response and probe request ,if possible 
-*/
-static int atbm_ioctl_ie_insert_vendor_ie(struct net_device *dev, struct iw_request_info *info, union iwreq_data *wrqu, char *ext)
-{
-	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
-	struct ieee80211_local *local = sdata->local;
-	struct ieee80211_sub_if_data *sdata_update;
-	u8 atbm_oui[4]={0x41,0x54,0x42,0x4D};
-	
-	int ret = 0;
-	char *extra = NULL;
-	char *ie_str =NULL;
-	int ie_str_len;
-	u8 vendor_ie[255];
-	int i,j;
-	
-	if(!ieee80211_sdata_running(sdata)){
-		ret = -ENETDOWN;
-		goto exit;
-	}
-
-	extra = atbm_kmalloc(wrqu->data.length+1, GFP_KERNEL);
-
-	if(extra == NULL){
-		ret =  -ENOMEM;
-		goto exit;
-	}
-
-	if((ret = copy_from_user(extra, wrqu->data.pointer, wrqu->data.length))){
-		ret = -EINVAL;
-		goto exit;
-	}
-	
-	extra[wrqu->data.length] = 0;
-	
-	for(i=0; i<wrqu->data.length; i++){
-		if(extra[i] == ','){
-			ie_str = &extra[i+1];
-			break;
-		}
-	}
-	
-	ie_str_len = wrqu->data.length - i - 2;
-	if((ie_str_len <= 0) || (ie_str_len > 251*2) || (ie_str_len%2)){
-		atbm_printk_err("ErrMsg: vendor_ie_len err(%d)\n", ie_str_len);
-		ret = -EINVAL;
-		goto exit;
-	}
-
-	atbm_printk_always("VENDOR IE:%s,LEN:%d\n",ie_str,ie_str_len);
-
-	for(i=0;i<ie_str_len;i++){
-		ret = hex2digit(ie_str[i]);
-		if(ret < 0){
-			atbm_printk_err("ErrMsg: ie payload format err\n");
-			ret = -EINVAL;
-			goto exit;
-		}
-		ie_str[i] = ret;
-	}
-	
-	memcpy(vendor_ie, atbm_oui, 4);
-	for(i=0,j=0; j<ie_str_len/2; i+=2,j++){
-		vendor_ie[j+4] = ie_str[i+1] | (ie_str[i]<<4);
-	}
-
-	list_for_each_entry(sdata_update, &local->interfaces, list){
-		bool res = true;
-		
-		if(!ieee80211_sdata_running(sdata_update)){
-			continue;
-		}
-
-		res = ieee80211_ap_update_vendor_probe_request(sdata_update,vendor_ie,ie_str_len/2+4);
-#if 0
-		if(sdata_update->vif.type == NL80211_IFTYPE_STATION){
-			res = ieee80211_ap_update_special_probe_request(sdata_update,special,len+4);
-		}else if((sdata_update->vif.type == NL80211_IFTYPE_AP)&&
-		         (rtnl_dereference(sdata_update->u.ap.beacon))){
-		    res = ieee80211_ap_update_special_beacon(sdata_update,special,len+4);
-			if(res == true){
-				res = ieee80211_ap_update_special_probe_response(sdata_update,special,len+4);
-			}
-		}
-#endif
-		if(res == false){
-			atbm_printk_err("[IE] insert failed\n");
-			ret = -EOPNOTSUPP;
-			goto exit;
-		}
-	}	
-exit:
-	if(extra)
-		atbm_kfree(extra);	
-	return ret;
-}
-
 
 /*
 *2,  SSTAR_GET_USERDATA_CMD    			
@@ -6542,8 +6427,9 @@ const iw_handler atbm_private_handler[]={
 	[29] = (iw_handler)atbm_ioctl_get_rate,
 	[30] = (iw_handler)atbm_ioctl_set_txpw,
 #ifdef CONFIG_ATBM_STA_LISTEN
-	[31] = (iw_handler)atbm_ioctl_set_sta_channel,
+		[31] = (iw_handler)atbm_ioctl_set_sta_channel,
 #endif
+
 #else
 	[20] = (iw_handler)atbm_ioctl_get_wifi_state,
 	[21] = (iw_handler)atbm_ioctl_best_ch_scan,
@@ -7732,4 +7618,3 @@ void etf_param_init(struct atbm_common *hw_priv)
 	atbm_printk_wext("chipversion:0x%x\n", chipversion);
 }
 
- 

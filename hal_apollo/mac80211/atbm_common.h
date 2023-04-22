@@ -39,7 +39,12 @@ typedef struct atbm_private_data{
 
 
 #define AP_SCAN_NUM_MAX 32 //ap number per channel
+#ifdef CONFIG_ATBM_5G_PRETEND_2G
 #define CHANNEL_NUM 18 //channel
+#else
+#define CHANNEL_NUM 14 //channel
+
+#endif
 
 typedef struct _best_channel_info_
 {
